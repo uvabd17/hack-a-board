@@ -5,6 +5,7 @@ import { getDisplayState } from "@/actions/display"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ArrowUp, ArrowDown, Minus, Trophy, Terminal } from "lucide-react"
+import { CeremonyDisplay } from "@/components/ceremony-display"
 
 export default function ProjectorDisplayPage({ params }: { params: { slug: string } }) {
     const [data, setData] = useState<any>(null)
@@ -112,6 +113,8 @@ export default function ProjectorDisplayPage({ params }: { params: { slug: strin
             <footer className="mt-auto pt-6 text-center text-green-500/30 text-sm">
                 SYSTEM_ID: {params.slug.toUpperCase()} // LAST_SYNC: {lastUpdated.toLocaleTimeString()}
             </footer>
+
+            <CeremonyDisplay slug={params.slug} />
         </div>
     )
 }

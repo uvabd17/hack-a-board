@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { notFound } from "next/navigation"
 import { DisplayController } from "@/components/display-controller"
+import { CeremonyController } from "@/components/ceremony-controller"
 
 export default async function ManageDisplayPage({ params }: { params: { slug: string } }) {
     const hackathon = await prisma.hackathon.findUnique({
@@ -21,6 +22,11 @@ export default async function ManageDisplayPage({ params }: { params: { slug: st
             <DisplayController
                 hackathonId={hackathon.id}
                 initialIsFrozen={hackathon.isFrozen}
+                slug={params.slug}
+            />
+
+            <CeremonyController
+                hackathonId={hackathon.id}
                 slug={params.slug}
             />
         </div>
