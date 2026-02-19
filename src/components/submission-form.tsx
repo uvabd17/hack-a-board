@@ -33,9 +33,9 @@ export function SubmissionForm({
         setLoading(true)
         const res = await submitProject({ ...formData, teamId, roundId: round.id }, slug)
         if (res.success) {
-            alert(`INBOUND_RECEIVED: Project files transmitted. Time Bonus: ${res.timeBonus}`)
+            alert(`Submission received! Time Bonus: ${res.timeBonus}`)
         } else {
-            alert("TRANSMISSION_ERROR: " + res.error)
+            alert("Submission failed: " + res.error)
         }
         setLoading(false)
     }
@@ -45,7 +45,7 @@ export function SubmissionForm({
             <CardHeader className="bg-muted/50 pb-3 flex flex-row items-center justify-between">
                 <div>
                     <CardTitle className="text-sm font-bold uppercase tracking-widest">{round.name}</CardTitle>
-                    <p className="text-[10px] text-muted-foreground">SUBMISSION_WINDOW_REMAINING: 00:00:00 (MOCK)</p>
+                    <p className="text-[10px] text-muted-foreground">Submission deadline: TBA</p>
                 </div>
                 {existingSubmission && (
                     <Badge variant="outline" className="text-[10px] text-green-500 border-green-500/50">
@@ -82,7 +82,7 @@ export function SubmissionForm({
                         className="w-full text-xs uppercase font-bold"
                         disabled={loading}
                     >
-                        {loading ? "TRANSMITTING..." : existingSubmission ? "UPDATE SUBMISSION" : "TRANSMIT SUBMISSION"}
+                        {loading ? "SUBMITTING..." : existingSubmission ? "UPDATE SUBMISSION" : "SUBMIT PROJECT"}
                     </Button>
                 </form>
             </CardContent>

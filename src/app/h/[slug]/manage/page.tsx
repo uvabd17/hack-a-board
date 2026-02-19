@@ -45,7 +45,7 @@ export default async function ManagePage({ params }: { params: Promise<{ slug: s
             {/* Header */}
             <div className="flex items-start justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-primary tracking-tight">SYSTEM_STATUS</h1>
+                    <h1 className="text-3xl font-bold text-primary tracking-tight">EVENT OVERVIEW</h1>
                     <p className="text-muted-foreground text-xs mt-1 uppercase tracking-widest">{hackathon.name}</p>
                 </div>
                 <Badge
@@ -61,10 +61,10 @@ export default async function ManagePage({ params }: { params: Promise<{ slug: s
 
             {/* Primary Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <StatCard label="TOTAL_TEAMS" value={hackathon._count.teams} sub={`${approvedTeams} approved`} />
-                <StatCard label="PARTICIPANTS" value={hackathon._count.participants} />
-                <StatCard label="JUDGES_ACTIVE" value={hackathon._count.judges} />
-                <StatCard label="PROBLEMS_LIVE" value={hackathon._count.problemStatements} sub={`of ${hackathon.problemStatements.length} total`} />
+                <StatCard label="TOTAL TEAMS" value={hackathon._count.teams} sub={`${approvedTeams} approved`} />
+                <StatCard label="HACKERS" value={hackathon._count.participants} />
+                <StatCard label="JUDGES" value={hackathon._count.judges} />
+                <StatCard label="CHALLENGES" value={hackathon._count.problemStatements} sub={`of ${hackathon.problemStatements.length} total`} />
             </div>
 
             {/* Check-in Progress */}

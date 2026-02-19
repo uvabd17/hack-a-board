@@ -29,7 +29,7 @@ export default function Home() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
             </span>
-            SYSTEM_v1.1_DEPLOYED
+            LIVE_AND_READY
           </div>
 
           <h1 className="text-6xl md:text-8xl font-bold tracking-tighter mb-8 leading-[0.9] text-transparent bg-clip-text bg-gradient-to-b from-white to-zinc-500">
@@ -87,16 +87,16 @@ export default function Home() {
               <div className="flex-1 space-y-6">
                 <h2 className="text-2xl font-bold tracking-tight">How it works</h2>
                 <div className="space-y-8">
-                  <WorkflowStep number="01" title="Initialize" desc="Create hackathon and configure problem tracks" />
-                  <WorkflowStep number="02" title="Deploy" desc="Teams register and receive unique identity tokens" />
-                  <WorkflowStep number="03" title="Measure" desc="Judges scan and score teams in real-time" />
-                  <WorkflowStep number="04" title="Reveal" desc="Freeze the board and initiate the reveal ceremony" />
+                  <WorkflowStep number="01" title="Create" desc="Set up your hackathon and configure challenge tracks" />
+                  <WorkflowStep number="02" title="Register" desc="Teams sign up and receive unique identity tokens" />
+                  <WorkflowStep number="03" title="Judge" desc="Evaluators scan and score teams in real-time" />
+                  <WorkflowStep number="04" title="Reveal" desc="Freeze the board and run the awards ceremony" />
                 </div>
               </div>
               <div className="w-full md:w-72 aspect-square border border-white/10 rounded-lg p-6 flex items-center justify-center bg-black/40 relative group overflow-hidden">
                 <div className="absolute inset-0 bg-green-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                 <Tv className="w-20 h-20 text-white opacity-20 group-hover:opacity-50 transition-all group-hover:scale-110" />
-                <div className="absolute bottom-4 left-4 text-[8px] font-mono text-zinc-600">PREVIEW_SYSTEM_ID:HB-882</div>
+                <div className="absolute bottom-4 left-4 text-[8px] font-mono text-zinc-600">LIVE_PREVIEW</div>
               </div>
             </div>
           </div>

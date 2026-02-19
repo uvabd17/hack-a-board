@@ -45,7 +45,7 @@ export default async function DashboardPage({
     if (!participant || participant.hackathon.slug !== slug) {
         return (
             <div className="flex items-center justify-center min-h-screen text-destructive">
-                INVALID_ACCESS_TOKEN // TERMINATED
+                INVALID ACCESS — Please register again.
             </div>
         )
     }
@@ -80,9 +80,12 @@ export default async function DashboardPage({
             <header className="mb-8 border-b border-border pb-4 flex justify-between items-center max-w-6xl mx-auto">
                 <div>
                     <h1 className="text-xl font-bold text-primary">{participant.hackathon.name}</h1>
-                    <p className="text-xs text-muted-foreground">OPERATIVE_DASHBOARD_v1.0</p>
+                    <p className="text-xs text-muted-foreground">HACKER_DASHBOARD</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center">
+                    <a href={`/h/${slug}/display`} target="_blank" className="text-xs text-primary hover:underline uppercase tracking-widest">
+                        📊 Leaderboard
+                    </a>
                     <Badge variant={participant.team.status === 'approved' ? 'default' : 'secondary'} className="uppercase">
                         STATUS: {participant.team.status}
                     </Badge>
@@ -113,7 +116,7 @@ export default async function DashboardPage({
                     {/* Team Intel */}
                     <Card className="bg-card border-border">
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-sm text-muted-foreground uppercase tracking-widest">Unit Designation</CardTitle>
+                            <CardTitle className="text-sm text-muted-foreground uppercase tracking-widest">Team Info</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div>
@@ -145,7 +148,7 @@ export default async function DashboardPage({
                     <Card className="bg-card border-border">
                         <CardHeader>
                             <CardTitle className="text-sm text-muted-foreground uppercase tracking-widest">
-                                Mission Track
+                                Challenge Track
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -169,7 +172,7 @@ export default async function DashboardPage({
                     {/* Submissions */}
                     {selectedProblem && rounds.length > 0 && (
                         <div className="space-y-4">
-                            <h2 className="text-sm text-muted-foreground uppercase tracking-widest pl-1">Project Transmissions</h2>
+                            <h2 className="text-sm text-muted-foreground uppercase tracking-widest pl-1">Submissions</h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {rounds.map(round => (
                                     <SubmissionForm

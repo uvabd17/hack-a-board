@@ -77,7 +77,7 @@ export function HackathonSettingsForm({ hackathon }: { hackathon: HackathonData 
                 setStatus({ error: res.error })
             } else if (res.slugChanged && res.newSlug) {
                 setStatus({ success: "Saved! Redirecting to new URL..." })
-                setTimeout(() => router.push(`/h/${res.newSlug}/manage/settings`), 1000)
+                setTimeout(() => { window.location.href = `/h/${res.newSlug}/manage/settings` }, 1000)
             } else {
                 setStatus({ success: "Settings saved successfully" })
                 router.refresh()
@@ -92,7 +92,7 @@ export function HackathonSettingsForm({ hackathon }: { hackathon: HackathonData 
     return (
         <form onSubmit={handleSubmit} className="space-y-8">
             {/* General Info */}
-            <Section title="GENERAL_INFO">
+            <Section title="GENERAL INFO">
                 <div className="space-y-4">
                     <Field label="Hackathon Name">
                         <Input
@@ -102,11 +102,11 @@ export function HackathonSettingsForm({ hackathon }: { hackathon: HackathonData 
                         />
                     </Field>
 
-                    <Field label="URL Slug" hint={`Your event will be at /h/${form.slug}`}>
+                    <Field label="URL Slug" hint={`Your event is at /h/${form.slug} — slug cannot be changed after creation`}>
                         <Input
                             value={form.slug}
-                            onChange={e => update("slug", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-                            required
+                            readOnly
+                            className="opacity-60 cursor-not-allowed"
                         />
                     </Field>
 
@@ -211,7 +211,7 @@ export function HackathonSettingsForm({ hackathon }: { hackathon: HackathonData 
             </Section>
 
             {/* Team Config */}
-            <Section title="TEAM_RULES">
+            <Section title="TEAM RULES">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <Field label="Min Team Size">
                         <Input
@@ -258,7 +258,7 @@ export function HackathonSettingsForm({ hackathon }: { hackathon: HackathonData 
             </Section>
 
             {/* Scoring Config */}
-            <Section title="SCORING_CONFIG">
+            <Section title="SCORING CONFIG">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Field label="Time Bonus Rate" hint="+pts/min for early submission">
                         <Input
@@ -303,7 +303,7 @@ export function HackathonSettingsForm({ hackathon }: { hackathon: HackathonData 
                 </p>
                 <Button type="submit" disabled={loading} className="gap-2">
                     <Save size={16} />
-                    {loading ? "SAVING..." : "SAVE_SETTINGS"}
+                    {loading ? "SAVING..." : "SAVE SETTINGS"}
                 </Button>
             </div>
         </form>

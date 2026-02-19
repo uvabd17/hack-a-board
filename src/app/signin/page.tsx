@@ -19,13 +19,13 @@ export default async function SignInPage() {
                 {/* Terminal Header */}
                 <div className="text-center mb-12">
                     <div className="text-[10px] text-zinc-700 tracking-[0.3em] uppercase mb-6">
-                        sys.auth.v1
+                        organizer portal
                     </div>
                     <h1 className="text-4xl font-bold tracking-tighter mb-3 text-transparent bg-clip-text bg-gradient-to-b from-white to-zinc-500">
                         hack&lt;a&gt;board
                     </h1>
                     <p className="text-zinc-600 text-xs tracking-widest uppercase">
-                        organizer authentication
+                        sign in to manage your hackathons
                     </p>
                 </div>
 
@@ -35,22 +35,22 @@ export default async function SignInPage() {
                     <div className="border-b border-white/5 px-5 py-3 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                            <span className="text-[10px] text-zinc-500 tracking-widest uppercase">secure_login</span>
+                            <span className="text-[10px] text-zinc-500 tracking-widest uppercase">sign in</span>
                         </div>
-                        <span className="text-[9px] text-zinc-700 font-mono">TLS_1.3</span>
+                        <span className="text-[9px] text-zinc-700 font-mono">secured</span>
                     </div>
 
                     {/* Card Body */}
                     <div className="p-6 space-y-6">
                         <div className="space-y-2">
                             <div className="text-[10px] text-zinc-600 tracking-wider uppercase">
-                                &gt; initializing auth handshake...
+                                &gt; connecting to hackaboard...
                             </div>
                             <div className="text-[10px] text-zinc-600 tracking-wider uppercase">
-                                &gt; provider: google oauth 2.0
+                                &gt; sign in with your google account
                             </div>
                             <div className="text-[10px] text-green-500/60 tracking-wider uppercase">
-                                &gt; ready_
+                                &gt; ready to hack_
                             </div>
                         </div>
 
@@ -82,7 +82,7 @@ export default async function SignInPage() {
                     {/* Card Footer */}
                     <div className="border-t border-white/5 px-5 py-3">
                         <p className="text-[9px] text-zinc-700 text-center tracking-wider">
-                            AUTHORIZED ORGANIZERS ONLY • DATA ENCRYPTED AT REST
+                            ORGANIZERS & MENTORS • BUILD · SHIP · WIN
                         </p>
                     </div>
                 </div>

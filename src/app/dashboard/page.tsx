@@ -42,7 +42,7 @@ export default async function DashboardPage() {
                     <div className="text-center py-20 border-2 border-dashed rounded-lg bg-card/50">
                         <Terminal className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
                         <h2 className="text-xl font-bold mb-2">No Hackathons Found</h2>
-                        <p className="text-muted-foreground mb-6">Initialize your first event to get started.</p>
+                        <p className="text-muted-foreground mb-6">Create your first hackathon to get started.</p>
                         <CreateHackathonButton />
                     </div>
                 ) : (

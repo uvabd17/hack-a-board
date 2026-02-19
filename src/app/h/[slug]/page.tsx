@@ -63,14 +63,19 @@ export default async function PublicHackathonPage({ params }: { params: Promise<
                         {isRegistrationOpen ? (
                             <Button asChild size="lg" className="text-lg px-8 py-6 rounded-none border-2 border-primary bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all">
                                 <Link href={`/h/${hackathon.slug}/register`}>
-                                    &gt; INITIALIZE_REGISTRATION_SEQUENCE
+                                    &gt; REGISTER NOW
                                 </Link>
                             </Button>
                         ) : (
                             <Button disabled size="lg" variant="outline" className="text-lg px-8 py-6 rounded-none opacity-50 cursor-not-allowed">
-                                REGISTRATION_CLOSED
+                                REGISTRATION CLOSED
                             </Button>
                         )}
+                        <div className="mt-4">
+                            <Link href={`/h/${hackathon.slug}/display`} className="text-sm text-muted-foreground hover:text-primary transition-colors uppercase tracking-widest">
+                                📊 View Live Leaderboard →
+                            </Link>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -80,7 +85,7 @@ export default async function PublicHackathonPage({ params }: { params: Promise<
                 <section className="container mx-auto px-4 py-16 border-t border-border">
                     <div className="max-w-3xl mx-auto space-y-8">
                         <h2 className="text-2xl font-bold text-primary flex items-center gap-2">
-                            <span className="text-muted-foreground">01.</span> MISSION_BRIEFING
+                            <span className="text-muted-foreground">01.</span> ABOUT THIS HACKATHON
                         </h2>
                         <div className="prose prose-invert max-w-none text-muted-foreground leading-relaxed whitespace-pre-wrap">
                             {hackathon.description}
@@ -94,7 +99,7 @@ export default async function PublicHackathonPage({ params }: { params: Promise<
                 <section className="container mx-auto px-4 py-16 border-t border-border">
                     <div className="max-w-3xl mx-auto space-y-8">
                         <h2 className="text-2xl font-bold text-primary flex items-center gap-2">
-                            <span className="text-muted-foreground">02.</span> TIMELINE_PROTOCOL
+                            <span className="text-muted-foreground">02.</span> EVENT SCHEDULE
                         </h2>
                         <div className="space-y-4">
                             {hackathon.phases.map((phase: Phase) => (
@@ -122,7 +127,7 @@ export default async function PublicHackathonPage({ params }: { params: Promise<
                 <section className="container mx-auto px-4 py-16 border-t border-border">
                     <div className="max-w-5xl mx-auto space-y-8">
                         <h2 className="text-2xl font-bold text-primary flex items-center gap-2">
-                            <span className="text-muted-foreground">03.</span> ACTIVE_DIRECTIVES
+                            <span className="text-muted-foreground">03.</span> CHALLENGE TRACKS
                         </h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {hackathon.problemStatements.map((ps: ProblemStatement) => (
@@ -149,7 +154,7 @@ export default async function PublicHackathonPage({ params }: { params: Promise<
 
             {/* Footer */}
             <footer className="border-t border-border py-8 text-center text-sm text-muted-foreground">
-                <p>SYSTEM_ID: HACKABOARD_v1.0 // END_OF_LINE</p>
+                <p>Powered by hack&lt;a&gt;board</p>
             </footer>
         </div>
     )

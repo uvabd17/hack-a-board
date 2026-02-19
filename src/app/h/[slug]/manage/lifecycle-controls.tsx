@@ -18,14 +18,14 @@ const TRANSITIONS: Record<string, { label: string; next: string; icon: React.Rea
     ],
     published: [
         {
-            label: "BACK_TO_DRAFT",
+            label: "BACK TO DRAFT",
             next: "draft",
             icon: <Undo2 size={14} />,
             variant: "outline",
             confirm: "Revert to draft? The hackathon will no longer be publicly visible.",
         },
         {
-            label: "GO_LIVE",
+            label: "GO LIVE",
             next: "live",
             icon: <Play size={14} />,
             variant: "default",
@@ -34,7 +34,7 @@ const TRANSITIONS: Record<string, { label: string; next: string; icon: React.Rea
     ],
     live: [
         {
-            label: "END_EVENT",
+            label: "END EVENT",
             next: "ended",
             icon: <Square size={14} />,
             variant: "destructive",
@@ -63,7 +63,7 @@ export function LifecycleControls({
                 <div className="flex items-center gap-3">
                     <span className="w-2 h-2 rounded-full bg-muted-foreground" />
                     <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                        EVENT_{status.toUpperCase()} — No further transitions available
+                        EVENT {status.toUpperCase()} — No further transitions available
                     </p>
                 </div>
             </div>
@@ -90,7 +90,7 @@ export function LifecycleControls({
             <div className="flex items-center gap-3">
                 <span className={`w-2 h-2 rounded-full ${status === "live" ? "bg-green-500 animate-pulse" : status === "published" ? "bg-blue-500" : "bg-muted-foreground"}`} />
                 <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                    EVENT_STATUS: {status.toUpperCase()}
+                    EVENT STATUS: {status.toUpperCase()}
                 </p>
             </div>
             <div className="flex items-center gap-2">

@@ -114,7 +114,7 @@ export function CheckInList({ teams, slug }: { teams: Team[], slug: string }) {
             {/* Teams list */}
             {filtered.length === 0 ? (
                 <div className="p-12 border border-dashed border-border text-center text-muted-foreground text-sm">
-                    {search ? "NO_RESULTS_FOUND" : "NO_APPROVED_TEAMS_YET"}
+                    {search ? "No matching teams found" : "No approved teams yet"}
                 </div>
             ) : (
                 <div className="space-y-2">

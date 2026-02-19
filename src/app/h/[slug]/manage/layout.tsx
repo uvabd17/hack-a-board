@@ -39,7 +39,7 @@ export default async function ManageLayout({
                     <h2 className="font-bold text-lg truncate" title={hackathon.name}>
                         {hackathon.name}
                     </h2>
-                    <p className="text-xs text-muted-foreground mt-1">ORGANIZER_MODE</p>
+                    <p className="text-xs text-muted-foreground mt-1">ORGANIZER PANEL</p>
                 </div>
                 <nav className="p-4 space-y-2">
                     <Button asChild variant="ghost" className="w-full justify-start text-left">
@@ -87,10 +87,15 @@ export default async function ManageLayout({
                             :: SETTINGS
                         </Link>
                     </Button>
-                    <div className="pt-4 mt-4 border-t border-border">
+                    <div className="pt-4 mt-4 border-t border-border space-y-2">
+                        <Button asChild variant="outline" className="w-full justify-start text-left opacity-70">
+                            <Link href={`/h/${hackathon.slug}/display`} target="_blank">
+                                📊 LIVE LEADERBOARD
+                            </Link>
+                        </Button>
                         <Button asChild variant="outline" className="w-full justify-start text-left opacity-70">
                             <Link href={`/h/${hackathon.slug}`} target="_blank">
-                                ↗ VIEW_PUBLIC
+                                ↗ VIEW PUBLIC PAGE
                             </Link>
                         </Button>
                     </div>

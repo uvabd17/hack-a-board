@@ -30,13 +30,13 @@ export default async function TeamsPage({ params }: { params: Promise<{ slug: st
         <div className="max-w-5xl mx-auto space-y-8">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-primary">TEAM_ROSTER</h1>
+                    <h1 className="text-3xl font-bold text-primary">TEAMS</h1>
                     <p className="text-xs text-muted-foreground mt-1 uppercase tracking-widest">
                         {hackathon.requireApproval ? "Manual approval required" : "Auto-approved registrations"}
                     </p>
                 </div>
                 <div className="text-sm text-muted-foreground font-mono">
-                    TOTAL_UNITS: {teams.length}
+                    TOTAL TEAMS: {teams.length}
                 </div>
             </div>
 

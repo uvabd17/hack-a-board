@@ -41,7 +41,7 @@ export function ScoringForm({
     const [status, setStatus] = useState<{ error?: string, success?: string } | null>(null)
 
     // Ensure at least one round exists
-    if (rounds.length === 0) return <div>NO_ROUNDS_CONFIGURED</div>
+    if (rounds.length === 0) return <div>No scoring rounds configured yet</div>
 
     const handleScoreChange = (criterionId: string, value: number) => {
         setScores(prev => ({ ...prev, [criterionId]: value }))
@@ -98,11 +98,11 @@ export function ScoringForm({
                 <TabsContent key={round.id} value={round.id} className="space-y-6 mt-6">
                     <div className="flex justify-between items-center bg-zinc-900/50 p-3 border-x border-t border-zinc-800 rounded-t-lg">
                         <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">
-                            Round_Detail: {round.name}
+                            Round: {round.name}
                         </div>
                         {round.criteria.some(c => initialScores[c.id] !== undefined) && (
                             <Badge variant="outline" className="text-[10px] border-yellow-500/30 text-yellow-500 bg-yellow-500/5 rounded-none px-2 py-0">
-                                RE-SCORING_MODE
+                                RE-SCORING
                             </Badge>
                         )}
                     </div>
@@ -152,7 +152,7 @@ export function ScoringForm({
                         disabled={loading}
                         className="w-full h-14 text-xl font-bold bg-white text-black hover:bg-zinc-200 shadow-[0_0_20px_rgba(255,255,255,0.05)]"
                     >
-                        {loading ? "SAVING..." : "CONFIRM_SCORES"}
+                        {loading ? "SAVING..." : "SUBMIT SCORES"}
                     </Button>
                 </TabsContent>
             ))}

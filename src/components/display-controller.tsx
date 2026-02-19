@@ -66,7 +66,7 @@ export function DisplayController({
             <Card className="border-border bg-card/50 backdrop-blur-sm">
                 <CardHeader>
                     <CardTitle className="flex items-center justify-between text-sm uppercase tracking-widest">
-                        <span>LEADERBOARD_LOCK</span>
+                        <span>LEADERBOARD LOCK</span>
                         {isFrozen ? (
                             <Badge variant="destructive" className="text-[10px]">FROZEN</Badge>
                         ) : (
@@ -84,7 +84,7 @@ export function DisplayController({
                         variant={isFrozen ? "outline" : "destructive"}
                         className="w-full font-bold uppercase text-xs"
                     >
-                        {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : isFrozen ? "RELEASE_LOCK" : "ENGAGE_FREEZE"}
+                        {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : isFrozen ? "UNFREEZE" : "FREEZE LEADERBOARD"}
                     </Button>
                 </CardContent>
             </Card>
@@ -94,7 +94,7 @@ export function DisplayController({
                 <CardHeader>
                     <CardTitle className="text-sm uppercase tracking-widest flex items-center gap-2">
                         <Monitor className="w-4 h-4" />
-                        PROJECTOR_SCENE
+                        DISPLAY MODE
                     </CardTitle>
                     <CardDescription className="text-xs">
                         Select which data set is projected on the main wall.
@@ -110,7 +110,7 @@ export function DisplayController({
                             disabled={isLoading}
                         >
                             <Monitor className="w-3 h-3 mr-2" />
-                            GLOBAL_LEADERBOARD
+                            GLOBAL LEADERBOARD
                         </Button>
 
                         <Button
@@ -121,11 +121,11 @@ export function DisplayController({
                             disabled={isLoading}
                         >
                             <RefreshCcw className="w-3 h-3 mr-2 animate-spin-slow" />
-                            AUTO_CYCLE_ALL_TRACKS
+                            AUTO CYCLE ALL TRACKS
                         </Button>
 
                         <div className="pt-2 border-t border-border/20">
-                            <p className="text-[10px] uppercase font-bold text-muted-foreground mb-2 px-1">TRACK_SPECIFIC_VIEW</p>
+                            <p className="text-[10px] uppercase font-bold text-muted-foreground mb-2 px-1">TRACK SPECIFIC VIEW</p>
                             <div className="grid grid-cols-1 gap-1 max-h-32 overflow-y-auto">
                                 {problemStatements.map(ps => (
                                     <Button

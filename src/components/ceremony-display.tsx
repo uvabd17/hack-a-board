@@ -69,7 +69,7 @@ export function CeremonyDisplay({ slug, hackathonId }: { slug: string; hackathon
                             Welcome to the<br />Grand Reveal
                         </h1>
                         <p className="mt-8 text-2xl text-yellow-500/60 font-mono">
-                            GET_READY_FOR_RESULTS_
+                            The results are coming...
                         </p>
                     </div>
                 ) : (

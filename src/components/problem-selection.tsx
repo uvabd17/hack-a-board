@@ -20,7 +20,7 @@ export function ProblemSelection({
         setLoading(problemId)
         const res = await selectTeamProblem(teamId, problemId, slug)
         if (res.success) {
-            alert("TRACK_LOCKED: Your mission track has been set.")
+            alert("Track locked! Your challenge track has been set.")
         } else {
             alert("ERROR: " + res.error)
         }
