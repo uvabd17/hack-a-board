@@ -4,8 +4,9 @@ import { useEffect, useState } from "react"
 import { getCeremonyState, CeremonyState } from "@/actions/ceremony"
 import { Trophy, Star, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { connectSocket, disconnectSocket } from "@/lib/socket-client"
 
-export function CeremonyDisplay({ slug }: { slug: string }) {
+export function CeremonyDisplay({ slug, hackathonId }: { slug: string; hackathonId?: string }) {
     const [state, setState] = useState<CeremonyState | null>(null)
 
     useEffect(() => {
@@ -14,11 +15,32 @@ export function CeremonyDisplay({ slug }: { slug: string }) {
             setState(data)
         }
 
-        // Poll more frequently during ceremony (1s)
+        // Poll every 2s as fallback
         fetchState()
-        const interval = setInterval(fetchState, 1000)
+        const interval = setInterval(fetchState, 2000)
         return () => clearInterval(interval)
     }, [slug])
+
+    // Socket.IO: instant ceremony reveal events
+    useEffect(() => {
+        if (!hackathonId) return
+
+        const socket = connectSocket(hackathonId, ["display"])
+
+        socket.on("display:ceremony-started", () => {
+            getCeremonyState(slug).then(setState)
+        })
+
+        socket.on("display:ceremony-reveal", () => {
+            // Re-fetch state immediately on reveal
+            getCeremonyState(slug).then(setState)
+        })
+
+        return () => {
+            socket.off("display:ceremony-started")
+            socket.off("display:ceremony-reveal")
+        }
+    }, [hackathonId, slug])
 
     if (!state || !state.isActive) return null
 

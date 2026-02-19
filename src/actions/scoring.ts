@@ -4,17 +4,13 @@ import { prisma } from "@/lib/prisma"
 import { cookies } from "next/headers"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
+import { emitScoreUpdated } from "@/lib/socket-emit"
 
 const ScoreSubmissionSchema = z.object({
     hackathonId: z.string(),
     teamId: z.string(),
     roundId: z.string(),
-    scores: z.record(z.string(), z.number().min(1).max(10)) // CriterionID -> Score (1-10 allowing more nuance than 1-5?)
-    // Schema says 1-5 in comments, but int is int. Let's do 1-10 for better distribution if weight is high.
-    // Actually adhering to spec comments is safer. Let's do 1-10 to be "premium" and granular?
-    // User Instructions said "Score value (1-5)" in schema. Let's stick to 1-5 to match schema intent. 
-    // Actually, I'll update schema comment or just use 1-10. 1-10 is better for "Standard Linear Decay" and math. 
-    // Let's use 1-10.
+    scores: z.record(z.string(), z.number().min(1).max(5)) // CriterionID -> Score (1-5 per spec)
 })
 
 export async function submitScore(data: {
@@ -71,6 +67,8 @@ export async function submitScore(data: {
         )
 
         revalidatePath(`/h/${judge.hackathonId}/judge`)
+        // Emit real-time event (non-fatal if socket server is down)
+        await emitScoreUpdated(data.hackathonId, data.teamId)
         return { success: true }
     } catch (e) {
         console.error("Scoring Error", e)

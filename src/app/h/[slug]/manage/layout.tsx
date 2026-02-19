@@ -48,6 +48,16 @@ export default async function ManageLayout({
                         </Link>
                     </Button>
                     <Button asChild variant="ghost" className="w-full justify-start text-left">
+                        <Link href={`/h/${hackathon.slug}/manage/teams`}>
+                            :: TEAMS
+                        </Link>
+                    </Button>
+                    <Button asChild variant="ghost" className="w-full justify-start text-left">
+                        <Link href={`/h/${hackathon.slug}/manage/check-in`}>
+                            :: CHECK-IN
+                        </Link>
+                    </Button>
+                    <Button asChild variant="ghost" className="w-full justify-start text-left">
                         <Link href={`/h/${hackathon.slug}/manage/problems`}>
                             :: PROBLEMS
                         </Link>
@@ -60,6 +70,11 @@ export default async function ManageLayout({
                     <Button asChild variant="ghost" className="w-full justify-start text-left">
                         <Link href={`/h/${hackathon.slug}/manage/judges`}>
                             :: JUDGES
+                        </Link>
+                    </Button>
+                    <Button asChild variant="ghost" className="w-full justify-start text-left">
+                        <Link href={`/h/${hackathon.slug}/manage/display`}>
+                            :: DISPLAY
                         </Link>
                     </Button>
                     <div className="pt-4 mt-4 border-t border-border">

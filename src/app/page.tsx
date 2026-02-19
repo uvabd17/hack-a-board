@@ -1,109 +1,130 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Terminal, Trophy, QrCode, Tv } from "lucide-react";
+import { Tv } from "lucide-react";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-black text-green-500 font-mono selection:bg-green-500/30">
-      {/* Navigation */}
-      <nav className="border-b border-green-500/20 p-4">
-        <div className="container mx-auto flex justify-between items-center">
-          <div className="text-xl font-bold tracking-tighter flex items-center gap-2">
-            <Terminal className="w-5 h-5" />
-            <span>hack&lt;a&gt;board</span>
-          </div>
-          <div className="space-x-4">
-            <Link href="/api/auth/signin" className="hover:text-green-400 underline decoration-green-500/50 underline-offset-4">
-              Organizer Login
-            </Link>
-          </div>
-        </div>
-      </nav>
+    <div className="min-h-screen bg-[#050505] text-white font-mono selection:bg-green-500/30 overflow-x-hidden">
+      {/* Grid Pattern Background */}
+      <div className="fixed inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
+      <div className="fixed inset-0 bg-[radial-gradient(circle_800px_at_50%_-100px,#16a34a15,transparent)] pointer-events-none" />
 
-      <main className="container mx-auto px-4">
-        {/* Hero Section */}
-        <section className="py-24 text-center space-y-8">
-          <div className="inline-block border border-green-500/30 rounded-full px-3 py-1 text-xs bg-green-500/5 mb-4">
-            v1.0.0_STABLE
+      {/* Header */}
+      <header className="relative border-b border-white/5 backdrop-blur-sm z-10">
+        <div className="container mx-auto px-6 h-16 flex justify-between items-center">
+          <div className="text-lg font-bold tracking-tight lowercase">
+            hack&lt;a&gt;board
           </div>
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-4">
-            Real-time <span className="text-white">Scoring</span> for<br />
-            Modern Hackathons.
+          <Link href="/api/auth/signin" className="text-xs uppercase tracking-widest text-zinc-500 hover:text-green-500 transition-colors">
+            [ ORGANIZER_LOGIN ]
+          </Link>
+        </div>
+      </header>
+
+      <main className="relative z-10">
+        {/* Hero Section */}
+        <section className="container mx-auto px-6 py-32 flex flex-col items-center text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-green-500/20 bg-green-500/5 text-[10px] text-green-500 font-bold uppercase tracking-widest mb-12">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            </span>
+            SYSTEM_v1.1_DEPLOYED
+          </div>
+
+          <h1 className="text-6xl md:text-8xl font-bold tracking-tighter mb-8 leading-[0.9] text-transparent bg-clip-text bg-gradient-to-b from-white to-zinc-500">
+            hack&lt;a&gt;board
           </h1>
-          <p className="text-xl text-green-500/60 max-w-2xl mx-auto">
-            Live leaderboards, QR-based judging, and ceremony reveal systems.
-            Designed for high-energy developer events.
+
+          <p className="text-lg md:text-xl text-zinc-400 max-w-xl mx-auto mb-12 leading-relaxed font-light">
+            Real-time scoring infrastructure for modern hackathons.
+            <span className="block text-zinc-600 mt-2">Live leaderboards • Judging • Ceremony Reveals</span>
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-8">
+
+          <div className="flex flex-col sm:flex-row gap-6 items-center">
             <Link href="/dashboard">
-              <Button size="lg" className="bg-green-600 hover:bg-green-700 text-black font-bold h-12 px-8 text-lg">
-                Create New Hackathon ::
+              <Button size="lg" className="bg-white hover:bg-zinc-200 text-black font-bold h-14 px-10 text-base rounded-none">
+                CREATE NEW HACKATHON
               </Button>
             </Link>
-            <Link href="/h/demo/display" className="text-green-500 hover:text-green-400 hover:underline underline-offset-4">
-              [ View Live Demo ]
+            <Link href="/h/demo/display" className="text-xs uppercase tracking-widest text-zinc-500 hover:text-white transition-all group">
+              VIEW_DEMO <span className="inline-block transform group-hover:translate-x-1 transition-transform">-&gt;</span>
             </Link>
           </div>
         </section>
 
-        {/* Features Grid */}
-        <section className="py-24 grid md:grid-cols-3 gap-8 border-t border-green-500/20">
-          <FeatureCard
-            icon={<Tv className="w-8 h-8" />}
-            title="Wall Street Leaderboard"
-            description="Ticker-style live updates on the big screen. Trend arrows, rank shifts, and high-contrast visibility."
-          />
-          <FeatureCard
-            icon={<QrCode className="w-8 h-8" />}
-            title="QR Judging & Auth"
-            description="Judges scan participant codes to score instantly. Secure, fast, and completely paperless."
-          />
-          <FeatureCard
-            icon={<Trophy className="w-8 h-8" />}
-            title="Ceremony Reveal"
-            description="Freeze the board, build suspense, and reveal winners one-by-one with our dedicated ceremony mode."
-          />
+        {/* Feature Highlights */}
+        <section className="container mx-auto px-6 py-32 border-t border-white/5">
+          <div className="grid md:grid-cols-3 gap-12">
+            <div className="space-y-2">
+              <div className="text-white font-bold tracking-widest uppercase text-xs">01 // TICKER_DISPLAY</div>
+              <p className="text-zinc-500 text-sm leading-relaxed">
+                Wall Street ticker-style leaderboards that update in real-time.
+                Integrated trend tracking and auto-pagination for large groups.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <div className="text-white font-bold tracking-widest uppercase text-xs">02 // SCANNER_JUDGING</div>
+              <p className="text-zinc-500 text-sm leading-relaxed">
+                Fast-track judging using secure QR codes. Evaluators scan,
+                score, and sync data instantly without manual data entry.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <div className="text-white font-bold tracking-widest uppercase text-xs">03 // SUSPENSE_CEREMONY</div>
+              <p className="text-zinc-500 text-sm leading-relaxed">
+                One-click leaderboard freeze. Controlled, dramatic winner
+                reveals that are deterministic and refresh-safe.
+              </p>
+            </div>
+          </div>
         </section>
 
-        {/* Workflow Section */}
-        <section className="py-24 space-y-12 border-t border-green-500/20">
-          <div className="text-center space-y-2">
-            <h2 className="text-3xl font-bold">System Workflow</h2>
-            <p className="text-green-500/60">How the platform operates during an event.</p>
-          </div>
-
-          <div className="grid md:grid-cols-4 gap-4 text-center">
-            <Step value="01" title="Register" desc="Teams join & get QR tokens" />
-            <Step value="02" title="Scan" desc="Judges scan team QRs" />
-            <Step value="03" title="Score" desc="Scores update leaderboard live" />
-            <Step value="04" title="Reveal" desc="Freeze & Reveal winners" />
+        {/* Workflow */}
+        <section className="container mx-auto px-6 py-32 border-t border-white/5 bg-gradient-to-b from-transparent to-white/[0.02]">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex flex-col md:flex-row gap-12 items-start">
+              <div className="flex-1 space-y-6">
+                <h2 className="text-2xl font-bold tracking-tight">How it works</h2>
+                <div className="space-y-8">
+                  <WorkflowStep number="01" title="Initialize" desc="Create hackathon and configure problem tracks" />
+                  <WorkflowStep number="02" title="Deploy" desc="Teams register and receive unique identity tokens" />
+                  <WorkflowStep number="03" title="Measure" desc="Judges scan and score teams in real-time" />
+                  <WorkflowStep number="04" title="Reveal" desc="Freeze the board and initiate the reveal ceremony" />
+                </div>
+              </div>
+              <div className="w-full md:w-72 aspect-square border border-white/10 rounded-lg p-6 flex items-center justify-center bg-black/40 relative group overflow-hidden">
+                <div className="absolute inset-0 bg-green-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <Tv className="w-20 h-20 text-white opacity-20 group-hover:opacity-50 transition-all group-hover:scale-110" />
+                <div className="absolute bottom-4 left-4 text-[8px] font-mono text-zinc-600">PREVIEW_SYSTEM_ID:HB-882</div>
+              </div>
+            </div>
           </div>
         </section>
       </main>
 
-      <footer className="border-t border-green-500/20 py-8 text-center text-green-500/40 text-sm">
-        <p>BUILT_FOR_BUILDERS // SYSTEM_READY</p>
+      <footer className="border-t border-white/5 py-12">
+        <div className="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6 text-zinc-600 text-[10px] uppercase tracking-[0.2em]">
+          <p>© 2026 HACKABOARD_SYSTEMS</p>
+          <div className="flex gap-8">
+            <Link href="#" className="hover:text-white transition-colors">TERMS</Link>
+            <Link href="#" className="hover:text-white transition-colors">PRIVACY</Link>
+            <Link href="#" className="hover:text-white transition-colors">SECURITY</Link>
+          </div>
+        </div>
       </footer>
     </div>
   );
 }
 
-function FeatureCard({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) {
+function WorkflowStep({ number, title, desc }: { number: string, title: string, desc: string }) {
   return (
-    <div className="p-6 border border-green-500/20 bg-green-500/5 hover:bg-green-500/10 transition-colors rounded-lg space-y-4">
-      <div className="text-green-400">{icon}</div>
-      <h3 className="text-xl font-bold">{title}</h3>
-      <p className="text-green-500/60 leading-relaxed">{description}</p>
+    <div className="flex gap-6 group">
+      <div className="text-xs font-bold text-zinc-700 font-mono pt-1 group-hover:text-white transition-colors">{number}</div>
+      <div className="space-y-1">
+        <div className="text-sm font-bold text-zinc-300 group-hover:text-white transition-colors uppercase tracking-widest">{title}</div>
+        <div className="text-xs text-zinc-500 leading-relaxed">{desc}</div>
+      </div>
     </div>
-  )
-}
-
-function Step({ value, title, desc }: { value: string, title: string, desc: string }) {
-  return (
-    <div className="p-4 space-y-2">
-      <div className="text-4xl font-bold text-green-500/20">{value}</div>
-      <div className="font-bold text-lg">{title}</div>
-      <div className="text-sm text-green-500/60">{desc}</div>
-    </div>
-  )
+  );
 }

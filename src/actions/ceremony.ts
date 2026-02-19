@@ -3,6 +3,7 @@
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
+import { emitCeremonyStarted, emitCeremonyReveal } from "@/lib/socket-emit"
 
 import { getLeaderboardData } from "@/actions/leaderboard"
 
@@ -22,25 +23,18 @@ export type CeremonyState = {
     history: WinnerSnapshot[]
 }
 
-export async function startCeremony(hackathonId: string, mode: "overall" | "problem-wise") {
-    const session = await auth()
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" }
-
-    // verify organizer ownership
+export async function calculateWinners(hackathonId: string, mode: "overall" | "problem-wise", revealCount: number = 10): Promise<WinnerSnapshot[]> {
     const hackathon = await prisma.hackathon.findUnique({
-        where: { id: hackathonId, userId: session.user.id }
+        where: { id: hackathonId },
+        select: { slug: true, id: true }
     })
-
-    if (!hackathon) return { success: false, error: "Hackathon not found" }
+    if (!hackathon) return []
 
     const { leaderboard } = await getLeaderboardData(hackathon.slug)
-
-    // Generate winners based on mode
     let winners: WinnerSnapshot[] = []
 
     if (mode === "overall") {
-        // Take top 10 (or all if less than 10)
-        const topTeams = leaderboard.slice(0, 10)
+        const topTeams = leaderboard.slice(0, revealCount)
         winners = await Promise.all(topTeams.map(async (entry) => {
             const teamInfo = await fetchTeamDetails(entry.teamId)
             return {
@@ -52,25 +46,17 @@ export async function startCeremony(hackathonId: string, mode: "overall" | "prob
             }
         }))
     } else {
-        // Problem-wise: Top 1 per problem statement (skip empty tracks)
         const problems = await prisma.problemStatement.findMany({
             where: { hackathonId }
         })
 
         const problemWinners: WinnerSnapshot[] = []
-
         for (const problem of problems) {
-            const topTeamInProblem = leaderboard.find(e => {
-                // We need to know the problem statement ID for each entry.
-                // Currently LeaderboardEntry only has teamId. 
-                // Let's assume we fetch team details to check.
-                return e.problemStatementId === problem.id && e.totalScore > 0
-            })
-
+            const topTeamInProblem = leaderboard.find(e => e.problemStatementId === problem.id && e.totalScore > 0)
             if (topTeamInProblem) {
                 const teamInfo = await fetchTeamDetails(topTeamInProblem.teamId)
                 problemWinners.push({
-                    rank: 1, // Winner of this track
+                    rank: 1,
                     teamName: topTeamInProblem.teamName,
                     score: topTeamInProblem.totalScore,
                     problemStatement: problem.title,
@@ -78,12 +64,9 @@ export async function startCeremony(hackathonId: string, mode: "overall" | "prob
                 })
             }
         }
-
-        // Sort winners by score (highest track winner first)
         winners = problemWinners.sort((a, b) => b.score - a.score)
     }
 
-    // Helper for team details
     async function fetchTeamDetails(teamId: string) {
         return await prisma.team.findUnique({
             where: { id: teamId },
@@ -93,6 +76,34 @@ export async function startCeremony(hackathonId: string, mode: "overall" | "prob
             }
         })
     }
+
+    return winners
+}
+
+export async function getCeremonyPreview(hackathonId: string, mode: "overall" | "problem-wise", revealCount: number = 10) {
+    const session = await auth()
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" }
+
+    try {
+        const winners = await calculateWinners(hackathonId, mode, revealCount)
+        return { success: true, winners }
+    } catch (error) {
+        console.error("Failed to get ceremony preview:", error)
+        return { success: false, error: "Failed to generate preview" }
+    }
+}
+
+export async function startCeremony(hackathonId: string, mode: "overall" | "problem-wise", revealCount: number = 10) {
+    const session = await auth()
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" }
+
+    const hackathon = await prisma.hackathon.findUnique({
+        where: { id: hackathonId, userId: session.user.id }
+    })
+
+    if (!hackathon) return { success: false, error: "Hackathon not found" }
+
+    const winners = await calculateWinners(hackathonId, mode, revealCount)
 
     // Create new session
     const ceremonySession = await prisma.ceremonySession.create({
@@ -109,6 +120,7 @@ export async function startCeremony(hackathonId: string, mode: "overall" | "prob
 
     revalidatePath(`/h/${hackathon.slug}/manage/display`)
     revalidatePath(`/h/${hackathon.slug}/display`)
+    await emitCeremonyStarted(hackathonId, mode, winners.length)
 
     return { success: true, sessionId: ceremonySession.id }
 }
@@ -146,7 +158,19 @@ export async function revealNext(hackathonId: string) {
         data: { currentIndex: activeSession.currentIndex + 1 }
     })
 
-    // Trigger socket event would go here in full implementation
+    // Emit the revealed winner to the display
+    const nextIndex = activeSession.currentIndex        // Before increment
+    const winnerIndex = winners.length - (nextIndex + 1) // Reverse order
+    const winner = winners[winnerIndex]
+    if (winner) {
+        await emitCeremonyReveal(
+            hackathonId,
+            activeSession.currentIndex + 1,
+            winner.teamName,
+            winner.score,
+            winner.problemStatement
+        )
+    }
 
     return { success: true }
 }

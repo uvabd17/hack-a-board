@@ -4,8 +4,9 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { toggleFreeze } from "@/actions/display"
-import { Loader2, Lock, Unlock } from "lucide-react"
+import { toggleFreeze, updateDisplayConfig } from "@/actions/display"
+import { Loader2, Lock, Unlock, Monitor, Layers, RefreshCcw } from "lucide-react"
+import { ProblemStatement } from "@prisma/client"
 // Actually, I'll skip toast for now or use standard alert if I don't have it.
 // Checking package.json, I don't see sonner or toast manually installed, but shadcn might have it.
 // To be safe, I'll use simple state message or standard alert for MVP speed, or I can try adding toast later.
@@ -14,26 +15,29 @@ import { Loader2, Lock, Unlock } from "lucide-react"
 export function DisplayController({
     hackathonId,
     initialIsFrozen,
-    slug
+    slug,
+    problemStatements = [],
+    initialMode = "global",
+    initialProblemId = null
 }: {
     hackathonId: string,
     initialIsFrozen: boolean,
-    slug: string
+    slug: string,
+    problemStatements?: ProblemStatement[],
+    initialMode?: "global" | "problem",
+    initialProblemId?: string | null
 }) {
     const [isFrozen, setIsFrozen] = useState(initialIsFrozen)
+    const [displayMode, setDisplayMode] = useState<"global" | "problem">(initialMode)
+    const [activeProblemId, setActiveProblemId] = useState<string | null>(initialProblemId)
     const [isLoading, setIsLoading] = useState(false)
 
-    const handleToggle = async () => {
+    const handleToggleFreeze = async () => {
         setIsLoading(true)
         try {
             const newState = !isFrozen
             const result = await toggleFreeze(hackathonId, newState, slug)
-
-            if (result.success) {
-                setIsFrozen(newState)
-            } else {
-                alert("Failed to update freeze state")
-            }
+            if (result.success) setIsFrozen(newState)
         } catch (error) {
             alert("An error occurred")
         } finally {
@@ -41,48 +45,104 @@ export function DisplayController({
         }
     }
 
+    const handleConfigChange = async (mode: "global" | "problem", problemId: string | null = null) => {
+        setIsLoading(true)
+        try {
+            const result = await updateDisplayConfig(hackathonId, { mode, problemId }, slug)
+            if (result.success) {
+                setDisplayMode(mode)
+                setActiveProblemId(problemId)
+            }
+        } catch (error) {
+            alert("Failed to update config")
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
     return (
-        <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Freeze Control */}
             <Card className="border-border bg-card/50 backdrop-blur-sm">
                 <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                        <span>Leaderboard Freeze</span>
+                    <CardTitle className="flex items-center justify-between text-sm uppercase tracking-widest">
+                        <span>LEADERBOARD_LOCK</span>
                         {isFrozen ? (
-                            <Badge variant="destructive" className="flex gap-1 items-center">
-                                <Lock className="w-3 h-3" /> Frozen
-                            </Badge>
+                            <Badge variant="destructive" className="text-[10px]">FROZEN</Badge>
                         ) : (
-                            <Badge variant="default" className="bg-green-500/10 text-green-500 hover:bg-green-500/20 border-green-500/50 flex gap-1 items-center">
-                                <Unlock className="w-3 h-3" /> Live
-                            </Badge>
+                            <Badge variant="outline" className="text-[10px] text-green-500 border-green-500/50">LIVE</Badge>
                         )}
                     </CardTitle>
-                    <CardDescription>
-                        When frozen, the leaderboard on the projector and judge screens will stop updating.
-                        Participant dashboards will hide individual ranks and scores.
+                    <CardDescription className="text-xs">
+                        Freezes standings across all displays to prevent spoilers.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Button
-                        onClick={handleToggle}
+                        onClick={handleToggleFreeze}
                         disabled={isLoading}
                         variant={isFrozen ? "outline" : "destructive"}
-                        className="w-full sm:w-auto"
+                        className="w-full font-bold uppercase text-xs"
                     >
-                        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {isFrozen ? "Unfreeze Leaderboard" : "Freeze Leaderboard"}
+                        {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : isFrozen ? "RELEASE_LOCK" : "ENGAGE_FREEZE"}
                     </Button>
                 </CardContent>
             </Card>
 
-            {/* Placeholder for future Ceremony Controls */}
-            <Card className="border-border bg-card/50 opacity-50">
+            {/* Display Mode Control */}
+            <Card className="border-border bg-card/50 backdrop-blur-sm">
                 <CardHeader>
-                    <CardTitle>Ceremony Controls</CardTitle>
-                    <CardDescription>Coming in Phase 7</CardDescription>
+                    <CardTitle className="text-sm uppercase tracking-widest flex items-center gap-2">
+                        <Monitor className="w-4 h-4" />
+                        PROJECTOR_SCENE
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                        Select which data set is projected on the main wall.
+                    </CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <Button disabled variant="secondary">Start Ceremony</Button>
+                <CardContent className="space-y-4">
+                    <div className="flex flex-col gap-2">
+                        <Button
+                            variant={displayMode === "global" ? "default" : "outline"}
+                            size="sm"
+                            className="text-xs uppercase justify-start"
+                            onClick={() => handleConfigChange("global")}
+                            disabled={isLoading}
+                        >
+                            <Monitor className="w-3 h-3 mr-2" />
+                            GLOBAL_LEADERBOARD
+                        </Button>
+
+                        <Button
+                            variant={displayMode === "auto" ? "secondary" : "outline"}
+                            size="sm"
+                            className="text-xs uppercase justify-start border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10"
+                            onClick={() => handleConfigChange("auto")}
+                            disabled={isLoading}
+                        >
+                            <RefreshCcw className="w-3 h-3 mr-2 animate-spin-slow" />
+                            AUTO_CYCLE_ALL_TRACKS
+                        </Button>
+
+                        <div className="pt-2 border-t border-border/20">
+                            <p className="text-[10px] uppercase font-bold text-muted-foreground mb-2 px-1">TRACK_SPECIFIC_VIEW</p>
+                            <div className="grid grid-cols-1 gap-1 max-h-32 overflow-y-auto">
+                                {problemStatements.map(ps => (
+                                    <Button
+                                        key={ps.id}
+                                        variant={displayMode === "problem" && activeProblemId === ps.id ? "secondary" : "ghost"}
+                                        size="sm"
+                                        className="text-[10px] uppercase justify-start h-7"
+                                        onClick={() => handleConfigChange("problem", ps.id)}
+                                        disabled={isLoading}
+                                    >
+                                        <Layers className="w-3 h-3 mr-2" />
+                                        {ps.title}
+                                    </Button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
                 </CardContent>
             </Card>
         </div>

@@ -4,6 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ============================================
@@ -99,6 +100,10 @@ model Hackathon {
   // Scoring config
   timeBonusRate   Float @default(2.0)  // +2 pts per minute early
   timePenaltyRate Float @default(1.0)  // -1 pt per minute late
+
+  // Display config
+  displayMode      String  @default("global") // "global" | "problem" | "auto"
+  displayProblemId String? // ID of problem if mode is "problem"
 
   // Ownership
   userId String

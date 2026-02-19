@@ -6,6 +6,7 @@ import { CeremonyController } from "@/components/ceremony-controller"
 export default async function ManageDisplayPage({ params }: { params: { slug: string } }) {
     const hackathon = await prisma.hackathon.findUnique({
         where: { slug: params.slug },
+        include: { problemStatements: true }
     })
 
     if (!hackathon) {
@@ -23,6 +24,9 @@ export default async function ManageDisplayPage({ params }: { params: { slug: st
                 hackathonId={hackathon.id}
                 initialIsFrozen={hackathon.isFrozen}
                 slug={params.slug}
+                problemStatements={hackathon.problemStatements}
+                initialMode={hackathon.displayMode as any}
+                initialProblemId={hackathon.displayProblemId}
             />
 
             <CeremonyController

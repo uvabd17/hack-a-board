@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { calculateTeamScore, breakTie, LeaderboardEntry, TeamWithRelations, RoundWithCriteria } from "@/lib/scoring"
 import { Team, Submission, Score, Criterion, Round } from "@prisma/client"
 
-export async function getLeaderboardData(slug: string): Promise<{
+export async function getLeaderboardData(slug: string, problemId?: string | null): Promise<{
     leaderboard: LeaderboardEntry[],
     lastUpdated: Date,
     frozen: boolean
@@ -27,7 +27,8 @@ export async function getLeaderboardData(slug: string): Promise<{
     const teams = await prisma.team.findMany({
         where: {
             hackathonId: hackathon.id,
-            // status: 'active' // Removed until we confirm 'active' is a valid status enum value or field
+            status: "approved",
+            ...(problemId ? { problemStatementId: problemId } : {})
         },
         include: {
             scores: {

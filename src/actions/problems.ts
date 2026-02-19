@@ -4,6 +4,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
+import { emitProblemsReleased } from "@/lib/socket-emit"
 
 const ProblemSchema = z.object({
     title: z.string().min(3),
@@ -86,6 +87,10 @@ export async function toggleProblemRelease(hackathonId: string, problemId: strin
 
     revalidatePath(`/h/${hackathon.slug}/manage/problems`)
     revalidatePath(`/h/${hackathon.slug}`)
+    if (!problem.isReleased) {
+        // Just released — broadcast to participants
+        await emitProblemsReleased(hackathonId)
+    }
     return { success: true }
 }
 
