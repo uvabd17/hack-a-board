@@ -132,3 +132,34 @@ export async function selectTeamProblem(teamId: string, problemId: string, slug:
         return { error: "Failed to select problem statement" }
     }
 }
+
+export async function releaseAllProblems(hackathonId: string) {
+    const session = await auth()
+    if (!session?.user?.id) return { error: "Unauthorized" }
+
+    const hackathon = await prisma.hackathon.findUnique({
+        where: { id: hackathonId },
+        select: { userId: true, slug: true }
+    })
+
+    if (!hackathon || hackathon.userId !== session.user.id) {
+        return { error: "Access Denied" }
+    }
+
+    const result = await prisma.problemStatement.updateMany({
+        where: { hackathonId, isReleased: false },
+        data: {
+            isReleased: true,
+            releasedAt: new Date(),
+        }
+    })
+
+    revalidatePath(`/h/${hackathon.slug}/manage/problems`)
+    revalidatePath(`/h/${hackathon.slug}`)
+
+    if (result.count > 0) {
+        await emitProblemsReleased(hackathonId)
+    }
+
+    return { success: true, count: result.count }
+}

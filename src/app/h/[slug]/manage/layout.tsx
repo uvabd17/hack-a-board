@@ -77,6 +77,11 @@ export default async function ManageLayout({
                             :: DISPLAY
                         </Link>
                     </Button>
+                    <Button asChild variant="ghost" className="w-full justify-start text-left">
+                        <Link href={`/h/${hackathon.slug}/manage/settings`}>
+                            :: SETTINGS
+                        </Link>
+                    </Button>
                     <div className="pt-4 mt-4 border-t border-border">
                         <Button asChild variant="outline" className="w-full justify-start text-left opacity-70">
                             <Link href={`/h/${hackathon.slug}`} target="_blank">

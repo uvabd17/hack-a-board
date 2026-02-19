@@ -4,6 +4,7 @@ import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Users, Trophy, ChevronRight, CheckSquare, BarChart2 } from "lucide-react"
+import { LifecycleControls } from "./lifecycle-controls"
 
 export default async function ManagePage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = await params
@@ -54,6 +55,9 @@ export default async function ManagePage({ params }: { params: Promise<{ slug: s
                     {hackathon.status}
                 </Badge>
             </div>
+
+            {/* Lifecycle Controls */}
+            <LifecycleControls hackathonId={hackathon.id} status={hackathon.status} />
 
             {/* Primary Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
