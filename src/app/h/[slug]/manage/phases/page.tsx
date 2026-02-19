@@ -21,7 +21,7 @@ export default async function PhasesPage({
     })
 
     if (!hackathon) notFound()
-    if (hackathon.organizerEmail !== session.user.email) redirect("/dashboard")
+    if (hackathon.userId !== session.user.id) redirect("/dashboard")
 
     // Serialize DateTime → ISO string for client components
     const phases = hackathon.phases.map((p) => ({
