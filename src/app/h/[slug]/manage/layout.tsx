@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { notFound, redirect } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { FreezeToggle } from "./freeze-toggle"
 
 export default async function ManageLayout({
     children,
@@ -20,7 +21,7 @@ export default async function ManageLayout({
 
     const hackathon = await prisma.hackathon.findUnique({
         where: { slug },
-        select: { id: true, userId: true, name: true, slug: true }
+        select: { id: true, userId: true, name: true, slug: true, isFrozen: true }
     })
 
     if (!hackathon) {
@@ -62,7 +63,8 @@ export default async function ManageLayout({
                             :: JUDGES
                         </Link>
                     </Button>
-                    <div className="pt-4 mt-4 border-t border-border">
+                    <div className="pt-4 mt-4 border-t border-border space-y-2">
+                        <FreezeToggle hackathonId={hackathon.id} initialState={hackathon.isFrozen} />
                         <Button asChild variant="outline" className="w-full justify-start text-left opacity-70">
                             <Link href={`/h/${hackathon.slug}`} target="_blank">
                                 ↗ VIEW_PUBLIC
