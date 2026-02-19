@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { getDisplayState } from "@/actions/display"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -9,18 +9,22 @@ import { CeremonyDisplay } from "@/components/ceremony-display"
 
 export default function ProjectorDisplayPage({ params }: { params: { slug: string } }) {
     const [data, setData] = useState<any>(null)
+    const [prevData, setPrevData] = useState<any>(null)
     const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
+    const [currentPage, setCurrentPage] = useState(0)
+    const TEAMS_PER_PAGE = 20
 
     useEffect(() => {
         const fetchData = async () => {
             const result = await getDisplayState(params.slug)
             if (result) {
-                // Only update if not frozen or if we don't have data yet
                 if (!result.hackathon.isFrozen || !data) {
-                    setData(result)
+                    setData((current: any) => {
+                        if (current) setPrevData(current)
+                        return result
+                    })
                     setLastUpdated(new Date())
                 } else if (result.hackathon.isFrozen && data && !data.hackathon.isFrozen) {
-                    // Update the freeze state but keep the old leaderboard data
                     setData((prev: any) => ({
                         ...prev,
                         hackathon: { ...prev.hackathon, isFrozen: true }
@@ -29,13 +33,52 @@ export default function ProjectorDisplayPage({ params }: { params: { slug: strin
             }
         }
 
-        // Initial fetch
         fetchData()
-
-        // Poll every 3 seconds
-        const interval = setInterval(fetchData, 3000)
+        const interval = setInterval(fetchData, 5000) // Poll every 5s
         return () => clearInterval(interval)
-    }, [params.slug, data?.hackathon?.isFrozen]) // Dependency on frozen state to potentially stop polling or change logic
+    }, [params.slug, data?.hackathon?.isFrozen])
+
+    // Auto-pagination logic
+    useEffect(() => {
+        if (!data || data.leaderboard.length <= TEAMS_PER_PAGE) return
+
+        const pageInterval = setInterval(() => {
+            setCurrentPage(prev => {
+                const totalPages = Math.ceil(data.leaderboard.length / TEAMS_PER_PAGE)
+                return (prev + 1) % totalPages
+            })
+        }, 10000) // Switch page every 10s
+
+        return () => clearInterval(pageInterval)
+    }, [data])
+
+    const processedLeaderboard = useMemo(() => {
+        if (!data) return []
+
+        return data.leaderboard.map((team: any) => {
+            const prevTeam = prevData?.leaderboard?.find((pt: any) => pt.teamId === team.teamId)
+
+            let trend: 'up' | 'down' | 'same' = 'same'
+            let change = 0
+
+            if (prevTeam) {
+                if (team.rank < prevTeam.rank) {
+                    trend = 'up'
+                    change = prevTeam.rank - team.rank
+                } else if (team.rank > prevTeam.rank) {
+                    trend = 'down'
+                    change = team.rank - prevTeam.rank
+                }
+            }
+
+            return { ...team, trend, change }
+        })
+    }, [data, prevData])
+
+    const paginatedTeams = useMemo(() => {
+        const start = currentPage * TEAMS_PER_PAGE
+        return processedLeaderboard.slice(start, start + TEAMS_PER_PAGE)
+    }, [processedLeaderboard, currentPage])
 
     if (!data) return (
         <div className="min-h-screen bg-black text-green-500 font-mono flex items-center justify-center">
@@ -52,66 +95,78 @@ export default function ProjectorDisplayPage({ params }: { params: { slug: strin
             <header className="border-b border-green-500/30 pb-4 mb-6 flex justify-between items-end">
                 <div>
                     <h1 className="text-4xl font-bold tracking-tighter uppercase">{data.hackathon.name}</h1>
-                    <p className="text-green-500/60 text-lg">LIVE LEADERBOARD_</p>
+                    <p className="text-green-500/60 text-lg">LIVE STANDINGS / PAGE_{currentPage + 1}</p>
                 </div>
                 <div className="text-right">
                     {data.hackathon.isFrozen ? (
                         <div className="flex items-center gap-2 text-blue-400 animate-pulse">
-                            <span className="text-2xl">❄️</span>
-                            <span className="text-xl font-bold">MARKETS FROZEN</span>
+                            <span className="text-2xl font-bold uppercase">MARKETS_FROZEN</span>
                         </div>
                     ) : (
                         <div className="flex items-center gap-2 text-green-500">
                             <span className="w-3 h-3 bg-green-500 rounded-full animate-ping" />
-                            <span className="text-xl">LIVE UPDATES</span>
+                            <span className="text-xl">LIVE_INTEL_STREAM</span>
                         </div>
                     )}
                 </div>
             </header>
 
-            {/* Leaderboard Grid */}
-            <div className="grid gap-4 flex-1 content-start">
-                <div className="grid grid-cols-12 gap-4 text-green-500/50 uppercase text-sm mb-2 px-4">
-                    <div className="col-span-1">Rank</div>
-                    <div className="col-span-5">Team</div>
-                    <div className="col-span-3 text-right">Score</div>
-                    <div className="col-span-3 text-right">Trend</div>
+            {/* Leaderboard Table Container */}
+            <div className="flex-1 overflow-hidden">
+                <div className="grid grid-cols-12 gap-4 text-green-500/40 uppercase text-xs mb-4 px-4 font-bold tracking-widest">
+                    <div className="col-span-1">RNK</div>
+                    <div className="col-span-6">OPERATIVE_NAME</div>
+                    <div className="col-span-3 text-right">TOTAL_SCORE</div>
+                    <div className="col-span-2 text-right">TREND</div>
                 </div>
 
-                {data.leaderboard.map((team: any, index: number) => (
-                    <div
-                        key={team.name}
-                        className={`
-                            grid grid-cols-12 gap-4 items-center p-4 border border-green-500/20 rounded-md bg-green-500/5
-                            transition-all duration-500
-                            ${index === 0 ? 'bg-green-500/10 border-green-500/50 shadow-[0_0_15px_rgba(34,197,94,0.2)]' : ''}
-                        `}
-                    >
-                        <div className="col-span-1 font-bold text-2xl flex items-center gap-2">
-                            {index === 0 && <Trophy className="w-5 h-5 text-yellow-500" />}
-                            #{team.rank}
+                <div className="space-y-2">
+                    {paginatedTeams.map((team: any) => (
+                        <div
+                            key={team.teamId}
+                            className={`
+                                grid grid-cols-12 gap-4 items-center p-3 border border-green-500/10 rounded bg-green-500/5
+                                transition-all duration-700 ease-in-out
+                                ${team.rank <= 3 ? 'bg-green-500/10 border-green-500/30' : ''}
+                            `}
+                        >
+                            <div className="col-span-1 font-bold text-xl flex items-center gap-2">
+                                {team.rank === 1 && <Trophy className="w-4 h-4 text-yellow-500" />}
+                                <span className={team.rank <= 3 ? "text-primary" : "text-green-500/70"}>
+                                    {team.rank.toString().padStart(2, '0')}
+                                </span>
+                            </div>
+                            <div className="col-span-6 text-lg font-bold truncate">
+                                {team.teamName.toUpperCase()}
+                            </div>
+                            <div className="col-span-3 text-right font-bold text-xl">
+                                {team.totalScore.toFixed(2)}
+                            </div>
+                            <div className="col-span-2 text-right flex justify-end items-center gap-2">
+                                {team.change > 0 && (
+                                    <span className={`text-[10px] ${team.trend === 'up' ? 'text-green-400' : 'text-red-400'}`}>
+                                        {team.change}
+                                    </span>
+                                )}
+                                {team.trend === 'up' && <ArrowUp className="w-4 h-4 text-green-400 animate-bounce" />}
+                                {team.trend === 'down' && <ArrowDown className="w-4 h-4 text-red-500 animate-bounce" />}
+                                {team.trend === 'same' && <Minus className="w-4 h-4 text-green-500/20" />}
+                            </div>
                         </div>
-                        <div className="col-span-5 text-xl tracking-tight">
-                            {team.name}
-                        </div>
-                        <div className="col-span-3 text-right font-mono text-2xl">
-                            {team.score.toLocaleString()}
-                        </div>
-                        <div className="col-span-3 text-right flex justify-end items-center gap-2">
-                            {team.change > 0 && (
-                                <span className="text-green-400 text-sm">+{team.change}</span>
-                            )}
-                            {team.trend === 'up' && <ArrowUp className="w-5 h-5 text-green-400" />}
-                            {team.trend === 'down' && <ArrowDown className="w-5 h-5 text-red-500" />}
-                            {team.trend === 'same' && <Minus className="w-5 h-5 text-gray-500" />}
-                        </div>
+                    ))}
+                </div>
+
+                {data.leaderboard.length === 0 && (
+                    <div className="h-64 flex items-center justify-center border border-dashed border-green-500/20 text-green-500/30">
+                        WAITING_FOR_SCORING_INPUT...
                     </div>
-                ))}
+                )}
             </div>
 
-            {/* Footer */}
-            <footer className="mt-auto pt-6 text-center text-green-500/30 text-sm">
-                SYSTEM_ID: {params.slug.toUpperCase()} // LAST_SYNC: {lastUpdated.toLocaleTimeString()}
+            {/* Terminal Info Footer */}
+            <footer className="mt-6 pt-4 border-t border-green-500/10 flex justify-between text-[10px] text-green-500/40 uppercase tracking-widest">
+                <div>NODE: {params.slug.toUpperCase()} // LATENCY: 24ms (MOCK)</div>
+                <div>LAST_RECON: {lastUpdated.toLocaleTimeString()} // TOTAL_OPERATIVES: {data.leaderboard.length}</div>
             </footer>
 
             <CeremonyDisplay slug={params.slug} />

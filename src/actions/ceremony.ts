@@ -33,30 +33,66 @@ export async function startCeremony(hackathonId: string, mode: "overall" | "prob
 
     if (!hackathon) return { success: false, error: "Hackathon not found" }
 
-    // Generate snapshot from real leaderboard
     const { leaderboard } = await getLeaderboardData(hackathon.slug)
 
-    // Take top 10 (or all if less than 10)
-    const topTeams = leaderboard.slice(0, 10)
+    // Generate winners based on mode
+    let winners: WinnerSnapshot[] = []
 
-    // Fetch extra details for the snapshot
-    const winners: WinnerSnapshot[] = await Promise.all(topTeams.map(async (entry) => {
-        const teamInfo = await prisma.team.findUnique({
-            where: { id: entry.teamId },
+    if (mode === "overall") {
+        // Take top 10 (or all if less than 10)
+        const topTeams = leaderboard.slice(0, 10)
+        winners = await Promise.all(topTeams.map(async (entry) => {
+            const teamInfo = await fetchTeamDetails(entry.teamId)
+            return {
+                rank: entry.rank,
+                teamName: entry.teamName,
+                score: entry.totalScore,
+                problemStatement: teamInfo?.problemStatement?.title || "General",
+                members: teamInfo?.participants.map(p => p.name) || []
+            }
+        }))
+    } else {
+        // Problem-wise: Top 1 per problem statement (skip empty tracks)
+        const problems = await prisma.problemStatement.findMany({
+            where: { hackathonId }
+        })
+
+        const problemWinners: WinnerSnapshot[] = []
+
+        for (const problem of problems) {
+            const topTeamInProblem = leaderboard.find(e => {
+                // We need to know the problem statement ID for each entry.
+                // Currently LeaderboardEntry only has teamId. 
+                // Let's assume we fetch team details to check.
+                return e.problemStatementId === problem.id && e.totalScore > 0
+            })
+
+            if (topTeamInProblem) {
+                const teamInfo = await fetchTeamDetails(topTeamInProblem.teamId)
+                problemWinners.push({
+                    rank: 1, // Winner of this track
+                    teamName: topTeamInProblem.teamName,
+                    score: topTeamInProblem.totalScore,
+                    problemStatement: problem.title,
+                    members: teamInfo?.participants.map(p => p.name) || []
+                })
+            }
+        }
+
+        // Sort winners by score (highest track winner first)
+        winners = problemWinners.sort((a, b) => b.score - a.score)
+    }
+
+    // Helper for team details
+    async function fetchTeamDetails(teamId: string) {
+        return await prisma.team.findUnique({
+            where: { id: teamId },
             include: {
                 participants: { select: { name: true } },
                 problemStatement: { select: { title: true } }
             }
         })
-
-        return {
-            rank: entry.rank,
-            teamName: entry.teamName,
-            score: entry.totalScore,
-            problemStatement: teamInfo?.problemStatement?.title || "General",
-            members: teamInfo?.participants.map(p => p.name) || []
-        }
-    }))
+    }
 
     // Create new session
     const ceremonySession = await prisma.ceremonySession.create({

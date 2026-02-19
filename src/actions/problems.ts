@@ -110,3 +110,20 @@ export async function deleteProblemStatement(hackathonId: string, problemId: str
     revalidatePath(`/h/${hackathon.slug}`)
     return { success: true }
 }
+export async function selectTeamProblem(teamId: string, problemId: string, slug: string) {
+    try {
+        await prisma.team.update({
+            where: { id: teamId },
+            data: {
+                problemStatementId: problemId,
+                selectedAt: new Date()
+            }
+        })
+
+        revalidatePath(`/h/${slug}/dashboard`)
+        return { success: true }
+    } catch (e) {
+        console.error(e)
+        return { error: "Failed to select problem statement" }
+    }
+}

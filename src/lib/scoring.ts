@@ -23,6 +23,7 @@ export interface LeaderboardEntry {
     teamId: string;
     teamName: string;
     slug: string; // Team invite code or slug
+    problemStatementId?: string | null;
     totalScore: number;
     roundBreakdown: Record<string, number>; // roundId -> score
     trend: 'up' | 'down' | 'same';

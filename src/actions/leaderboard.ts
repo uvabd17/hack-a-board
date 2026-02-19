@@ -72,6 +72,7 @@ export async function getLeaderboardData(slug: string): Promise<{
         teamId: item.team.id,
         teamName: item.team.name,
         slug: item.team.inviteCode,
+        problemStatementId: item.team.problemStatementId,
         totalScore: item.total,
         roundBreakdown: item.breakdown || {}, // Corrected from item.roundBreakdown
         trend: 'same',
