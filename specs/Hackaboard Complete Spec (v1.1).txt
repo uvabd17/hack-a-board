@@ -1,0 +1,635 @@
+﻿hack<a>board — Complete MVP Technical Specification
+Version: 1.1 (Combined Final)
+Status: Ready to Build
+Table of Contents
+1. Executive Summary
+2. Product Philosophy
+3. Homepage Design Specification
+4. Complete Data Model
+5. Page-by-Page Breakdown
+6. Core User Flows
+7. Real-Time System
+8. Scoring Engine
+9. Display System
+10. Ceremony System
+11. API Reference
+12. Edge Cases & Rules
+13. Implementation Checklist
+14. Success Criteria
+15. Tech Stack
+1. Executive Summary
+What We’re Building
+hack<a>board is a real-time hackathon platform designed for organizers to make events feel like real competitive hackathons. It is centered around a Wall Street ticker-style leaderboard.
+Core experience:
+* Live leaderboard (ticker-style feel) updating in real-time with trend arrows.
+* Real-time judging updates via QR codes.
+* Problem statement tracking.
+* Freeze + suspense mode.
+* Controlled ceremony reveal.
+The Magic Moment:
+3:00 PM, Hour 5 of hacking: Team "Phoenix" submits Round 1 links 10 mins early → +20 time bonus. A judge scans their QR → Scores Innovation 🔥(5), Feasibility ⭐(4). 2 seconds later: Display shows "Phoenix ↑ 15" (jumped #28→#13). Their dashboard updates: "Rank: #13". The room energy spikes.
+MVP Scope
+IN:
+* Organizer-created hackathons
+* Team registration (self-registration & team formation)
+* Problem statements (teams choose on-site)
+* Multi-round scoring with time bonus / penalty
+* QR-based judge authentication and scoring
+* Live leaderboard display (auto-cycling)
+* Organizer-controlled ceremony (Freeze + Reveal)
+* Participant dashboards with live rank
+OUT (Phase 2):
+* Multi-organizer roles
+* Payments & Bulk CSV imports
+* Networking directory & Email system
+* Volunteer scanner system
+* Grand Champion (overall winner) beyond MVP ceremony logic
+2. Product Philosophy
+Goal:
+Make hackathons feel competitive, alive, and professional — using a clean developer-terminal aesthetic.
+Principles:
+* Minimal friction.
+* High-energy visual feedback without heavy neon.
+* Deterministic scoring and ceremony results.
+* Organizer-first control.
+3. Homepage Design Specification
+Purpose
+The Homepage is the organizer entry point. It should immediately communicate that this product helps organizers run a serious, modern hackathon.
+Visual Direction
+* Developer terminal aesthetic.
+* Dark background (subtle grid/dot texture allowed).
+* Neon accents: restrained (not neon-heavy).
+* Text-first branding (no logo in MVP).
+Layout
+Top Bar (minimal): Right-aligned Organizer Login.
+Hero (full viewport): Centered vertically and horizontally.
+hack<a>board
+
+Real-time scoring for hackathons
+Live leaderboards • Judging • Ceremony
+
+[ Create New Hackathon ]   [ View Demo ]
+
+Rules: App name centered/dominant. Primary CTA = Create New Hackathon. No mission-control terminology.
+Supporting Sections (below fold):
+1. Value statement
+2. Feature highlights (3–5 cards)
+3. How it works (Create → Register → Judge → Reveal)
+4. Minimal footer (Terms / Privacy)
+4. Complete Data Model
+Prisma Schema
+generator client {
+ provider = "prisma-client-js"
+}
+
+datasource db {
+ provider = "postgresql"
+ url      = env("DATABASE_URL")
+}
+
+// ============================================
+// AUTHENTICATION (NextAuth)
+// ============================================
+
+model User {
+ id            String    @id @default(cuid())
+ name          String?
+ email         String?   @unique
+ emailVerified DateTime?
+ image         String?
+ createdAt     DateTime  @default(now())
+ updatedAt     DateTime  @updatedAt
+
+ accounts      Account[]
+ sessions      Session[]
+ hackathons    Hackathon[]
+}
+
+model Account {
+ id                String  @id @default(cuid())
+ userId            String
+ type              String
+ provider          String
+ providerAccountId String
+ refresh_token     String? @db.Text
+ access_token      String? @db.Text
+ expires_at        Int?
+ token_type        String?
+ scope             String?
+ id_token          String? @db.Text
+ session_state     String?
+
+ user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+ @@unique([provider, providerAccountId])
+}
+
+model Session {
+ id           String   @id @default(cuid())
+ sessionToken String   @unique
+ userId       String
+ expires      DateTime
+
+ user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+ identifier String
+ token      String   @unique
+ expires    DateTime
+
+ @@unique([identifier, token])
+}
+
+// ============================================
+// HACKATHON CORE
+// ============================================
+
+model Hackathon {
+ id          String   @id @default(cuid())
+ slug        String   @unique
+ name        String
+ tagline     String?
+ description String?  @db.Text
+
+ // Dates
+ startDate   DateTime
+ endDate     DateTime
+ timezone    String   @default("Asia/Kolkata")
+
+ // Location
+ mode        String   @default("in-person")
+ venue       String?
+ onlineLink  String?
+
+ // Team config
+ minTeamSize     Int     @default(1)
+ maxTeamSize     Int     @default(4)
+ maxTeams        Int     @default(0)
+ requireApproval Boolean @default(false)
+ registrationDeadline DateTime?
+
+ // Status
+ status        String    @default("draft") // "draft" | "published" | "live" | "ended"
+ isFrozen      Boolean   @default(false)   // Leaderboard visibility freeze flag
+ liveStartedAt DateTime?
+ endedAt       DateTime?
+
+ // Scoring config
+ timeBonusRate   Float @default(2.0)
+ timePenaltyRate Float @default(1.0)
+
+ // Ownership
+ userId String
+ user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+ // Timestamps
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+
+ // Relations
+ teams              Team[]
+ participants       Participant[]
+ rounds             Round[]
+ judges             Judge[]
+ problemStatements  ProblemStatement[]
+ phases             Phase[]
+ ceremonySessions   CeremonySession[]
+
+ @@index([slug])
+ @@index([userId])
+ @@index([status])
+}
+
+// ============================================
+// CEREMONY SYSTEM (v1.1 Additions)
+// ============================================
+
+model CeremonySession {
+ id              String   @id @default(cuid())
+ hackathonId     String
+
+ mode            String   // "problem-wise" | "overall"
+ revealCount     Int      // 1 | 3 | 5 | 10
+
+ isStarted       Boolean  @default(false)
+ startedAt       DateTime?
+
+ winnersSnapshot Json     // State snapshot generated on start
+ currentIndex    Int      @default(0)
+
+ hackathon Hackathon @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
+
+ @@index([hackathonId])
+}
+
+// ============================================
+// PROBLEM STATEMENTS (TRACKS)
+// ============================================
+
+model ProblemStatement {
+ id           String   @id @default(cuid())
+ hackathonId  String
+ slug         String   
+ title        String   
+ description  String   @db.Text
+ icon         String?  
+ 
+ isReleased   Boolean  @default(false)
+ releasedAt   DateTime?
+ order        Int      @default(0)
+
+ createdAt    DateTime @default(now())
+ updatedAt    DateTime @updatedAt
+
+ hackathon    Hackathon @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
+ teams        Team[]
+
+ @@unique([hackathonId, slug])
+ @@index([hackathonId])
+ @@index([isReleased])
+}
+
+// ============================================
+// TEAMS & PARTICIPANTS
+// ============================================
+
+model Team {
+ id         String @id @default(cuid())
+ hackathonId String
+ name       String
+ inviteCode String @unique 
+
+ problemStatementId String?
+ selectedAt         DateTime?
+
+ status String @default("pending")
+
+ isCheckedIn Boolean @default(false)
+ checkedInAt DateTime?
+ checkedInBy String?
+
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+
+ hackathon        Hackathon         @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
+ problemStatement ProblemStatement? @relation(fields: [problemStatementId], references: [id], onDelete: SetNull)
+ participants     Participant[]
+ submissions      Submission[]
+ scores           Score[]
+
+ @@index([hackathonId])
+ @@index([inviteCode])
+ @@index([status])
+ @@index([problemStatementId])
+}
+
+model Participant {
+ id          String  @id @default(cuid())
+ hackathonId String
+ teamId      String
+
+ name    String
+ email   String
+ phone   String?
+ college String?
+
+ role String // "leader" | "member"
+ qrToken String @unique 
+
+ status String @default("approved")
+
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+
+ hackathon Hackathon @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
+ team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+ @@unique([hackathonId, email])
+ @@index([qrToken])
+ @@index([teamId])
+}
+
+// ============================================
+// ROUNDS & CRITERIA
+// ============================================
+
+model Round {
+ id          String @id @default(cuid())
+ hackathonId String
+ name        String   
+ order       Int      
+ weight      Int @default(100) 
+ checkpointTime DateTime
+
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+
+ hackathon   Hackathon   @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
+ criteria    Criterion[]
+ submissions Submission[]
+ scores      Score[]
+
+ @@index([hackathonId])
+ @@index([order])
+}
+
+model Criterion {
+ id      String @id @default(cuid())
+ roundId String
+ name    String 
+ weight  Int    
+
+ round  Round   @relation(fields: [roundId], references: [id], onDelete: Cascade)
+ scores Score[]
+
+ @@index([roundId])
+}
+
+// ============================================
+// SUBMISSIONS
+// ============================================
+
+model Submission {
+ id      String @id @default(cuid())
+ teamId  String
+ roundId String
+
+ githubUrl       String?
+ demoUrl         String?
+ presentationUrl String?
+ otherUrl        String?
+
+ submittedAt DateTime @default(now())
+ timeBonus   Float @default(0) 
+
+ team  Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+ round Round @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
+ @@unique([teamId, roundId])
+ @@index([teamId])
+ @@index([roundId])
+}
+
+// ============================================
+// JUDGING & SCORING
+// ============================================
+
+model Judge {
+ id          String  @id @default(cuid())
+ hackathonId String
+ name        String
+ token       String  @unique 
+ isActive    Boolean @default(true)
+
+ createdAt DateTime @default(now())
+
+ hackathon Hackathon @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
+ scores    Score[]
+
+ @@index([hackathonId])
+ @@index([token])
+}
+
+model Score {
+ id          String @id @default(cuid())
+ teamId      String
+ roundId     String
+ judgeId     String
+ criterionId String
+
+ value Int
+ comment String? @db.Text
+
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+
+ team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+ round     Round     @relation(fields: [roundId], references: [id], onDelete: Cascade)
+ judge     Judge     @relation(fields: [judgeId], references: [id], onDelete: Cascade)
+ criterion Criterion @relation(fields: [criterionId], references: [id], onDelete: Cascade)
+
+ @@unique([judgeId, teamId, roundId, criterionId])
+ @@index([teamId])
+ @@index([roundId])
+ @@index([judgeId])
+}
+
+// ============================================
+// PHASES (Schedule)
+// ============================================
+
+model Phase {
+ id          String   @id @default(cuid())
+ hackathonId String
+ name        String   
+ startTime   DateTime
+ endTime     DateTime
+ order       Int
+
+ hackathon Hackathon @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
+
+ @@index([hackathonId])
+ @@index([order])
+}
+
+5. Page-by-Page Breakdown
+PUBLIC & PARTICIPANT PAGES
+1. Platform Homepage (/)
+Follows the Homepage Design Specification (Section 3). Text-first branding, dark terminal vibe, standard marketing value-adds, and a clear "Create New Hackathon" CTA.
+2. Public Hackathon Page (/h/[slug])
+* Event info, timeline, rules, prizes.
+* Grid of problem statements (visible only if isReleased = true).
+3. Registration Page (/h/[slug]/register)
+* Name, email, phone, college.
+* Options: Create new team, Join existing (via 6-char code), or Go solo.
+* Validates limits, creates Participant, generates qrToken, and redirects to Dashboard.
+4. Participant Dashboard (/h/[slug]/dashboard)
+Central hub for participants during event. Access via /dashboard?token=[qrToken].
+* Problem Statement Selection: Mandatory if unselected. Unlocks forms.
+* Submission Forms: Submit project links (calculates time bonus).
+* QR Code: For judge scanning.
+* Freeze Behavior (New): When leaderboard is frozen by the organizer, the dashboard hides specific data:
+RANK: 🔒 Hidden until ceremony
+SCORE: 🔒 Hidden until ceremony
+
+(Timers, trend arrows hidden, and submissions remain visible).
+ORGANIZER PAGES
+5. Organizer Dashboard (/dashboard)
+List of organizer's hackathons with quick status and management links.
+6. Manage Hub & Sub-pages (/h/[slug]/manage/...)
+   * Hub: Quick stats, phase publishing, event lifecycle control.
+   * Teams: View, filter, CSV export, and manage teams.
+   * Check-In: Fast list/search interface to mark participant attendance.
+   * Rounds: Configure criteria, checkpoints, and weights.
+   * Problem Statements: CRUD and a global "Release All" button.
+   * Judges: Generate unique Judge QR codes to begin scoring.
+7. Display Controller (/h/[slug]/manage/display)
+Controls the main projector display via Socket.IO.
+   * Leaderboard Options: Auto-cycle problem statements or fix on one.
+   * Freeze: Toggle freeze on/off.
+   * New Ceremony Setup Section:
+CEREMONY SETUP
+
+Mode:
+○ Problem Statement Winners
+○ Overall Winners
+
+If Overall:
+ ○ Top 3
+ ○ Top 5
+ ○ Top 10
+
+[ Start Ceremony ]
+(Double confirmation required)
+
+After start:
+Ceremony Active
+Current Reveal: X / Y
+[ Reveal Next ]
+
+JUDGE & DISPLAY PAGES
+8. Judge Scanner & Form (/h/[slug]/judge/...)
+      * Login: Automatic via Judge QR token.
+      * Scanner: Opens camera, scans participant QR. Validates if already scored.
+      * Score Form: Rate 1-5 on criteria, auto-submits, updates leaderboard instantly.
+9. Projector Display (/h/[slug]/display)
+      * Passive Player: Follows commands from the Organizer's Display Controller.
+      * Leaderboard Scene: Terminal aesthetics, 20-teams per page, auto-paginates, shows trend arrows. Reads from active DB unless frozen.
+      * Ceremony Scene: Reads strictly from CeremonySession. Animates reveals via Socket events.
+6. Core User Flows
+Flow 7: Ceremony Reveal (Updated)
+1. Pre-Ceremony
+      * Organizer clicks "Freeze Leaderboard" in the Display Controller.
+      * Socket.IO broadcasts the freeze.
+      * Participant dashboards hide rankings/scores.
+      * Backend scoring continues silently (judges can still finish scoring).
+2. Ceremony Setup
+      * Organizer opens Ceremony Controller section.
+      * Selects mode: Problem Statement Winners (Top 1 per PS) or Overall Winners (Top 3/5/10).
+      * Clicks "Start Ceremony" (Double confirmation required).
+3. Snapshot Generation
+      * Backend computes definitive winners based on the frozen state.
+      * Saves the static list to CeremonySession.winnersSnapshot.
+      * Ties are broken (see Scoring Engine).
+4. Reveal
+      * Organizer clicks [Reveal Next].
+      * Backend increments CeremonySession.currentIndex.
+      * Socket.IO emits ceremony:reveal-next with the specific team data.
+      * Display screen animates the team in.
+5. End
+      * Ceremony concludes when all winners in the snapshot have been revealed.
+7. Real-Time System
+Socket.IO Events
+New Events (v1.1):
+io.to(`display:${hackathonId}`).emit('display:ceremony-started', {
+ mode: string,
+ totalWinners: number
+})
+
+io.to(`display:${hackathonId}`).emit('display:ceremony-reveal', {
+ index: number,
+ teamName: string,
+ score: number,
+ problemStatement?: string
+})
+
+Existing Events:
+      * 'score-updated'
+      * 'problem-statements-released'
+      * 'display:set-scene'
+      * 'display:set-filter'
+      * 'display:freeze' / 'display:unfreeze'
+      * 'participant-checked-in'
+8. Scoring Engine
+Formula
+Team Final Score = Σ (Round Score × Round Weight / 100)
+
+Round Score = (Average across all judges of: Σ (Criterion Score × Criterion Weight / 100)) 
+             + Time Bonus/Penalty
+
+Tie Handling (New)
+When scores are mathematically identical, the tie is broken by:
+      1. Earliest submission time (First to submit Round 1 wins).
+      2. Earlier team creation time (Fallback if submission times are identical).
+9. Display System
+Leaderboard Freeze
+      * "Freeze" means the projector display can stay on the leaderboard or switch scenes, but the visual rankings stop updating.
+      * Participant dashboards switch to locked/hidden rank mode.
+      * Backend scoring continues.
+Ceremony Display
+      * The Display component reads from CeremonySession only.
+      * This ensures the ceremony is deterministic and refresh-safe. If the display reconnects mid-ceremony, it hydrates exactly to currentIndex from the session.
+10. Ceremony System
+Modes
+      1. Problem Statement Winners: Top 1 eligible team per problem statement. Teams must have scored submissions. Empty tracks are skipped.
+      2. Overall Winners: Top N teams from the global leaderboard (N = 3 / 5 / 10).
+Visibility Rules
+      * Ceremony controls are strictly organizer-only.
+      * Public display is view-only.
+      * Show a preview list to the organizer before they provide final confirmation.
+Snapshot Rule
+Once the ceremony starts, the winner list is locked in winnersSnapshot. If a rogue judge submits a score 5 minutes into the ceremony, it will not affect the ceremony results.
+11. API Reference
+New Endpoints:
+POST /api/h/[slug]/ceremony/start       // Generates CeremonySession & Snapshot
+POST /api/h/[slug]/ceremony/reveal-next // Increments index, fires Socket
+GET  /api/h/[slug]/ceremony/state       // Hydrates display on refresh
+
+Existing Endpoints: Standard CRUD for Hackathons, Participants, Teams, Problems, Rounds, Submissions, Check-ins, Judges, and Leaderboard.
+12. Edge Cases & Rules
+      * Empty Tracks: Problem statement with no scored teams → skipped during Ceremony snapshot.
+      * Mid-Ceremony Refresh: Display reconnects mid-ceremony → hydrate safely from CeremonySession.
+      * Organizer Refresh: Organizer state restored via CeremonySession.currentIndex.
+      * Spam Clicks: Duplicate reveal clicks prevented server-side (only advances index if not already revealed).
+13. Implementation Checklist
+Phase 1: Foundation & Homepage
+      * [ ] Terminal-style hero layout and centered text-only branding.
+      * [ ] Create New Hackathon CTA setup.
+      * [ ] Project setup (Next.js 14, Prisma, NextAuth) & DB Schema.
+      * [ ] Google OAuth working.
+Phase 2: Registration
+      * [ ] Public page & self-registration form.
+      * [ ] Team formation logic & QR generation.
+      * [ ] Participant dashboard skeleton.
+Phase 3 & 4: Core Systems & Judging
+      * [ ] CRUD for Problem Statements, Rounds, Submissions.
+      * [ ] Check-in interface & Judge QR generation.
+      * [ ] Judge scanner + Score form (with duplicate prevention).
+Phase 5: Leaderboard
+      * [ ] Scoring engine math + Tie Handling logic.
+      * [ ] Leaderboard calculation & Real-time updates.
+      * [ ] Trend arrow calculation & Problem statement filtering.
+Phase 6: Display & Freeze
+      * [ ] Auto-pagination & Auto-cycle problem statements.
+      * [ ] Display controller setup.
+      * [ ] Leaderboard visibility freeze flag (isFrozen on Hackathon).
+      * [ ] Participant dashboard hidden rank state logic.
+Phase 7: Ceremony (Updated)
+      * [ ] CeremonySession model implementation.
+      * [ ] Ceremony start snapshot logic & preview UI.
+      * [ ] Reveal-next endpoint & Controller.
+      * [ ] Display rehydration logic (refresh-safe).
+14. Success Criteria
+Core:
+      * [ ] Organizer can create hackathon in < 5 mins.
+      * [ ] Participant can register in < 2 mins.
+      * [ ] Leaderboard updates within 5 seconds of a score.
+      * [ ] Display handles auto-cycling and trend arrows correctly.
+Freeze & Ceremony:
+      * [ ] Freezing hides ranks for all participants within 5s.
+      * [ ] Ceremony reveals stay stable after a browser refresh.
+      * [ ] Organizer can run ceremony without any ranking drift from late judging.
+Performance & Tech:
+      * [ ] Leaderboard calculation < 1 second.
+      * [ ] Handles 100 teams, 10 judges, 300 participants.
+      * [ ] No TS or console errors in production; Database indexes applied.
+15. Tech Stack
+      * Framework: Next.js 14 (App Router)
+      * Database: Neon Postgres (Serverless) + Prisma ORM
+      * Auth: NextAuth.js v5 (Google OAuth)
+      * Real-Time: Socket.IO (hosted as separate server on Render)
+      * Styling: Tailwind CSS + shadcn/ui
+      * Validation & Forms: Zod + React Hook Form
+      * QR Utilities: qrcode + html5-qrcode
+      * Deployment: Vercel (Next.js app) + Render (Socket Server)
+END OF SPECIFICATION
