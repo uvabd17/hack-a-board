@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge"
 import QRCode from "qrcode"
 import { Lock } from "lucide-react"
 
+import { getLeaderboardData } from "@/actions/leaderboard"
+
 async function generateQR(text: string) {
     try {
         return await QRCode.toDataURL(text)
@@ -21,10 +23,11 @@ export default async function DashboardPage({
     params: { slug: string },
     searchParams: { token?: string }
 }) {
-    const token = searchParams.token
+    const { slug } = await params
+    const token = (await searchParams).token
 
     if (!token) {
-        redirect(`/h/${params.slug}/register`)
+        redirect(`/h/${slug}/register`)
     }
 
     const participant = await prisma.participant.findUnique({
@@ -36,7 +39,7 @@ export default async function DashboardPage({
     })
 
     // Security check: Match slug
-    if (!participant || participant.hackathon.slug !== params.slug) {
+    if (!participant || participant.hackathon.slug !== slug) {
         return (
             <div className="flex items-center justify-center min-h-screen text-destructive">
                 INVALID_ACCESS_TOKEN // TERMINATED
@@ -45,6 +48,10 @@ export default async function DashboardPage({
     }
 
     const qrCodeDataUrl = await generateQR(participant.qrToken)
+
+    // Fetch live leaderboard data
+    const { leaderboard, frozen } = await getLeaderboardData(slug)
+    const teamEntry = leaderboard.find(e => e.teamId === participant.teamId)
 
     return (
         <div className="min-h-screen bg-background p-4 font-mono text-foreground">
@@ -99,13 +106,16 @@ export default async function DashboardPage({
 
                         <div className="pt-4 border-t border-border">
                             <p className="text-sm text-muted-foreground mb-2">CURRENT_RANK</p>
-                            {participant.hackathon.isFrozen ? (
+                            {frozen ? (
                                 <div className="flex items-center gap-2 text-destructive animate-pulse">
                                     <Lock className="w-6 h-6" />
                                     <p className="text-xl font-bold">HIDDEN (FROZEN)</p>
                                 </div>
                             ) : (
-                                <p className="text-4xl font-bold text-muted-foreground/50">--</p>
+                                <div className="space-y-1">
+                                    <p className="text-4xl font-bold text-primary">#{teamEntry?.rank || "--"}</p>
+                                    <p className="text-xs text-muted-foreground uppercase">SCORE: {teamEntry?.totalScore || 0}</p>
+                                </div>
                             )}
                         </div>
                     </CardContent>

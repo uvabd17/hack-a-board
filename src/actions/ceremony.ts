@@ -4,13 +4,14 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 
-// Types for the winner snapshot
+import { getLeaderboardData } from "@/actions/leaderboard"
+
 export type WinnerSnapshot = {
     rank: number
     teamName: string
     score: number
     problemStatement: string
-    members: string[] // Strings for MVP simplicty
+    members: string[]
 }
 
 export type CeremonyState = {
@@ -20,28 +21,6 @@ export type CeremonyState = {
     currentWinner: WinnerSnapshot | null
     history: WinnerSnapshot[]
 }
-
-// MOCK DATA GENERATOR (Since Phase 5 is out of scope)
-function generateMockWinners(count: number): WinnerSnapshot[] {
-    const problemStatements = ["FinTech", "HealthTech", "EdTech", "GreenTech", "Open Innovation"]
-    const winners: WinnerSnapshot[] = []
-
-    for (let i = 0; i < count; i++) {
-        // Generate random score between 70 and 100
-        const score = Math.floor(Math.random() * 30) + 70
-        winners.push({
-            rank: i + 1,
-            teamName: `Team ${["Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta", "Theta", "Iota", "Kappa"][i]}`,
-            score: score,
-            problemStatement: problemStatements[i % problemStatements.length],
-            members: [`Hacker ${i * 2 + 1}`, `Hacker ${i * 2 + 2}`]
-        })
-    }
-
-    // Sort by rank (implicitly 1 to N)
-    return winners
-}
-
 
 export async function startCeremony(hackathonId: string, mode: "overall" | "problem-wise") {
     const session = await auth()
@@ -54,19 +33,41 @@ export async function startCeremony(hackathonId: string, mode: "overall" | "prob
 
     if (!hackathon) return { success: false, error: "Hackathon not found" }
 
-    // Generate snapshot
-    const winners = generateMockWinners(10) // Top 10 winners
+    // Generate snapshot from real leaderboard
+    const { leaderboard } = await getLeaderboardData(hackathon.slug)
+
+    // Take top 10 (or all if less than 10)
+    const topTeams = leaderboard.slice(0, 10)
+
+    // Fetch extra details for the snapshot
+    const winners: WinnerSnapshot[] = await Promise.all(topTeams.map(async (entry) => {
+        const teamInfo = await prisma.team.findUnique({
+            where: { id: entry.teamId },
+            include: {
+                participants: { select: { name: true } },
+                problemStatement: { select: { title: true } }
+            }
+        })
+
+        return {
+            rank: entry.rank,
+            teamName: entry.teamName,
+            score: entry.totalScore,
+            problemStatement: teamInfo?.problemStatement?.title || "General",
+            members: teamInfo?.participants.map(p => p.name) || []
+        }
+    }))
 
     // Create new session
     const ceremonySession = await prisma.ceremonySession.create({
         data: {
             hackathonId,
             mode,
-            revealCount: 10,
+            revealCount: winners.length,
             isStarted: true,
             startedAt: new Date(),
             winnersSnapshot: JSON.stringify(winners),
-            currentIndex: 0 // Start at 0 (nothing revealed)
+            currentIndex: 0
         }
     })
 
@@ -100,7 +101,7 @@ export async function revealNext(hackathonId: string) {
     // If currentIndex is 0, we haven't revealed anything.
     // We increment index.
 
-    if (activeSession.currentIndex >= 10) {
+    if (activeSession.currentIndex >= winners.length) {
         return { success: false, error: "All winners revealed" }
     }
 

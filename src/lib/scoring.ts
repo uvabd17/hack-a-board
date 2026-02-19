@@ -1,107 +1,126 @@
-import { prisma } from "@/lib/prisma"
+import {
+    Team,
+    Round,
+    Score,
+    Submission,
+    Criterion
+} from "@prisma/client"
 
-export async function calculateTeamScore(teamId: string) {
-    // Fetch all necessary data
-    const team = await prisma.team.findUnique({
-        where: { id: teamId },
-        include: {
-            submissions: true,
-            scores: {
-                include: {
-                    criterion: true
-                }
-            },
-            hackathon: {
-                include: {
-                    rounds: {
-                        include: {
-                            criteria: true
-                        }
-                    }
-                }
-            }
-        }
-    })
+// Types for the data structure we need efficiently
+// We define these here to match what we will fetch in the server action
+export type TeamWithRelations = Team & {
+    scores: (Score & { criterion: Criterion })[];
+    submissions: Submission[];
+    participants: { id: string }[];
+}
 
-    if (!team) return null
+export type RoundWithCriteria = Round & {
+    criteria: Criterion[];
+}
 
-    let totalScore = 0
-    interface RoundBreakdown {
-        roundId: string;
-        name?: string;
-        avgJudgeScore?: number;
-        timeBonus?: number;
-        weightedRoundScore?: number;
-        score?: number;
-    }
-    const roundBreakdown: RoundBreakdown[] = []
+export interface LeaderboardEntry {
+    rank: number;
+    teamId: string;
+    teamName: string;
+    slug: string; // Team invite code or slug
+    totalScore: number;
+    roundBreakdown: Record<string, number>; // roundId -> score
+    trend: 'up' | 'down' | 'same';
+    change: number; // Rank change
+}
 
-    for (const round of team.hackathon.rounds) {
+/**
+ * CORE SCORING FORMULA (Per Spec v1.1)
+ * 
+ * 1. Judge Score = Sum(CriterionScore * Weight%)
+ * 2. Round Base = Average(Judge Scores)
+ * 3. Round Final = (Round Base * RoundWeight%) + TimeBonus
+ * 4. Total = Sum(Round Finals)
+ */
+export function calculateTeamScore(
+    team: TeamWithRelations,
+    rounds: RoundWithCriteria[]
+): { total: number; breakdown: Record<string, number> } {
+
+    let totalScore = 0;
+    const breakdown: Record<string, number> = {};
+
+    for (const round of rounds) {
         // 1. Get all scores for this round
-        const roundScores = team.scores.filter(s => s.roundId === round.id)
+        const roundScores = team.scores.filter(s => s.roundId === round.id);
 
         // 2. Group by Judge
-        // Define Score type based on Prisma include
-        type ScoreWithCriterion = typeof team.scores[0]
-        const scoresByJudge: Record<string, ScoreWithCriterion[]> = {}
+        const scoresByJudge: Record<string, number> = {};
+        const judgesSeen = new Set<string>();
 
-        roundScores.forEach((s: ScoreWithCriterion) => {
-            if (!scoresByJudge[s.judgeId]) scoresByJudge[s.judgeId] = []
-            scoresByJudge[s.judgeId].push(s)
-        })
+        // If no scores for this round, score is 0 (or just time bonus? Spec implies participation needed for bonus?)
+        // Let's assume Time Bonus applies if submission exists, even if 0 score.
 
-        const judgeIds = Object.keys(scoresByJudge)
-        if (judgeIds.length === 0) {
-            roundBreakdown.push({ roundId: round.id, score: 0 })
-            continue
+        for (const score of roundScores) {
+            if (!judgesSeen.has(score.judgeId)) {
+                judgesSeen.add(score.judgeId);
+                scoresByJudge[score.judgeId] = 0;
+            }
+            // Add weighted criterion score
+            // Formula: Value * (CriterionWeight / 100)
+            scoresByJudge[score.judgeId] += score.value * (score.criterion.weight / 100);
         }
 
-        // 3. Calculate Score per Judge
-        let sumJudgeScores = 0
-        judgeIds.forEach(judgeId => {
-            const jScores = scoresByJudge[judgeId]
-            let judgeRoundScore = 0
+        // 3. Calculate Judge Average
+        const judgeIds = Object.keys(scoresByJudge);
+        let roundBase = 0;
 
-            // For each criterion in this round
-            round.criteria.forEach((crit: typeof round.criteria[0]) => {
-                const s = jScores.find((qs: ScoreWithCriterion) => qs.criterionId === crit.id)
-                const val = s ? s.value : 0
-                // Weighted Criterion Score
-                judgeRoundScore += (val * (crit.weight / 100))
-            })
+        if (judgeIds.length > 0) {
+            const sumJudgeScores = judgeIds.reduce((sum, jId) => sum + scoresByJudge[jId], 0);
+            roundBase = sumJudgeScores / judgeIds.length;
+        }
 
-            sumJudgeScores += judgeRoundScore
-        })
+        // 4. Time Bonus
+        // Find submission for this round
+        const submission = team.submissions.find(s => s.roundId === round.id);
+        const timeBonus = submission ? submission.timeBonus : 0;
 
-        // 4. Average Judge Score
-        const avgJudgeScore = sumJudgeScores / judgeIds.length
+        // 5. Round Final
+        // Formula: (RoundBase * RoundWeight / 100) + TimeBonus
+        // If there are NO judges yet but there is a submission, the score is just the time bonus.
+        const roundFinal = (roundBase * (round.weight / 100)) + timeBonus;
 
-        // 5. Time Bonus (from Submission)
-        const submission = team.submissions.find((sub: typeof team.submissions[0]) => sub.roundId === round.id)
-        const timeBonus = submission ? submission.timeBonus : 0
-
-        // 6. Final Round Score
-        // Formula: (AvgJudgeScore + TimeBonus) * (RoundWeight / 100)
-        // Note: AvgJudgeScore is roughly 1-10 range if criteria weights sum to 100.
-        // TimeBonus is additive.
-        const rawRoundScore = avgJudgeScore + timeBonus
-        const weightedRoundScore = rawRoundScore * (round.weight / 100)
-
-        totalScore += weightedRoundScore
-
-        roundBreakdown.push({
-            roundId: round.id,
-            name: round.name,
-            avgJudgeScore,
-            timeBonus,
-            weightedRoundScore
-        })
+        breakdown[round.id] = parseFloat(roundFinal.toFixed(2));
+        totalScore += roundFinal;
     }
 
     return {
-        teamId: team.id,
-        teamName: team.name,
-        totalScore: parseFloat(totalScore.toFixed(2)), // 2 decimal precision
-        breakdown: roundBreakdown
+        total: parseFloat(totalScore.toFixed(2)),
+        breakdown
+    };
+}
+
+/**
+ * TIE BREAKER LOGIC
+ * Returns negative if A wins, positive if B wins, 0 if equal.
+ * 1. Earliest First Round Submission
+ * 2. Earliest Team Creation
+ */
+export function breakTie(a: TeamWithRelations, b: TeamWithRelations, allRounds: Round[]): number {
+    // 1. Find the first round (by order)
+    const firstRound = allRounds.sort((x, y) => x.order - y.order)[0];
+
+    if (firstRound) {
+        const subA = a.submissions.find(s => s.roundId === firstRound.id);
+        const subB = b.submissions.find(s => s.roundId === firstRound.id);
+
+        if (subA && subB) {
+            // Both submitted: Earlier wins (Smaller timestamp is earlier)
+            if (subA.submittedAt.getTime() !== subB.submittedAt.getTime()) {
+                return subA.submittedAt.getTime() - subB.submittedAt.getTime();
+            }
+        } else if (subA && !subB) {
+            return -1; // A submitted, B didn't -> A wins
+        } else if (!subA && subB) {
+            return 1; // B submitted, A didn't -> B wins
+        }
     }
+
+    // 2. Fallback: Team Creation Time
+    return a.createdAt.getTime() - b.createdAt.getTime();
 }
