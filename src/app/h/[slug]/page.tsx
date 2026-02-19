@@ -5,6 +5,20 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatDate } from "@/lib/utils"
 
+interface Phase {
+    id: string;
+    name: string;
+    startTime: Date;
+    order: number;
+}
+
+interface ProblemStatement {
+    id: string;
+    title: string;
+    icon: string | null;
+    description: string;
+}
+
 export default async function PublicHackathonPage({ params }: { params: { slug: string } }) {
     const hackathon = await prisma.hackathon.findUnique({
         where: { slug: params.slug },
@@ -82,7 +96,7 @@ export default async function PublicHackathonPage({ params }: { params: { slug: 
                             <span className="text-muted-foreground">02.</span> TIMELINE_PROTOCOL
                         </h2>
                         <div className="space-y-4">
-                            {hackathon.phases.map((phase, index) => (
+                            {hackathon.phases.map((phase: Phase) => (
                                 <div key={phase.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 border border-border bg-card/50 hover:bg-card hover:border-primary/50 transition-colors">
                                     <div>
                                         <h3 className="font-bold text-lg text-foreground">{phase.name}</h3>
@@ -110,7 +124,7 @@ export default async function PublicHackathonPage({ params }: { params: { slug: 
                             <span className="text-muted-foreground">03.</span> ACTIVE_DIRECTIVES
                         </h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {hackathon.problemStatements.map((ps) => (
+                            {hackathon.problemStatements.map((ps: ProblemStatement) => (
                                 <Card key={ps.id} className="bg-card border-border hover:border-primary transition-all group">
                                     <CardHeader>
                                         <CardTitle className="flex items-center justify-between text-xl">

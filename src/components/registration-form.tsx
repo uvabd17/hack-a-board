@@ -73,7 +73,7 @@ export default function RegistrationForm({ hackathonSlug }: { hackathonSlug: str
 
                         <div className="pt-4 border-t border-border">
                             <Label className="mb-4 block text-center text-primary">UNIT_ASSIGNMENT</Label>
-                            <Tabs value={mode} onValueChange={(v) => setMode(v as any)} className="w-full">
+                            <Tabs value={mode} onValueChange={(v) => setMode(v as "create" | "join" | "solo")} className="w-full">
                                 <TabsList className="grid w-full grid-cols-3 bg-muted">
                                     <TabsTrigger value="create">CREATE</TabsTrigger>
                                     <TabsTrigger value="join">JOIN</TabsTrigger>
