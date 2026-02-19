@@ -19,9 +19,10 @@ interface ProblemStatement {
     description: string;
 }
 
-export default async function PublicHackathonPage({ params }: { params: { slug: string } }) {
+export default async function PublicHackathonPage({ params }: { params: Promise<{ slug: string }> }) {
+    const { slug } = await params
     const hackathon = await prisma.hackathon.findUnique({
-        where: { slug: params.slug },
+        where: { slug },
         include: {
             problemStatements: {
                 where: { isReleased: true },

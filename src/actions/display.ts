@@ -25,7 +25,7 @@ export async function toggleFreeze(hackathonId: string, isFrozen: boolean, slug:
 
 export async function updateDisplayConfig(
     hackathonId: string,
-    config: { mode: "global" | "problem", problemId?: string | null },
+    config: { mode: "global" | "problem" | "auto", problemId?: string | null },
     slug: string
 ) {
     try {

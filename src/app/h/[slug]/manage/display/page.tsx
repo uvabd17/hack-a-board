@@ -3,9 +3,10 @@ import { notFound } from "next/navigation"
 import { DisplayController } from "@/components/display-controller"
 import { CeremonyController } from "@/components/ceremony-controller"
 
-export default async function ManageDisplayPage({ params }: { params: { slug: string } }) {
+export default async function ManageDisplayPage({ params }: { params: Promise<{ slug: string }> }) {
+    const { slug } = await params
     const hackathon = await prisma.hackathon.findUnique({
-        where: { slug: params.slug },
+        where: { slug },
         include: { problemStatements: true }
     })
 
@@ -23,7 +24,7 @@ export default async function ManageDisplayPage({ params }: { params: { slug: st
             <DisplayController
                 hackathonId={hackathon.id}
                 initialIsFrozen={hackathon.isFrozen}
-                slug={params.slug}
+                slug={slug}
                 problemStatements={hackathon.problemStatements}
                 initialMode={hackathon.displayMode as any}
                 initialProblemId={hackathon.displayProblemId}
@@ -31,7 +32,7 @@ export default async function ManageDisplayPage({ params }: { params: { slug: st
 
             <CeremonyController
                 hackathonId={hackathon.id}
-                slug={params.slug}
+                slug={slug}
             />
         </div>
     )

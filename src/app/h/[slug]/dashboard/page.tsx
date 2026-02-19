@@ -23,8 +23,8 @@ export default async function DashboardPage({
     params,
     searchParams
 }: {
-    params: { slug: string },
-    searchParams: { token?: string }
+    params: Promise<{ slug: string }>,
+    searchParams: Promise<{ token?: string }>
 }) {
     const { slug } = await params
     const token = (await searchParams).token

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useMemo, useRef } from "react"
+import { useEffect, useState, useMemo, useRef, use } from "react"
 import { getDisplayState, getTrackStanding } from "@/actions/display"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -8,7 +8,8 @@ import { ArrowUp, ArrowDown, Minus, Trophy, Terminal, Lock } from "lucide-react"
 import { CeremonyDisplay } from "@/components/ceremony-display"
 import { connectSocket, disconnectSocket } from "@/lib/socket-client"
 
-export default function ProjectorDisplayPage({ params }: { params: { slug: string } }) {
+export default function ProjectorDisplayPage({ params }: { params: Promise<{ slug: string }> }) {
+    const { slug } = use(params)
     const [data, setData] = useState<any>(null)
     const [prevData, setPrevData] = useState<any>(null)
     const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
@@ -26,7 +27,7 @@ export default function ProjectorDisplayPage({ params }: { params: { slug: strin
                 }
             }
 
-            const result = await getDisplayStateWithOverride(params.slug, problemId)
+            const result = await getDisplayStateWithOverride(slug, problemId)
 
             if (result) {
                 if (!result.hackathon.isFrozen || !data) {
@@ -48,9 +49,9 @@ export default function ProjectorDisplayPage({ params }: { params: { slug: strin
         fetchRef.current = fetchData
 
         fetchData()
-        const interval = setInterval(fetchData, 5000)
+        const interval = setInterval(fetchData, 15000) // 15s fallback; socket handles real-time
         return () => clearInterval(interval)
-    }, [params.slug, data?.hackathon?.isFrozen, autoTrackIndex, data?.displayConfig?.mode])
+    }, [slug, data?.hackathon?.isFrozen, autoTrackIndex, data?.displayConfig?.mode])
 
     // Socket.IO real-time connection
     useEffect(() => {
@@ -268,7 +269,7 @@ export default function ProjectorDisplayPage({ params }: { params: { slug: strin
             {/* Terminal Info Footer */}
             <footer className="mt-6 pt-4 border-t border-green-500/20 flex justify-between text-[10px] text-green-500/40 uppercase tracking-widest font-mono">
                 <div className="flex gap-6">
-                    <div>NODE: {params.slug.toUpperCase()}</div>
+                    <div>NODE: {slug.toUpperCase()}</div>
                     <div className="hidden sm:block">KERNEL: 14.2.0-HACKA</div>
                     <div className="hidden md:block">MODE: {data.displayConfig.mode}</div>
                 </div>
@@ -278,7 +279,7 @@ export default function ProjectorDisplayPage({ params }: { params: { slug: strin
                 </div>
             </footer>
 
-            <CeremonyDisplay slug={params.slug} hackathonId={data?.hackathon?.id} />
+            <CeremonyDisplay slug={slug} hackathonId={data?.hackathon?.id} />
         </div>
     )
 }

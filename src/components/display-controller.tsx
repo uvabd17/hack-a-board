@@ -24,11 +24,11 @@ export function DisplayController({
     initialIsFrozen: boolean,
     slug: string,
     problemStatements?: ProblemStatement[],
-    initialMode?: "global" | "problem",
+    initialMode?: "global" | "problem" | "auto",
     initialProblemId?: string | null
 }) {
     const [isFrozen, setIsFrozen] = useState(initialIsFrozen)
-    const [displayMode, setDisplayMode] = useState<"global" | "problem">(initialMode)
+    const [displayMode, setDisplayMode] = useState<"global" | "problem" | "auto">(initialMode as "global" | "problem" | "auto")
     const [activeProblemId, setActiveProblemId] = useState<string | null>(initialProblemId)
     const [isLoading, setIsLoading] = useState(false)
 
@@ -45,7 +45,7 @@ export function DisplayController({
         }
     }
 
-    const handleConfigChange = async (mode: "global" | "problem", problemId: string | null = null) => {
+    const handleConfigChange = async (mode: "global" | "problem" | "auto", problemId: string | null = null) => {
         setIsLoading(true)
         try {
             const result = await updateDisplayConfig(hackathonId, { mode, problemId }, slug)

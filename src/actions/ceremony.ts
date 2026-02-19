@@ -35,46 +35,65 @@ export async function calculateWinners(hackathonId: string, mode: "overall" | "p
 
     if (mode === "overall") {
         const topTeams = leaderboard.slice(0, revealCount)
-        winners = await Promise.all(topTeams.map(async (entry) => {
-            const teamInfo = await fetchTeamDetails(entry.teamId)
-            return {
-                rank: entry.rank,
-                teamName: entry.teamName,
-                score: entry.totalScore,
-                problemStatement: teamInfo?.problemStatement?.title || "General",
-                members: teamInfo?.participants.map(p => p.name) || []
-            }
-        }))
-    } else {
-        const problems = await prisma.problemStatement.findMany({
-            where: { hackathonId }
-        })
-
-        const problemWinners: WinnerSnapshot[] = []
-        for (const problem of problems) {
-            const topTeamInProblem = leaderboard.find(e => e.problemStatementId === problem.id && e.totalScore > 0)
-            if (topTeamInProblem) {
-                const teamInfo = await fetchTeamDetails(topTeamInProblem.teamId)
-                problemWinners.push({
-                    rank: 1,
-                    teamName: topTeamInProblem.teamName,
-                    score: topTeamInProblem.totalScore,
-                    problemStatement: problem.title,
-                    members: teamInfo?.participants.map(p => p.name) || []
-                })
-            }
-        }
-        winners = problemWinners.sort((a, b) => b.score - a.score)
-    }
-
-    async function fetchTeamDetails(teamId: string) {
-        return await prisma.team.findUnique({
-            where: { id: teamId },
+        // Batch fetch all team details in one query
+        const teamIds = topTeams.map(e => e.teamId)
+        const teamDetails = await prisma.team.findMany({
+            where: { id: { in: teamIds } },
             include: {
                 participants: { select: { name: true } },
                 problemStatement: { select: { title: true } }
             }
         })
+        const teamMap = new Map(teamDetails.map(t => [t.id, t]))
+
+        winners = topTeams.map(entry => {
+            const details = teamMap.get(entry.teamId)
+            return {
+                rank: entry.rank,
+                teamName: entry.teamName,
+                score: entry.totalScore,
+                problemStatement: details?.problemStatement?.title || "General",
+                members: details?.participants.map(p => p.name) || []
+            }
+        })
+    } else {
+        const problems = await prisma.problemStatement.findMany({
+            where: { hackathonId }
+        })
+
+        // Find top team per problem
+        const topTeamIds: string[] = []
+        const problemWinnerEntries: { entry: typeof leaderboard[0]; problemTitle: string }[] = []
+
+        for (const problem of problems) {
+            const topTeamInProblem = leaderboard.find(e => e.problemStatementId === problem.id && e.totalScore > 0)
+            if (topTeamInProblem) {
+                topTeamIds.push(topTeamInProblem.teamId)
+                problemWinnerEntries.push({ entry: topTeamInProblem, problemTitle: problem.title })
+            }
+        }
+
+        // Batch fetch all winning team details
+        const teamDetails = await prisma.team.findMany({
+            where: { id: { in: topTeamIds } },
+            include: {
+                participants: { select: { name: true } },
+            }
+        })
+        const teamMap = new Map(teamDetails.map(t => [t.id, t]))
+
+        winners = problemWinnerEntries
+            .map(({ entry, problemTitle }) => {
+                const details = teamMap.get(entry.teamId)
+                return {
+                    rank: 1,
+                    teamName: entry.teamName,
+                    score: entry.totalScore,
+                    problemStatement: problemTitle,
+                    members: details?.participants.map(p => p.name) || []
+                }
+            })
+            .sort((a, b) => b.score - a.score)
     }
 
     return winners
