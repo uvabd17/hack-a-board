@@ -22,7 +22,7 @@ export async function getUserHackathons() {
 
 export async function createNewHackathon() {
     const session = await auth()
-    if (!session?.user?.id) redirect("/api/auth/signin")
+    if (!session?.user?.id) redirect("/signin")
 
     // Generate a random slug for the new hackathon
     const randomSlug = `hack-${Math.random().toString(36).substring(7)}`

@@ -15,7 +15,7 @@ export default function Home() {
           <div className="text-lg font-bold tracking-tight lowercase">
             hack&lt;a&gt;board
           </div>
-          <Link href="/api/auth/signin" className="text-xs uppercase tracking-widest text-zinc-500 hover:text-green-500 transition-colors">
+          <Link href="/signin" className="text-xs uppercase tracking-widest text-zinc-500 hover:text-green-500 transition-colors">
             [ ORGANIZER_LOGIN ]
           </Link>
         </div>
