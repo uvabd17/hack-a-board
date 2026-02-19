@@ -42,3 +42,5 @@ next-env.d.ts
 
 /src/generated/prisma
 socket-server/node_modules/
+
+.vercel

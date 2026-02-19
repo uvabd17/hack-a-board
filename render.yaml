@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: hackaboard-socket
+    runtime: node
+    region: singapore
+    plan: free
+    rootDir: socket-server
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: CLIENT_ORIGIN
+        sync: false
+      - key: EMIT_SECRET
+        sync: false
+      - key: NODE_ENV
+        value: production
