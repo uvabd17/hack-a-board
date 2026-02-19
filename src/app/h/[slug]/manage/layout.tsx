@@ -68,6 +68,11 @@ export default async function ManageLayout({
                         </Link>
                     </Button>
                     <Button asChild variant="ghost" className="w-full justify-start text-left">
+                        <Link href={`/h/${hackathon.slug}/manage/phases`}>
+                            :: PHASES
+                        </Link>
+                    </Button>
+                    <Button asChild variant="ghost" className="w-full justify-start text-left">
                         <Link href={`/h/${hackathon.slug}/manage/judges`}>
                             :: JUDGES
                         </Link>
