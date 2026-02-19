@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import QRCode from "qrcode"
+import { Lock } from "lucide-react"
 
 async function generateQR(text: string) {
     try {
@@ -98,7 +99,14 @@ export default async function DashboardPage({
 
                         <div className="pt-4 border-t border-border">
                             <p className="text-sm text-muted-foreground mb-2">CURRENT_RANK</p>
-                            <p className="text-4xl font-bold text-muted-foreground/50">--</p>
+                            {participant.hackathon.isFrozen ? (
+                                <div className="flex items-center gap-2 text-destructive animate-pulse">
+                                    <Lock className="w-6 h-6" />
+                                    <p className="text-xl font-bold">HIDDEN (FROZEN)</p>
+                                </div>
+                            ) : (
+                                <p className="text-4xl font-bold text-muted-foreground/50">--</p>
+                            )}
                         </div>
                     </CardContent>
                 </Card>
