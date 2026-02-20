@@ -92,7 +92,7 @@ export async function updatePhase(hackathonId: string, phaseId: string, formData
 
     try {
         await prisma.phase.update({
-            where: { id: phaseId },
+            where: { id: phaseId, hackathonId },
             data: {
                 name,
                 startTime: new Date(startTime),
@@ -116,7 +116,7 @@ export async function deletePhase(hackathonId: string, phaseId: string) {
     if (!hackathon) return { error: "Unauthorized" }
 
     try {
-        await prisma.phase.delete({ where: { id: phaseId } })
+        await prisma.phase.delete({ where: { id: phaseId, hackathonId } })
 
         revalidatePath(`/h/${hackathon.slug}/manage/phases`)
         revalidatePath(`/h/${hackathon.slug}/manage`)
