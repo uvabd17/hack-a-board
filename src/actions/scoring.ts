@@ -19,6 +19,10 @@ export async function submitScore(data: {
     roundId: string,
     scores: Record<string, number>
 }) {
+    // Validate schema — enforces score range 1-5 server-side
+    const parsed = ScoreSubmissionSchema.safeParse(data)
+    if (!parsed.success) return { error: "Invalid score data: " + parsed.error.issues[0].message }
+
     const cookieStore = await cookies()
     const token = cookieStore.get("hackaboard_judge_token")?.value
 
@@ -35,10 +39,20 @@ export async function submitScore(data: {
 
     // Validate Team & Round belong to hackathon
     const team = await prisma.team.findUnique({ where: { id: data.teamId } })
-    const round = await prisma.round.findUnique({ where: { id: data.roundId } })
+    const round = await prisma.round.findUnique({
+        where: { id: data.roundId },
+        include: { criteria: { select: { id: true } } }
+    })
 
     if (team?.hackathonId !== data.hackathonId || round?.hackathonId !== data.hackathonId) {
         return { error: "Data Mismatch" }
+    }
+
+    // Verify all submitted criterion IDs belong to this round (prevent cross-round score injection)
+    const validCriterionIds = new Set(round.criteria.map(c => c.id))
+    const submittedIds = Object.keys(data.scores)
+    if (submittedIds.some(id => !validCriterionIds.has(id))) {
+        return { error: "Invalid criterion IDs" }
     }
 
     // Transactional Write
