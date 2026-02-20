@@ -14,6 +14,7 @@ interface Judge {
     token: string;
     hackathonId: string;
     isActive: boolean;
+    hackathon?: { slug: string };
 }
 
 export function JudgeForm({ hackathonId }: { hackathonId: string }) {
@@ -47,24 +48,18 @@ export function JudgeForm({ hackathonId }: { hackathonId: string }) {
     )
 }
 
-export function JudgeItem({ judge, hackathonId }: { judge: Judge, hackathonId: string }) {
+export function JudgeItem({ judge, hackathonId, slug }: { judge: Judge, hackathonId: string, slug: string }) {
     const [loading, setLoading] = useState(false)
     const [qrUrl, setQrUrl] = useState<string>("")
     const [showQr, setShowQr] = useState(false)
 
     useEffect(() => {
         if (showQr && !qrUrl) {
-            // Generate QR code for the judge login URL
-            // Format: /judge/login?token=TOKEN
-            // But for now, let's just use the token or a full URL if we had the domain
-            // Assuming base URL is relative or we construct it.
-            // Let's us a simple JSON payload or just the token string if the scanner expects that.
-            // The spec says "QR-based judging". Usually implies a URL or a token.
-            // Let's generate a URL relative to current origin
-            const url = `${window.location.origin}/h/${judge.hackathonId}/judge?token=${judge.token}`
-            QRCode.toDataURL(url).then(setQrUrl)
+            // Correct URL: /h/{slug}/qr/{token} — sets cookie then redirects to judge panel
+            const url = `${window.location.origin}/h/${slug}/qr/${judge.token}`
+            QRCode.toDataURL(url, { width: 300, margin: 2 }).then(setQrUrl)
         }
-    }, [showQr, judge.token, judge.hackathonId, qrUrl])
+    }, [showQr, judge.token, slug, qrUrl])
 
     async function handleDelete() {
         if (!confirm("Remove judge?")) return
@@ -98,7 +93,7 @@ export function JudgeItem({ judge, hackathonId }: { judge: Judge, hackathonId: s
                         {showQr ? "HIDE_QR" : "SHOW_QR"}
                     </Button>
 
-                    <Button variant="ghost" size="icon" onClick={handleToggle} disabled={loading} title={judge.isActive ? "Deactivate" : "Activate"}>
+                    <Button variant="ghost" size="icon" onClick={handleToggle} disabled={loading} title={judge.isActive ? "Deactivate" : "Activate"} className={judge.isActive ? "" : "text-muted-foreground"}>
                         {judge.isActive ? <UserCheck size={16} className="text-green-600" /> : <UserX size={16} />}
                     </Button>
 
