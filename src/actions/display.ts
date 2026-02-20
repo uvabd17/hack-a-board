@@ -1,11 +1,24 @@
 "use server"
 
+import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import { getLeaderboardData } from "@/actions/leaderboard"
 import { emitFreeze, emitDisplayConfig } from "@/lib/socket-emit"
 
+async function assertDisplayOwner(hackathonId: string) {
+    const session = await auth()
+    if (!session?.user?.id) return null
+    const hackathon = await prisma.hackathon.findUnique({
+        where: { id: hackathonId, userId: session.user.id },
+        select: { slug: true }
+    })
+    return hackathon || null
+}
+
 export async function toggleFreeze(hackathonId: string, isFrozen: boolean, slug: string) {
+    const owner = await assertDisplayOwner(hackathonId)
+    if (!owner) return { success: false, error: "Unauthorized" }
     try {
         await prisma.hackathon.update({
             where: { id: hackathonId },
@@ -28,6 +41,8 @@ export async function updateDisplayConfig(
     config: { mode: "global" | "problem" | "auto", problemId?: string | null },
     slug: string
 ) {
+    const owner = await assertDisplayOwner(hackathonId)
+    if (!owner) return { success: false, error: "Unauthorized" }
     try {
         await prisma.hackathon.update({
             where: { id: hackathonId },
