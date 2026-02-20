@@ -10,6 +10,7 @@ import { ProblemSelection } from "@/components/problem-selection"
 import { SubmissionForm } from "@/components/submission-form"
 import { CheckCircle2 } from "lucide-react"
 import { CountdownTimer } from "@/components/countdown-timer"
+import { LiveRefresher } from "@/components/live-refresher"
 
 async function generateQR(text: string) {
     try {
@@ -78,6 +79,7 @@ export default async function DashboardPage({
 
     return (
         <div className="min-h-screen bg-background p-4 font-mono text-foreground pb-20">
+            <LiveRefresher hackathonId={participant.hackathonId} />
             <header className="mb-8 border-b border-border pb-4 max-w-6xl mx-auto space-y-3">
                 <div className="flex justify-between items-center">
                     <div>

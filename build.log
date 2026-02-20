@@ -1,0 +1,42 @@
+▲ Next.js 16.1.6 (Turbopack)
+- Environments: .env.local, .env
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 29.6s
+  Running TypeScript ...
+  Collecting page data using 3 workers ...
+  Generating static pages using 3 workers (0/6) ...
+  Generating static pages using 3 workers (1/6) 
+  Generating static pages using 3 workers (2/6) 
+  Generating static pages using 3 workers (4/6) 
+✓ Generating static pages using 3 workers (6/6) in 1802.1ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ƒ /api/auth/[...nextauth]
+├ ƒ /dashboard
+├ ƒ /h/[slug]
+├ ƒ /h/[slug]/dashboard
+├ ƒ /h/[slug]/display
+├ ƒ /h/[slug]/judge
+├ ƒ /h/[slug]/judge/score/[teamId]
+├ ƒ /h/[slug]/manage
+├ ƒ /h/[slug]/manage/check-in
+├ ƒ /h/[slug]/manage/display
+├ ƒ /h/[slug]/manage/judges
+├ ƒ /h/[slug]/manage/phases
+├ ƒ /h/[slug]/manage/problems
+├ ƒ /h/[slug]/manage/rounds
+├ ƒ /h/[slug]/manage/settings
+├ ƒ /h/[slug]/manage/teams
+├ ƒ /h/[slug]/qr/[token]
+├ ƒ /h/[slug]/register
+└ ƒ /signin
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+EXIT:0
