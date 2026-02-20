@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { cookies } from "next/headers"
 import { notFound, redirect } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -22,14 +23,12 @@ async function generateQR(text: string) {
 }
 
 export default async function DashboardPage({
-    params,
-    searchParams
+    params
 }: {
-    params: Promise<{ slug: string }>,
-    searchParams: Promise<{ token?: string }>
+    params: Promise<{ slug: string }>
 }) {
     const { slug } = await params
-    const token = (await searchParams).token
+    const token = (await cookies()).get("hackaboard_participant_token")?.value
 
     if (!token) {
         redirect(`/h/${slug}/register`)
@@ -168,7 +167,7 @@ export default async function DashboardPage({
 
                         {/* Token footer */}
                         <div className="bg-muted/30 px-4 py-2">
-                            <p className="text-[8px] text-center text-muted-foreground/40 font-mono break-all">{token}</p>
+                            <p className="text-[8px] text-center text-muted-foreground/40 font-mono">SESSION_ACTIVE</p>
                         </div>
                     </div>
 
@@ -221,7 +220,7 @@ export default async function DashboardPage({
                                     </div>
                                 </div>
                             ) : problems.length > 0 ? (
-                                <ProblemSelection problems={problems} teamId={participant.teamId} slug={slug} qrToken={token!} />
+                                <ProblemSelection problems={problems} teamId={participant.teamId} slug={slug} />
                             ) : (
                                 <p className="text-xs text-muted-foreground italic">Problem statements have not been released by the organizer yet.</p>
                             )}
@@ -239,7 +238,6 @@ export default async function DashboardPage({
                                         round={round}
                                         teamId={participant.teamId}
                                         slug={slug}
-                                        qrToken={token!}
                                         existingSubmission={submissions.find(s => s.roundId === round.id)}
                                     />
                                 ))}

@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
+import { cookies } from "next/headers"
 import { z } from "zod"
 
 const SubmissionSchema = z.object({
@@ -13,26 +14,36 @@ const SubmissionSchema = z.object({
     otherUrl: z.string().url().optional().or(z.literal("")),
 })
 
-export async function submitProject(data: z.infer<typeof SubmissionSchema>, slug: string, qrToken: string) {
+export async function submitProject(data: z.infer<typeof SubmissionSchema>, slug: string) {
     const validated = SubmissionSchema.safeParse(data)
     if (!validated.success) return { error: "Invalid submission links" }
 
-    // Verify the submitter is actually a participant on this team
+    const participantToken = (await cookies()).get("hackaboard_participant_token")?.value
+    if (!participantToken) return { error: "Unauthorized" }
+
+    // Verify the submitter is actually a participant on this team and slug
     const participant = await prisma.participant.findUnique({
-        where: { qrToken },
-        select: { teamId: true }
+        where: { qrToken: participantToken },
+        select: { teamId: true, hackathonId: true, hackathon: { select: { slug: true } } }
     })
-    if (!participant || participant.teamId !== data.teamId) {
+    if (!participant || participant.teamId !== data.teamId || participant.hackathon.slug !== slug) {
         return { error: "Unauthorized" }
     }
 
     try {
+        const team = await prisma.team.findUnique({
+            where: { id: data.teamId },
+            select: { hackathonId: true }
+        })
         const round = await prisma.round.findUnique({
             where: { id: data.roundId },
             include: { hackathon: true }
         })
 
-        if (!round) return { error: "Round not found" }
+        if (!team || !round) return { error: "Round not found" }
+        if (team.hackathonId !== participant.hackathonId || round.hackathonId !== participant.hackathonId) {
+            return { error: "Data Mismatch" }
+        }
 
         const submittedAt = new Date()
 

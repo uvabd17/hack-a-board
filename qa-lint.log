@@ -1,0 +1,143 @@
+
+> temp_init@0.1.0 lint
+> eslint
+
+
+G:\hack-a-board\src\actions\ceremony.ts
+  226:11  warning  'revealedCount' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+G:\hack-a-board\src\actions\judges.ts
+  48:14  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\hack-a-board\src\actions\registration.ts
+  5:10  warning  'redirect' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\hack-a-board\src\actions\rounds.ts
+  58:14  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\hack-a-board\src\app\dashboard\page.tsx
+  9:20  warning  'Users' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\hack-a-board\src\app\h\[slug]\dashboard\page.tsx
+    3:10  warning  'notFound' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+  106:84  error    Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+G:\hack-a-board\src\app\h\[slug]\dashboard\page.tsx:106:84
+  104 |                             size="sm"
+  105 |                         />
+> 106 |                         {rounds.filter(r => new Date(r.checkpointTime).getTime() > Date.now() || r.checkpointPausedAt).map(r => (
+      |                                                                                    ^^^^^^^^^^ Cannot call impure function
+  107 |                             <CountdownTimer
+  108 |                                 key={r.id}
+  109 |                                 targetMs={new Date(r.checkpointTime).getTime()}  react-hooks/purity
+
+G:\hack-a-board\src\app\h\[slug]\display\page.tsx
+   12:46  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+   80:38  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+   81:46  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+  106:39  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+  112:36  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+  124:8   warning  React Hook useEffect has a missing dependency: 'data'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              react-hooks/exhaustive-deps
+  136:28  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+  139:28  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+  191:44  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+  192:63  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+  217:43  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+  228:21  error    Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+G:\hack-a-board\src\app\h\[slug]\display\page.tsx:228:21
+  226 |     const activeRound = useMemo(() => {
+  227 |         if (!data?.rounds?.length) return null
+> 228 |         const now = Date.now()
+      |                     ^^^^^^^^^^ Cannot call impure function
+  229 |         // Paused round takes priority
+  230 |         const paused = data.rounds.find((r: any) => r.checkpointPausedAt)
+  231 |         if (paused) return paused  react-hooks/purity
+  230:45  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+  235:23  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+  235:31  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+  236:23  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+  319:53  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+  327:54  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+  338:56  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+
+G:\hack-a-board\src\app\h\[slug]\judge\layout.tsx
+  2:10  warning  'headers' is defined but never used   @typescript-eslint/no-unused-vars
+  3:10  warning  'redirect' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\hack-a-board\src\app\h\[slug]\judge\scanner.tsx
+   8:27  warning  'slug' is defined but never used   @typescript-eslint/no-unused-vars
+  32:17  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+  43:26  warning  'e' is defined but never used      @typescript-eslint/no-unused-vars
+
+G:\hack-a-board\src\app\h\[slug]\manage\check-in\client-components.tsx
+  6:10  warning  'Badge' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\hack-a-board\src\app\h\[slug]\manage\display\page.tsx
+  29:55  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+G:\hack-a-board\src\app\h\[slug]\manage\page.tsx
+  6:10  warning  'Users' is defined but never used   @typescript-eslint/no-unused-vars
+  6:17  warning  'Trophy' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\hack-a-board\src\app\h\[slug]\manage\rounds\page.tsx
+  12:11  warning  'Round' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\hack-a-board\src\app\h\[slug]\manage\teams\client-components.tsx
+  7:28  warning  'checkInTeam' is defined but never used  @typescript-eslint/no-unused-vars
+  8:10  warning  'CheckSquare' is defined but never used  @typescript-eslint/no-unused-vars
+  8:23  warning  'Square' is defined but never used       @typescript-eslint/no-unused-vars
+
+G:\hack-a-board\src\app\signin\page.tsx
+  92:21  error  Do not use an `<a>` element to navigate to `/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages  @next/next/no-html-link-for-pages
+
+G:\hack-a-board\src\components\ceremony-controller.tsx
+   9:25  warning  'CheckCircle2' is defined but never used           @typescript-eslint/no-unused-vars
+  13:5   warning  'slug' is defined but never used                   @typescript-eslint/no-unused-vars
+  26:12  warning  'totalWinners' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+G:\hack-a-board\src\components\ceremony-display.tsx
+  7:25  warning  'disconnectSocket' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\hack-a-board\src\components\countdown-timer.tsx
+  36:13  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+G:\hack-a-board\src\components\countdown-timer.tsx:36:13
+  34 |     useEffect(() => {
+  35 |         if (isPaused) {
+> 36 |             setRemaining(pausedRemainingMs ?? 0)
+     |             ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  37 |             return
+  38 |         }
+  39 |         if (!targetMs) {  react-hooks/set-state-in-effect
+
+G:\hack-a-board\src\components\create-hackathon-button.tsx
+  23:18  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\hack-a-board\src\components\display-controller.tsx
+   8:19  warning  'Lock' is defined but never used    @typescript-eslint/no-unused-vars
+   8:25  warning  'Unlock' is defined but never used  @typescript-eslint/no-unused-vars
+  41:18  warning  'error' is defined but never used   @typescript-eslint/no-unused-vars
+  56:18  warning  'error' is defined but never used   @typescript-eslint/no-unused-vars
+
+G:\hack-a-board\src\components\registration-form.tsx
+   5:31  warning  'RegisterState' is defined but never used                        @typescript-eslint/no-unused-vars
+  95:44  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+G:\hack-a-board\src\components\submission-form.tsx
+   10:24  warning  'Clock' is defined but never used         @typescript-eslint/no-unused-vars
+  105:28  warning  'variant' is defined but never used       @typescript-eslint/no-unused-vars
+  105:50  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 55 problems (24 errors, 31 warnings)
+

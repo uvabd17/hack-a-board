@@ -5,7 +5,7 @@
  */
 
 const SOCKET_SERVER_URL = process.env.SOCKET_SERVER_URL || "http://localhost:3001"
-const EMIT_SECRET = process.env.EMIT_SECRET || "dev-secret"
+const EMIT_SECRET = process.env.EMIT_SECRET
 
 type EmitPayload = {
     room: string
@@ -18,8 +18,12 @@ export async function socketEmit({ room, event, data }: EmitPayload): Promise<vo
         console.warn("[socketEmit] SOCKET_SERVER_URL not set — skipping emit")
         return
     }
+    if (!EMIT_SECRET) {
+        console.warn("[socketEmit] EMIT_SECRET not set — skipping emit")
+        return
+    }
     try {
-        await fetch(`${SOCKET_SERVER_URL}/emit`, {
+        const res = await fetch(`${SOCKET_SERVER_URL}/emit`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -27,6 +31,9 @@ export async function socketEmit({ room, event, data }: EmitPayload): Promise<vo
             },
             body: JSON.stringify({ room, event, data }),
         })
+        if (!res.ok) {
+            console.warn("[socketEmit] Emit failed:", event, res.status)
+        }
     } catch (err) {
         // Non-fatal — real-time update missed, polling will catch up
         console.warn("[socketEmit] Failed to emit:", event, err)

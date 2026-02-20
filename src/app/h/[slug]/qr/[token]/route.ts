@@ -58,7 +58,6 @@ export async function GET(
 
             const url = request.nextUrl.clone()
             url.pathname = `/h/${slug}/dashboard`
-            url.searchParams.set("token", participant.qrToken)
 
             const response = NextResponse.redirect(url)
 

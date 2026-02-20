@@ -7,8 +7,16 @@ const app = express()
 const httpServer = createServer(app)
 
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:3000"
-const EMIT_SECRET = process.env.EMIT_SECRET || "dev-secret"
+const EMIT_SECRET = process.env.EMIT_SECRET
 const PORT = process.env.PORT || 3001
+
+if (!EMIT_SECRET) {
+    throw new Error("EMIT_SECRET is required for socket-server")
+}
+
+function isValidHackathonId(value: unknown): value is string {
+    return typeof value === "string" && /^[a-zA-Z0-9_-]{8,64}$/.test(value)
+}
 
 const io = new Server(httpServer, {
     cors: {
@@ -60,23 +68,15 @@ io.on("connection", (socket) => {
 
     // Client joins rooms by sending a "join" event with hackathonId
     socket.on("join:hackathon", (hackathonId: string) => {
+        if (!isValidHackathonId(hackathonId)) return
         socket.join(`hackathon:${hackathonId}`)
         console.log(`[join] ${socket.id} → hackathon:${hackathonId}`)
     })
 
     socket.on("join:display", (hackathonId: string) => {
+        if (!isValidHackathonId(hackathonId)) return
         socket.join(`display:${hackathonId}`)
         console.log(`[join] ${socket.id} → display:${hackathonId}`)
-    })
-
-    // Display controller → projector relay
-    // The organizer's browser emits these; we relay to the display room
-    socket.on("display:set-scene", ({ hackathonId, scene }: { hackathonId: string; scene: string }) => {
-        socket.to(`display:${hackathonId}`).emit("display:set-scene", { scene })
-    })
-
-    socket.on("display:set-filter", ({ hackathonId, filter }: { hackathonId: string; filter: string | null }) => {
-        socket.to(`display:${hackathonId}`).emit("display:set-filter", { filter })
     })
 
     socket.on("disconnect", () => {

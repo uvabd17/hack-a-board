@@ -37,7 +37,7 @@ export default function RegistrationForm({ hackathonSlug }: { hackathonSlug: str
         if (result.error) {
             setError(result.error)
         } else if (result.success && result.qrToken) {
-            router.push(`/h/${hackathonSlug}/dashboard?token=${result.qrToken}`)
+            router.push(`/h/${hackathonSlug}/qr/${result.qrToken}`)
         }
     }
 

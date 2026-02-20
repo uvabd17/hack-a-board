@@ -9,18 +9,16 @@ import { selectTeamProblem } from "@/actions/problems"
 export function ProblemSelection({
     problems,
     teamId,
-    slug,
-    qrToken
+    slug
 }: {
     problems: ProblemStatement[],
     teamId: string,
-    slug: string,
-    qrToken: string
+    slug: string
 }) {
     const [loading, setLoading] = useState<string | null>(null)
     async function handleSelect(problemId: string) {
         setLoading(problemId)
-        const res = await selectTeamProblem(teamId, problemId, slug, qrToken)
+        const res = await selectTeamProblem(teamId, problemId, slug)
         if (res.success) {
             alert("Track locked! Your challenge track has been set.")
         } else {

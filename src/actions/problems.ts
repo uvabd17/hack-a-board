@@ -3,6 +3,7 @@
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
+import { cookies } from "next/headers"
 import { z } from "zod"
 import { emitProblemsReleased } from "@/lib/socket-emit"
 
@@ -115,30 +116,44 @@ export async function deleteProblemStatement(hackathonId: string, problemId: str
     revalidatePath(`/h/${hackathon.slug}`)
     return { success: true }
 }
-export async function selectTeamProblem(teamId: string, problemId: string, slug: string, qrToken: string) {
+export async function selectTeamProblem(teamId: string, problemId: string, slug: string) {
     try {
-        // Verify the participant with this token belongs to this team
+        const participantToken = (await cookies()).get("hackaboard_participant_token")?.value
+        if (!participantToken) return { error: "Unauthorized" }
+
+        // Verify participant belongs to this team and hackathon slug
         const participant = await prisma.participant.findUnique({
-            where: { qrToken },
-            select: { teamId: true }
+            where: { qrToken: participantToken },
+            select: { teamId: true, hackathonId: true, hackathon: { select: { slug: true } } }
         })
-        if (!participant || participant.teamId !== teamId) {
+        if (!participant || participant.teamId !== teamId || participant.hackathon.slug !== slug) {
             return { error: "Unauthorized" }
         }
 
-        // Verify the problem belongs to the same hackathon as the team
-        const team = await prisma.team.findUnique({ where: { id: teamId }, select: { hackathonId: true } })
-        const problem = await prisma.problemStatement.findUnique({ where: { id: problemId }, select: { hackathonId: true } })
-        if (!team || !problem || team.hackathonId !== problem.hackathonId) {
+        // Verify team/problem belong to participant's hackathon, and enforce one-time released-only selection
+        const team = await prisma.team.findUnique({
+            where: { id: teamId },
+            select: { hackathonId: true, problemStatementId: true }
+        })
+        const problem = await prisma.problemStatement.findUnique({
+            where: { id: problemId },
+            select: { hackathonId: true, isReleased: true }
+        })
+        if (!team || !problem || team.hackathonId !== problem.hackathonId || team.hackathonId !== participant.hackathonId) {
             return { error: "Invalid selection" }
         }
-        await prisma.team.update({
-            where: { id: teamId },
+
+        if (team.problemStatementId) return { error: "Track already selected" }
+        if (!problem.isReleased) return { error: "Problem not released" }
+
+        const updated = await prisma.team.updateMany({
+            where: { id: teamId, problemStatementId: null },
             data: {
                 problemStatementId: problemId,
                 selectedAt: new Date()
             }
         })
+        if (updated.count === 0) return { error: "Track already selected" }
 
         revalidatePath(`/h/${slug}/dashboard`)
         return { success: true }
