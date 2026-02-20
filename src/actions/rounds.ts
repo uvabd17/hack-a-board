@@ -73,7 +73,8 @@ export async function deleteRound(hackathonId: string, roundId: string) {
         return { error: "Access Denied" }
     }
 
-    await prisma.round.delete({ where: { id: roundId } })
+    // Scope delete to this hackathon so a malicious caller can't delete rounds from other hackathons
+    await prisma.round.delete({ where: { id: roundId, hackathonId } })
     revalidatePath(`/h/${hackathon.slug}/manage/rounds`)
     return { success: true }
 }
@@ -90,6 +91,10 @@ export async function createCriterion(hackathonId: string, roundId: string, form
     if (!hackathon || hackathon.userId !== session.user.id) {
         return { error: "Access Denied" }
     }
+
+    // Verify the round belongs to this hackathon before adding a criterion
+    const round = await prisma.round.findUnique({ where: { id: roundId }, select: { hackathonId: true } })
+    if (!round || round.hackathonId !== hackathonId) return { error: "Round not found" }
 
     const name = formData.get("name") as string
     const weight = parseInt(formData.get("weight") as string)
@@ -120,6 +125,13 @@ export async function deleteCriterion(hackathonId: string, criterionId: string) 
     if (!hackathon || hackathon.userId !== session.user.id) {
         return { error: "Access Denied" }
     }
+
+    // Verify the criterion belongs to a round in this hackathon
+    const criterion = await prisma.criterion.findUnique({
+        where: { id: criterionId },
+        select: { round: { select: { hackathonId: true } } }
+    })
+    if (!criterion || criterion.round.hackathonId !== hackathonId) return { error: "Criterion not found" }
 
     await prisma.criterion.delete({ where: { id: criterionId } })
     revalidatePath(`/h/${hackathon.slug}/manage/rounds`)

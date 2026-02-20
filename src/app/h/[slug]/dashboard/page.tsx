@@ -239,6 +239,7 @@ export default async function DashboardPage({
                                         round={round}
                                         teamId={participant.teamId}
                                         slug={slug}
+                                        qrToken={token!}
                                         existingSubmission={submissions.find(s => s.roundId === round.id)}
                                     />
                                 ))}

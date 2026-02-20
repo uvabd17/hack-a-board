@@ -13,9 +13,18 @@ const SubmissionSchema = z.object({
     otherUrl: z.string().url().optional().or(z.literal("")),
 })
 
-export async function submitProject(data: z.infer<typeof SubmissionSchema>, slug: string) {
+export async function submitProject(data: z.infer<typeof SubmissionSchema>, slug: string, qrToken: string) {
     const validated = SubmissionSchema.safeParse(data)
     if (!validated.success) return { error: "Invalid submission links" }
+
+    // Verify the submitter is actually a participant on this team
+    const participant = await prisma.participant.findUnique({
+        where: { qrToken },
+        select: { teamId: true }
+    })
+    if (!participant || participant.teamId !== data.teamId) {
+        return { error: "Unauthorized" }
+    }
 
     try {
         const round = await prisma.round.findUnique({

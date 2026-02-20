@@ -14,11 +14,13 @@ export function SubmissionForm({
     round,
     teamId,
     slug,
+    qrToken,
     existingSubmission
 }: {
     round: Round,
     teamId: string,
     slug: string,
+    qrToken: string,
     existingSubmission?: Submission | null
 }) {
     const [loading, setLoading] = useState(false)
@@ -32,7 +34,7 @@ export function SubmissionForm({
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
         setLoading(true)
-        const res = await submitProject({ ...formData, teamId, roundId: round.id }, slug)
+        const res = await submitProject({ ...formData, teamId, roundId: round.id }, slug, qrToken)
         if (res.success) {
             alert(`Submission received! Time Bonus: ${res.timeBonus}`)
         } else {
