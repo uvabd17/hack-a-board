@@ -86,6 +86,11 @@ export async function registerParticipant(prevState: RegisterState, formData: Fo
 
             if (!team) return { error: "Invalid invite code" }
 
+            // Ensure the team belongs to this hackathon (prevent cross-hackathon joins)
+            if (team.hackathonId !== hackathon.id) {
+                return { error: "Invalid invite code" }
+            }
+
             // Check team size
             const memberCount = await prisma.participant.count({
                 where: { teamId: team.id }
