@@ -264,7 +264,8 @@ model Round {
   weight Int @default(100) // Percentage (must sum to 100)
 
   // Checkpoint
-  checkpointTime DateTime
+  checkpointTime   DateTime
+  checkpointPausedAt DateTime? // When set, timer is paused; remaining = checkpointTime - checkpointPausedAt
 
   // Timestamps
   createdAt DateTime @default(now())

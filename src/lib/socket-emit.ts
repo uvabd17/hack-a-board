@@ -53,6 +53,14 @@ export function emitFreeze(hackathonId: string, frozen: boolean) {
     })
 }
 
+export function emitCheckpointUpdated(hackathonId: string) {
+    return socketEmit({
+        room: `display:${hackathonId}`,
+        event: "checkpoint-updated",
+        data: {},
+    })
+}
+
 export function emitDisplayConfig(hackathonId: string, mode: string, problemId?: string | null) {
     return socketEmit({
         room: `display:${hackathonId}`,

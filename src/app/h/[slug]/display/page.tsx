@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { ArrowUp, ArrowDown, Minus, Trophy, Terminal, Lock } from "lucide-react"
 import { CeremonyDisplay } from "@/components/ceremony-display"
 import { connectSocket, disconnectSocket } from "@/lib/socket-client"
+import { CountdownTimer } from "@/components/countdown-timer"
 
 // ── Leaderboard Row (extracted for reuse in both columns) ──────────
 function TeamRow({ team, isFrozen }: { team: any; isFrozen: boolean }) {
@@ -130,6 +131,7 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
         const socket = connectSocket(hackathonId, ["display", "hackathon"])
 
         socket.on("score-updated", () => fetchRef.current?.())
+        socket.on("checkpoint-updated", () => fetchRef.current?.())
         socket.on("display:freeze", () => {
             setData((prev: any) => prev ? { ...prev, hackathon: { ...prev.hackathon, isFrozen: true } } : prev)
         })
@@ -142,6 +144,7 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
 
         return () => {
             socket.off("score-updated")
+            socket.off("checkpoint-updated")
             socket.off("display:freeze")
             socket.off("display:unfreeze")
             socket.off("display:set-scene")
@@ -219,6 +222,21 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
         return "ALL TEAMS"
     }, [data, autoTrackIndex])
 
+    // ── Active round checkpoint (nearest future deadline, or paused) ────
+    const activeRound = useMemo(() => {
+        if (!data?.rounds?.length) return null
+        const now = Date.now()
+        // Paused round takes priority
+        const paused = data.rounds.find((r: any) => r.checkpointPausedAt)
+        if (paused) return paused
+        // Nearest future (or most recently expired)
+        return data.rounds
+            .slice()
+            .sort((a: any, b: any) => new Date(a.checkpointTime).getTime() - new Date(b.checkpointTime).getTime())
+            .find((r: any) => new Date(r.checkpointTime).getTime() > now)
+            || data.rounds[data.rounds.length - 1]
+    }, [data?.rounds])
+
     // ── Loading state ─────────────────────────────────────────────
     if (!data) return (
         <div className="min-h-screen bg-black text-cyan-500 font-mono flex items-center justify-center">
@@ -232,6 +250,35 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
     // ── Render ────────────────────────────────────────────────────
     return (
         <div className="min-h-screen bg-black text-cyan-500 font-mono p-6 overflow-hidden flex flex-col">
+            {/* Timer Bar — both timers always visible */}
+            {data.hackathon.status === "live" && (
+                <div className="border-b border-cyan-500/20 pb-4 mb-4 grid grid-cols-2 gap-8">
+                    <div className="flex justify-center">
+                        <CountdownTimer
+                            targetMs={data.hackathon.endDate ? new Date(data.hackathon.endDate).getTime() : null}
+                            label="Event ends in"
+                            size="xl"
+                        />
+                    </div>
+                    <div className="flex justify-center">
+                        {activeRound ? (
+                            <CountdownTimer
+                                targetMs={new Date(activeRound.checkpointTime).getTime()}
+                                pausedRemainingMs={
+                                    activeRound.checkpointPausedAt
+                                        ? new Date(activeRound.checkpointTime).getTime() - new Date(activeRound.checkpointPausedAt).getTime()
+                                        : null
+                                }
+                                label={`${activeRound.name} closes in`}
+                                size="xl"
+                            />
+                        ) : (
+                            <CountdownTimer targetMs={null} label="No active round" size="xl" />
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* Header */}
             <header className="border-b border-cyan-500/30 pb-4 mb-4 flex justify-between items-end">
                 <div className="space-y-1">

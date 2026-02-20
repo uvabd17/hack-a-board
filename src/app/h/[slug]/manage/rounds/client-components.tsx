@@ -1,12 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { createRound, deleteRound, createCriterion, deleteCriterion } from "@/actions/rounds"
+import { createRound, deleteRound, createCriterion, deleteCriterion, updateCheckpointTime, extendCheckpoint, pauseCheckpoint, resumeCheckpoint } from "@/actions/rounds"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Trash2, Plus, Scale } from "lucide-react"
+import { Trash2, Plus, Scale, Pause, Play, Clock } from "lucide-react"
 
 export function RoundForm({ hackathonId }: { hackathonId: string }) {
     const [loading, setLoading] = useState(false)
@@ -40,6 +40,11 @@ export function RoundForm({ hackathonId }: { hackathonId: string }) {
                     <div className="space-y-2">
                         <Label>Weight (%)</Label>
                         <Input name="weight" type="number" min="0" max="100" defaultValue="100" required />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Checkpoint Time (submission deadline)</Label>
+                        <Input name="checkpointTime" type="datetime-local" />
+                        <p className="text-xs text-muted-foreground">Leave blank to default to 24 h from now.</p>
                     </div>
                     <Button type="submit" disabled={loading} className="w-full">
                         {loading ? "Creating..." : "Add Round"}
@@ -90,7 +95,126 @@ interface Round {
     name: string;
     order: number;
     weight: number;
+    checkpointTime: string;
+    checkpointPausedAt: string | null;
     criteria: Criterion[];
+}
+
+function CheckpointControls({ round, hackathonId }: { round: Round, hackathonId: string }) {
+    const [editing, setEditing] = useState(false)
+    const [newTime, setNewTime] = useState(
+        round.checkpointTime ? new Date(round.checkpointTime).toISOString().slice(0, 16) : ""
+    )
+    const [busy, setBusy] = useState(false)
+
+    const isPaused = !!round.checkpointPausedAt
+
+    // Remaining ms when paused
+    const pausedRemainingMs = isPaused
+        ? new Date(round.checkpointTime).getTime() - new Date(round.checkpointPausedAt!).getTime()
+        : null
+
+    function formatCheckpoint() {
+        if (isPaused && pausedRemainingMs !== null) {
+            const totalSec = Math.max(0, Math.floor(pausedRemainingMs / 1000))
+            const h = Math.floor(totalSec / 3600)
+            const m = Math.floor((totalSec % 3600) / 60)
+            const s = totalSec % 60
+            return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")} remaining (paused)`
+        }
+        return new Date(round.checkpointTime).toLocaleString()
+    }
+
+    async function handleSaveTime() {
+        if (!newTime) return
+        setBusy(true)
+        await updateCheckpointTime(hackathonId, round.id, newTime)
+        setBusy(false)
+        setEditing(false)
+    }
+
+    async function handleExtend(minutes: number) {
+        setBusy(true)
+        await extendCheckpoint(hackathonId, round.id, minutes)
+        setBusy(false)
+    }
+
+    async function handlePauseResume() {
+        setBusy(true)
+        if (isPaused) {
+            await resumeCheckpoint(hackathonId, round.id)
+        } else {
+            await pauseCheckpoint(hackathonId, round.id)
+        }
+        setBusy(false)
+    }
+
+    return (
+        <div className="mt-3 pt-3 border-t border-dashed border-border space-y-2">
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Clock size={12} />
+                    <span>{formatCheckpoint()}</span>
+                    {isPaused && (
+                        <span className="bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded text-[10px] font-medium">⏸ PAUSED</span>
+                    )}
+                </div>
+                <button
+                    className="text-xs text-muted-foreground underline underline-offset-2"
+                    onClick={() => setEditing(e => !e)}
+                >
+                    {editing ? "cancel" : "edit time"}
+                </button>
+            </div>
+
+            {editing && (
+                <div className="flex gap-2 items-end">
+                    <div className="flex-1 space-y-1">
+                        <Label className="text-xs">New checkpoint time</Label>
+                        <Input
+                            type="datetime-local"
+                            value={newTime}
+                            onChange={e => setNewTime(e.target.value)}
+                            className="h-8 text-xs"
+                        />
+                    </div>
+                    <Button size="sm" className="h-8 text-xs" onClick={handleSaveTime} disabled={busy || !newTime}>
+                        Save
+                    </Button>
+                </div>
+            )}
+
+            <div className="flex gap-2">
+                <Button
+                    size="sm"
+                    variant="secondary"
+                    className="h-7 text-xs px-2"
+                    onClick={() => handleExtend(5)}
+                    disabled={busy}
+                >
+                    +5 min
+                </Button>
+                <Button
+                    size="sm"
+                    variant="secondary"
+                    className="h-7 text-xs px-2"
+                    onClick={() => handleExtend(10)}
+                    disabled={busy}
+                >
+                    +10 min
+                </Button>
+                <Button
+                    size="sm"
+                    variant={isPaused ? "default" : "outline"}
+                    className={`h-7 text-xs px-2 ml-auto ${isPaused ? "bg-cyan-600 hover:bg-cyan-700" : "border-amber-500/50 text-amber-400 hover:bg-amber-500/10"}`}
+                    onClick={handlePauseResume}
+                    disabled={busy}
+                >
+                    {isPaused ? <><Play size={10} className="mr-1" /> Resume</> : <><Pause size={10} className="mr-1" /> Pause</>}
+                </Button>
+            </div>
+        </div>
+    )
 }
 
 export function RoundItem({ round, hackathonId }: { round: Round, hackathonId: string }) {
@@ -147,6 +271,7 @@ export function RoundItem({ round, hackathonId }: { round: Round, hackathonId: s
                 </div>
 
                 <CriterionForm hackathonId={hackathonId} roundId={round.id} />
+                <CheckpointControls round={round} hackathonId={hackathonId} />
             </CardContent>
         </Card>
     )

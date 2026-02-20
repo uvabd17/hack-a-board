@@ -15,6 +15,8 @@ interface Round {
     name: string;
     order: number;
     weight: number;
+    checkpointTime: Date;
+    checkpointPausedAt: Date | null;
     criteria: Criterion[];
 }
 
@@ -64,8 +66,12 @@ export default async function RoundsPage({ params }: { params: Promise<{ slug: s
                             NO_PROTOCOLS_DEFINED
                         </div>
                     ) : (
-                        hackathon.rounds.map((round: Round) => (
-                            <RoundItem key={round.id} round={round} hackathonId={hackathon.id} />
+                        hackathon.rounds.map((round) => (
+                            <RoundItem key={round.id} round={{
+                                ...round,
+                                checkpointTime: round.checkpointTime.toISOString(),
+                                checkpointPausedAt: round.checkpointPausedAt?.toISOString() ?? null,
+                            }} hackathonId={hackathon.id} />
                         ))
                     )}
                 </div>

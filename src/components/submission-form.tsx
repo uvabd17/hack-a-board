@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { submitProject } from "@/actions/submissions"
 import { CheckCircle2, Clock } from "lucide-react"
+import { CountdownTimer } from "@/components/countdown-timer"
 
 export function SubmissionForm({
     round,
@@ -45,7 +46,18 @@ export function SubmissionForm({
             <CardHeader className="bg-muted/50 pb-3 flex flex-row items-center justify-between">
                 <div>
                     <CardTitle className="text-sm font-bold uppercase tracking-widest">{round.name}</CardTitle>
-                    <p className="text-[10px] text-muted-foreground">Submission deadline: TBA</p>
+                    <div className="mt-1">
+                        <CountdownTimer
+                            targetMs={new Date(round.checkpointTime).getTime()}
+                            pausedRemainingMs={
+                                (round as any).checkpointPausedAt
+                                    ? new Date(round.checkpointTime).getTime() - new Date((round as any).checkpointPausedAt).getTime()
+                                    : null
+                            }
+                            label="Closes in"
+                            size="sm"
+                        />
+                    </div>
                 </div>
                 {existingSubmission && (
                     <Badge variant="outline" className="text-[10px] text-green-500 border-green-500/50">

@@ -9,6 +9,7 @@ import { getLeaderboardData } from "@/actions/leaderboard"
 import { ProblemSelection } from "@/components/problem-selection"
 import { SubmissionForm } from "@/components/submission-form"
 import { CheckCircle2 } from "lucide-react"
+import { CountdownTimer } from "@/components/countdown-timer"
 
 async function generateQR(text: string) {
     try {
@@ -77,19 +78,45 @@ export default async function DashboardPage({
 
     return (
         <div className="min-h-screen bg-background p-4 font-mono text-foreground pb-20">
-            <header className="mb-8 border-b border-border pb-4 flex justify-between items-center max-w-6xl mx-auto">
-                <div>
-                    <h1 className="text-xl font-bold text-primary">{participant.hackathon.name}</h1>
-                    <p className="text-xs text-muted-foreground">HACKER_DASHBOARD</p>
+            <header className="mb-8 border-b border-border pb-4 max-w-6xl mx-auto space-y-3">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h1 className="text-xl font-bold text-primary">{participant.hackathon.name}</h1>
+                        <p className="text-xs text-muted-foreground">HACKER_DASHBOARD</p>
+                    </div>
+                    <div className="flex gap-2 items-center">
+                        <a href={`/h/${slug}/display`} target="_blank" className="text-xs text-primary hover:underline uppercase tracking-widest">
+                            📊 Leaderboard
+                        </a>
+                        <Badge variant={participant.team.status === 'approved' ? 'default' : 'secondary'} className="uppercase">
+                            STATUS: {participant.team.status}
+                        </Badge>
+                    </div>
                 </div>
-                <div className="flex gap-2 items-center">
-                    <a href={`/h/${slug}/display`} target="_blank" className="text-xs text-primary hover:underline uppercase tracking-widest">
-                        📊 Leaderboard
-                    </a>
-                    <Badge variant={participant.team.status === 'approved' ? 'default' : 'secondary'} className="uppercase">
-                        STATUS: {participant.team.status}
-                    </Badge>
-                </div>
+
+                {/* Live timer bar — only shown when event is live */}
+                {participant.hackathon.status === "live" && (
+                    <div className="flex items-center gap-6 bg-muted/30 border border-border rounded px-4 py-2">
+                        <CountdownTimer
+                            targetMs={new Date(participant.hackathon.endDate).getTime()}
+                            label="Event ends in"
+                            size="sm"
+                        />
+                        {rounds.filter(r => new Date(r.checkpointTime).getTime() > Date.now() || r.checkpointPausedAt).map(r => (
+                            <CountdownTimer
+                                key={r.id}
+                                targetMs={new Date(r.checkpointTime).getTime()}
+                                pausedRemainingMs={
+                                    r.checkpointPausedAt
+                                        ? new Date(r.checkpointTime).getTime() - new Date(r.checkpointPausedAt).getTime()
+                                        : null
+                                }
+                                label={`${r.name} closes in`}
+                                size="sm"
+                            />
+                        ))}
+                    </div>
+                )}
             </header>
 
             <main className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
