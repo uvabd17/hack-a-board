@@ -219,7 +219,7 @@ export default async function DashboardPage({
                                     </div>
                                 </div>
                             ) : problems.length > 0 ? (
-                                <ProblemSelection problems={problems} teamId={participant.teamId} slug={slug} />
+                                <ProblemSelection problems={problems} teamId={participant.teamId} slug={slug} qrToken={token!} />
                             ) : (
                                 <p className="text-xs text-muted-foreground italic">Problem statements have not been released by the organizer yet.</p>
                             )}
