@@ -22,8 +22,8 @@ export function RoundForm({ hackathonId }: { hackathonId: string }) {
     return (
         <Card className="border-primary/20">
             <CardHeader>
-                <CardTitle>INITIALIZE_ROUND</CardTitle>
-                <CardDescription>Create a judging phase.</CardDescription>
+                <CardTitle>Add Round</CardTitle>
+                <CardDescription>Create a judging round with criteria.</CardDescription>
             </CardHeader>
             <CardContent>
                 <form id="create-round-form" action={handleSubmit} className="space-y-4">
@@ -42,7 +42,7 @@ export function RoundForm({ hackathonId }: { hackathonId: string }) {
                         <Input name="weight" type="number" min="0" max="100" defaultValue="100" required />
                     </div>
                     <Button type="submit" disabled={loading} className="w-full">
-                        {loading ? "CREATING..." : "ESTABLISH_ROUND"}
+                        {loading ? "Creating..." : "Add Round"}
                     </Button>
                 </form>
             </CardContent>

@@ -88,7 +88,7 @@ export function ScoringForm({
         <Tabs defaultValue={rounds[0].id} className="w-full">
             <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 bg-zinc-800">
                 {rounds.map(round => (
-                    <TabsTrigger key={round.id} value={round.id} className="data-[state=active]:bg-green-600 data-[state=active]:text-white">
+                    <TabsTrigger key={round.id} value={round.id} className="data-[state=active]:bg-cyan-600 data-[state=active]:text-white">
                         {round.name}
                     </TabsTrigger>
                 ))}
@@ -112,7 +112,7 @@ export function ScoringForm({
                             <div key={criterion.id} className="p-4 bg-zinc-900 border border-zinc-800 rounded-lg space-y-4">
                                 <div className="flex justify-between items-center">
                                     <label className="font-bold text-lg text-white">{criterion.name}</label>
-                                    <span className="text-2xl font-mono text-green-400">
+                                    <span className="text-2xl font-mono text-cyan-400">
                                         {scores[criterion.id] || 0}<span className="text-zinc-600 text-sm">/5</span>
                                     </span>
                                 </div>
@@ -124,7 +124,7 @@ export function ScoringForm({
                                     step="1"
                                     value={scores[criterion.id] || 0}
                                     onChange={(e) => handleScoreChange(criterion.id, parseInt(e.target.value))}
-                                    className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-green-500"
+                                    className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
                                 />
 
                                 <div className="flex justify-between text-xs text-zinc-500 font-mono">

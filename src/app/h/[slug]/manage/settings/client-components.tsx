@@ -214,32 +214,18 @@ export function HackathonSettingsForm({ hackathon }: { hackathon: HackathonData 
             <Section title="TEAM RULES">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <Field label="Min Team Size">
-                        <Input
-                            type="number"
-                            min={1}
-                            max={20}
-                            value={form.minTeamSize}
-                            onChange={e => update("minTeamSize", parseInt(e.target.value) || 1)}
-                        />
+                        <NumberStepper value={form.minTeamSize} min={1} max={20}
+                            onChange={v => update("minTeamSize", v)} />
                     </Field>
 
                     <Field label="Max Team Size">
-                        <Input
-                            type="number"
-                            min={1}
-                            max={20}
-                            value={form.maxTeamSize}
-                            onChange={e => update("maxTeamSize", parseInt(e.target.value) || 4)}
-                        />
+                        <NumberStepper value={form.maxTeamSize} min={1} max={20}
+                            onChange={v => update("maxTeamSize", v)} />
                     </Field>
 
-                    <Field label="Max Teams (0 = unlimited)">
-                        <Input
-                            type="number"
-                            min={0}
-                            value={form.maxTeams}
-                            onChange={e => update("maxTeams", parseInt(e.target.value) || 0)}
-                        />
+                    <Field label="Max Teams" hint="0 = unlimited">
+                        <NumberStepper value={form.maxTeams} min={0} max={999}
+                            onChange={v => update("maxTeams", v)} />
                     </Field>
                 </div>
 
@@ -261,23 +247,13 @@ export function HackathonSettingsForm({ hackathon }: { hackathon: HackathonData 
             <Section title="SCORING CONFIG">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Field label="Time Bonus Rate" hint="+pts/min for early submission">
-                        <Input
-                            type="number"
-                            step="0.1"
-                            min={0}
-                            value={form.timeBonusRate}
-                            onChange={e => update("timeBonusRate", parseFloat(e.target.value) || 0)}
-                        />
+                        <NumberStepper value={form.timeBonusRate} min={0} max={100} step={0.1}
+                            onChange={v => update("timeBonusRate", v)} decimal />
                     </Field>
 
                     <Field label="Time Penalty Rate" hint="-pts/min for late submission">
-                        <Input
-                            type="number"
-                            step="0.1"
-                            min={0}
-                            value={form.timePenaltyRate}
-                            onChange={e => update("timePenaltyRate", parseFloat(e.target.value) || 0)}
-                        />
+                        <NumberStepper value={form.timePenaltyRate} min={0} max={100} step={0.1}
+                            onChange={v => update("timePenaltyRate", v)} decimal />
                     </Field>
                 </div>
             </Section>
@@ -335,6 +311,42 @@ function Field({
             <Label className="text-xs font-bold uppercase tracking-wider">{label}</Label>
             {hint && <p className="text-[10px] text-muted-foreground">{hint}</p>}
             {children}
+        </div>
+    )
+}
+
+function NumberStepper({
+    value, min = 0, max = 999, step = 1, onChange, decimal = false
+}: {
+    value: number; min?: number; max?: number; step?: number;
+    onChange: (v: number) => void; decimal?: boolean
+}) {
+    const dec = () => {
+        const n = decimal ? Math.round((value - step) * 10) / 10 : value - step
+        onChange(Math.max(min, n))
+    }
+    const inc = () => {
+        const n = decimal ? Math.round((value + step) * 10) / 10 : value + step
+        onChange(Math.min(max, n))
+    }
+    return (
+        <div className="flex items-center border border-input rounded-md overflow-hidden">
+            <button type="button" onClick={dec}
+                className="px-3 py-2 text-sm font-bold text-muted-foreground hover:bg-muted hover:text-foreground transition-colors border-r border-input">
+                −
+            </button>
+            <input
+                type="text" inputMode="decimal" value={value}
+                onChange={e => {
+                    const v = decimal ? parseFloat(e.target.value) : parseInt(e.target.value)
+                    if (!isNaN(v)) onChange(Math.min(max, Math.max(min, v)))
+                }}
+                className="flex-1 text-center py-2 text-sm font-mono bg-transparent outline-none min-w-0"
+            />
+            <button type="button" onClick={inc}
+                className="px-3 py-2 text-sm font-bold text-muted-foreground hover:bg-muted hover:text-foreground transition-colors border-l border-input">
+                +
+            </button>
         </div>
     )
 }

@@ -95,23 +95,53 @@ export default async function DashboardPage({
             <main className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
                 {/* Left Column: Identity & Intel */}
                 <div className="lg:col-span-1 space-y-6">
-                    {/* Identity Card */}
-                    <Card className="bg-card border-primary/20">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm text-muted-foreground uppercase tracking-widest">Identity</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex flex-col items-center">
+                    {/* QR Passport Card */}
+                    <div className="relative overflow-hidden border border-primary/30 bg-gradient-to-br from-card via-card to-primary/5 rounded-lg">
+                        {/* Decorative corner accents */}
+                        <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-primary/40 rounded-tl-lg" />
+                        <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-primary/40 rounded-tr-lg" />
+                        <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-primary/40 rounded-bl-lg" />
+                        <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-primary/40 rounded-br-lg" />
+
+                        <div className="px-6 pt-5 pb-2">
+                            <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground font-bold text-center">Participant Pass</p>
+                            <p className="text-[9px] text-center text-muted-foreground/60 mt-0.5">{participant.hackathon.name}</p>
+                        </div>
+
+                        {/* Dashed separator */}
+                        <div className="mx-4 border-t border-dashed border-primary/20" />
+
+                        {/* QR Code */}
+                        <div className="flex justify-center py-5">
+                            <div className="relative">
+                                <div className="absolute -inset-2 bg-primary/5 rounded-xl blur-sm" />
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={qrCodeDataUrl} alt="Participant QR Code" className="w-40 h-40 bg-white p-2 mb-4" />
-                                <p className="text-[10px] text-center text-muted-foreground break-all opacity-50">{token}</p>
+                                <img src={qrCodeDataUrl} alt="Participant QR Code"
+                                    className="relative w-44 h-44 bg-white p-3 rounded-lg shadow-md" />
                             </div>
-                            <div className="space-y-1">
-                                <p className="text-lg font-bold text-primary">{participant.name}</p>
-                                <p className="text-xs text-muted-foreground">{participant.email}</p>
-                            </div>
-                        </CardContent>
-                    </Card>
+                        </div>
+
+                        {/* Dashed separator */}
+                        <div className="mx-4 border-t border-dashed border-primary/20" />
+
+                        {/* Identity info */}
+                        <div className="px-6 py-4 text-center space-y-1.5">
+                            <p className="text-lg font-bold text-foreground tracking-wide">{participant.name}</p>
+                            <p className="text-xs text-muted-foreground">{participant.email}</p>
+                            {participant.team && (
+                                <div className="pt-2">
+                                    <Badge variant="outline" className="text-[10px] border-primary/30 text-primary px-3 py-0.5 uppercase tracking-widest">
+                                        {participant.team.name}
+                                    </Badge>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Token footer */}
+                        <div className="bg-muted/30 px-4 py-2">
+                            <p className="text-[8px] text-center text-muted-foreground/40 font-mono break-all">{token}</p>
+                        </div>
+                    </div>
 
                     {/* Team Intel */}
                     <Card className="bg-card border-border">

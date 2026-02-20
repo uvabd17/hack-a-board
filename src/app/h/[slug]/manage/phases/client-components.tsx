@@ -30,7 +30,7 @@ export function PhaseForm({ hackathonId }: { hackathonId: string }) {
     return (
         <Card className="border-primary/20">
             <CardHeader>
-                <CardTitle>ADD_PHASE</CardTitle>
+                <CardTitle>Add Phase</CardTitle>
                 <CardDescription>Define a schedule block (Check-in, Hacking, Judging…)</CardDescription>
             </CardHeader>
             <CardContent>
@@ -68,7 +68,7 @@ export function PhaseForm({ hackathonId }: { hackathonId: string }) {
                     )}
 
                     <Button type="submit" disabled={loading} className="w-full">
-                        {loading ? "CREATING..." : "REGISTER_PHASE"}
+                        {loading ? "Creating..." : "Add Phase"}
                     </Button>
                 </form>
             </CardContent>
