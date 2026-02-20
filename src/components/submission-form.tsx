@@ -50,8 +50,8 @@ export function SubmissionForm({
                         <CountdownTimer
                             targetMs={new Date(round.checkpointTime).getTime()}
                             pausedRemainingMs={
-                                (round as any).checkpointPausedAt
-                                    ? new Date(round.checkpointTime).getTime() - new Date((round as any).checkpointPausedAt).getTime()
+                                round.checkpointPausedAt
+                                    ? new Date(round.checkpointTime).getTime() - new Date(round.checkpointPausedAt).getTime()
                                     : null
                             }
                             label="Closes in"
