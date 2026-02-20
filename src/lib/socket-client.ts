@@ -9,6 +9,7 @@ const SOCKET_SERVER_URL =
     process.env.NEXT_PUBLIC_SOCKET_SERVER_URL || "http://localhost:3001"
 
 let socket: Socket | null = null
+let currentJoinHandler: (() => void) | null = null
 
 export function getSocket(): Socket {
     if (!socket) {
@@ -23,33 +24,33 @@ export function getSocket(): Socket {
 export function connectSocket(hackathonId: string, rooms: ("hackathon" | "display")[]) {
     const s = getSocket()
 
-    if (!s.connected) {
-        s.connect()
+    // Remove previous reconnect handler if any (prevent stacking)
+    if (currentJoinHandler) {
+        s.off("connect", currentJoinHandler)
     }
 
-    s.once("connect", () => {
-        if (rooms.includes("hackathon")) {
-            s.emit("join:hackathon", hackathonId)
-        }
-        if (rooms.includes("display")) {
-            s.emit("join:display", hackathonId)
-        }
-    })
+    // Re-join rooms on every connect — including auto-reconnects after network drops
+    currentJoinHandler = () => {
+        if (rooms.includes("hackathon")) s.emit("join:hackathon", hackathonId)
+        if (rooms.includes("display")) s.emit("join:display", hackathonId)
+    }
+    s.on("connect", currentJoinHandler)
 
-    // If already connected, join immediately
-    if (s.connected) {
-        if (rooms.includes("hackathon")) {
-            s.emit("join:hackathon", hackathonId)
-        }
-        if (rooms.includes("display")) {
-            s.emit("join:display", hackathonId)
-        }
+    if (!s.connected) {
+        s.connect()
+    } else {
+        // Already connected — join immediately
+        currentJoinHandler()
     }
 
     return s
 }
 
 export function disconnectSocket() {
+    if (currentJoinHandler && socket) {
+        socket.off("connect", currentJoinHandler)
+        currentJoinHandler = null
+    }
     if (socket?.connected) {
         socket.disconnect()
     }
