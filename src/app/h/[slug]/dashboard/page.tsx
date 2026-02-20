@@ -51,7 +51,7 @@ export default async function DashboardPage({
         )
     }
 
-    const qrCodeDataUrl = await generateQR(participant.qrToken)
+    const qrCodeDataUrl = await generateQR(`/h/${slug}/qr/${participant.qrToken}`)
 
     // Fetch live leaderboard data
     const { leaderboard, frozen } = await getLeaderboardData(slug)
