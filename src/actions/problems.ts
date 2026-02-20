@@ -108,7 +108,7 @@ export async function deleteProblemStatement(hackathonId: string, problemId: str
     }
 
     await prisma.problemStatement.delete({
-        where: { id: problemId, hackathonId: hackathon.id }
+        where: { id: problemId, hackathonId }
     })
 
     revalidatePath(`/h/${hackathon.slug}/manage/problems`)
