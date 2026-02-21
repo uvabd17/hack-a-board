@@ -53,24 +53,23 @@ export default async function DashboardPage({
 
     const qrCodeDataUrl = await generateQR(`/h/${slug}/qr/${participant.qrToken}`)
 
-    // Fetch live leaderboard data
-    const { leaderboard, frozen } = await getLeaderboardData(slug)
+    // Parallelize independent queries for better performance
+    const [{ leaderboard, frozen }, problems, rounds, submissions] = await Promise.all([
+        getLeaderboardData(slug),
+        prisma.problemStatement.findMany({
+            where: { hackathonId: participant.hackathonId, isReleased: true },
+            orderBy: { order: 'asc' }
+        }),
+        prisma.round.findMany({
+            where: { hackathonId: participant.hackathonId },
+            orderBy: { order: 'asc' }
+        }),
+        prisma.submission.findMany({
+            where: { teamId: participant.teamId }
+        })
+    ])
+
     const teamEntry = leaderboard.find(e => e.teamId === participant.teamId)
-
-    // Fetch problem statements and rounds
-    const problems = await prisma.problemStatement.findMany({
-        where: { hackathonId: participant.hackathonId, isReleased: true },
-        orderBy: { order: 'asc' }
-    })
-
-    const rounds = await prisma.round.findMany({
-        where: { hackathonId: participant.hackathonId },
-        orderBy: { order: 'asc' }
-    })
-
-    const submissions = await prisma.submission.findMany({
-        where: { teamId: participant.teamId }
-    })
 
     const selectedProblem = participant.team.problemStatementId
         ? problems.find(p => p.id === participant.team.problemStatementId)

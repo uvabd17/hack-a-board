@@ -52,20 +52,36 @@ export function emitScoreUpdated(hackathonId: string, teamId: string) {
     })
 }
 
-export function emitFreeze(hackathonId: string, frozen: boolean) {
-    return socketEmit({
-        room: `display:${hackathonId}`,
-        event: frozen ? "display:freeze" : "display:unfreeze",
-        data: {},
-    })
+export async function emitFreeze(hackathonId: string, frozen: boolean) {
+    // Emit to both display and hackathon rooms so participants also receive freeze updates
+    await Promise.all([
+        socketEmit({
+            room: `display:${hackathonId}`,
+            event: frozen ? "display:freeze" : "display:unfreeze",
+            data: {},
+        }),
+        socketEmit({
+            room: `hackathon:${hackathonId}`,
+            event: frozen ? "display:freeze" : "display:unfreeze",
+            data: {},
+        })
+    ])
 }
 
-export function emitCheckpointUpdated(hackathonId: string) {
-    return socketEmit({
-        room: `display:${hackathonId}`,
-        event: "checkpoint-updated",
-        data: {},
-    })
+export async function emitCheckpointUpdated(hackathonId: string) {
+    // Emit to both rooms so participant dashboards also get timer updates
+    await Promise.all([
+        socketEmit({
+            room: `display:${hackathonId}`,
+            event: "checkpoint-updated",
+            data: {},
+        }),
+        socketEmit({
+            room: `hackathon:${hackathonId}`,
+            event: "checkpoint-updated",
+            data: {},
+        })
+    ])
 }
 
 export function emitDisplayConfig(hackathonId: string, mode: string, problemId?: string | null) {

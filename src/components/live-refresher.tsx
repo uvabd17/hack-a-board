@@ -23,11 +23,15 @@ export function LiveRefresher({ hackathonId }: { hackathonId: string }) {
         socket.on("score-updated", refresh)
         socket.on("problem-statements-released", refresh)
         socket.on("checkpoint-updated", refresh)
+        socket.on("display:freeze", refresh)
+        socket.on("display:unfreeze", refresh)
 
         return () => {
             socket.off("score-updated", refresh)
             socket.off("problem-statements-released", refresh)
             socket.off("checkpoint-updated", refresh)
+            socket.off("display:freeze", refresh)
+            socket.off("display:unfreeze", refresh)
             disconnectSocket()
         }
     }, [hackathonId, router])

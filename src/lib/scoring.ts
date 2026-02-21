@@ -104,7 +104,7 @@ export function calculateTeamScore(
  */
 export function breakTie(a: TeamWithRelations, b: TeamWithRelations, allRounds: Round[]): number {
     // 1. Find the first round (by order)
-    const firstRound = allRounds.sort((x, y) => x.order - y.order)[0];
+    const firstRound = [...allRounds].sort((x, y) => x.order - y.order)[0];
 
     if (firstRound) {
         const subA = a.submissions.find(s => s.roundId === firstRound.id);

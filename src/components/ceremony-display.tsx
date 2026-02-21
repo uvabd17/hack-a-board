@@ -15,10 +15,8 @@ export function CeremonyDisplay({ slug, hackathonId }: { slug: string; hackathon
             setState(data)
         }
 
-        // Poll every 2s as fallback
+        // Fetch once on mount - rely on socket events for updates
         fetchState()
-        const interval = setInterval(fetchState, 2000)
-        return () => clearInterval(interval)
     }, [slug])
 
     // Socket.IO: instant ceremony reveal events

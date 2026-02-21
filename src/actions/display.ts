@@ -107,15 +107,20 @@ export async function getDisplayState(slug: string) {
 export async function getTrackStanding(slug: string, problemId: string) {
     const hackathon = await prisma.hackathon.findUnique({
         where: { slug },
-        select: { id: true, isFrozen: true, name: true, displayMode: true, displayProblemId: true }
+        select: { id: true, isFrozen: true, name: true, displayMode: true, displayProblemId: true, status: true, liveStartedAt: true, endDate: true, startDate: true }
     })
 
     if (!hackathon) return null
 
     try {
-        const problems = await prisma.problemStatement.findMany({
-            where: { hackathonId: hackathon.id }
-        })
+        const [problems, rounds] = await Promise.all([
+            prisma.problemStatement.findMany({ where: { hackathonId: hackathon.id } }),
+            prisma.round.findMany({
+                where: { hackathonId: hackathon.id },
+                select: { id: true, name: true, order: true, checkpointTime: true, checkpointPausedAt: true },
+                orderBy: { order: "asc" }
+            })
+        ])
 
         const { leaderboard, frozen } = await getLeaderboardData(slug, problemId)
 
@@ -123,6 +128,7 @@ export async function getTrackStanding(slug: string, problemId: string) {
             hackathon: { ...hackathon, isFrozen: frozen },
             leaderboard,
             problems,
+            rounds,
             displayConfig: {
                 mode: "problem",
                 problemId

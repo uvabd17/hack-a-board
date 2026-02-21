@@ -82,33 +82,44 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
     const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
     const [currentPage, setCurrentPage] = useState(0)
     const [autoTrackIndex, setAutoTrackIndex] = useState(-1)
+    
+    // Refs to prevent useEffect dependency thrashing
+    const autoTrackIndexRef = useRef(-1)
+    const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
     const fetchRef = useRef<(() => Promise<void>) | null>(null)
 
-    // Global mode shows 24 teams (2 cols × 12), problem mode shows 12
+    // Sync ref with state
+    useEffect(() => {
+        autoTrackIndexRef.current = autoTrackIndex
+    }, [autoTrackIndex])
+
+    // Global mode shows 20 teams (2 cols × 10), problem mode shows 12
     const isGlobalMode = data?.displayConfig?.mode === "global" ||
         (data?.displayConfig?.mode === "auto" && autoTrackIndex === -1)
-    const TEAMS_PER_PAGE = isGlobalMode ? 24 : 12
+    const TEAMS_PER_PAGE = isGlobalMode ? 20 : 12
 
     // ── Data fetching ─────────────────────────────────────────────
     useEffect(() => {
         const fetchData = async () => {
             let problemId = null
-            if (data?.displayConfig?.mode === "auto") {
-                if (autoTrackIndex >= 0 && data.problems[autoTrackIndex]) {
-                    problemId = data.problems[autoTrackIndex].id
+            const currentData = data
+            if (currentData?.displayConfig?.mode === "auto") {
+                if (autoTrackIndexRef.current >= 0 && currentData.problems[autoTrackIndexRef.current]) {
+                    problemId = currentData.problems[autoTrackIndexRef.current].id
                 }
             }
 
             const result = await getDisplayStateWithOverride(slug, problemId)
 
             if (result) {
-                if (!result.hackathon.isFrozen || !data) {
+                if (!result.hackathon.isFrozen || !currentData) {
                     setData((current: any) => {
                         if (current) setPrevData(current)
                         return result
                     })
                     setLastUpdated(new Date())
-                } else if (result.hackathon.isFrozen && data && !data.hackathon.isFrozen) {
+                } else if (result.hackathon.isFrozen && currentData && !currentData.hackathon.isFrozen) {
+                    // Just update freeze flag without clearing prevData
                     setData((prev: any) => ({
                         ...prev,
                         hackathon: { ...prev.hackathon, isFrozen: true }
@@ -119,30 +130,39 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
 
         fetchRef.current = fetchData
         fetchData()
-        const interval = setInterval(fetchData, 15000)
+        const interval = setInterval(fetchData, 30000) // Reduced from 15s to 30s
         return () => clearInterval(interval)
-    }, [slug, data?.hackathon?.isFrozen, autoTrackIndex, data?.displayConfig?.mode])
+    }, [slug]) // Only depend on slug to prevent effect churn
 
-    // ── Socket.IO real-time ───────────────────────────────────────
+    // ── Socket.IO real-time with debouncing ───────────────────────
     useEffect(() => {
         const hackathonId = data?.hackathon?.id
         if (!hackathonId) return
 
         const socket = connectSocket(hackathonId, ["display", "hackathon"])
 
-        socket.on("score-updated", () => fetchRef.current?.())
-        socket.on("checkpoint-updated", () => fetchRef.current?.())
+        // Debounced fetch to prevent server hammering during scoring bursts
+        const debouncedFetch = () => {
+            if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+            debounceTimerRef.current = setTimeout(() => {
+                fetchRef.current?.()
+            }, 500)
+        }
+
+        socket.on("score-updated", debouncedFetch)
+        socket.on("checkpoint-updated", debouncedFetch)
         socket.on("display:freeze", () => {
             setData((prev: any) => prev ? { ...prev, hackathon: { ...prev.hackathon, isFrozen: true } } : prev)
         })
         socket.on("display:unfreeze", () => {
             setData((prev: any) => prev ? { ...prev, hackathon: { ...prev.hackathon, isFrozen: false } } : prev)
-            fetchRef.current?.()
+            debouncedFetch()
         })
-        socket.on("display:set-scene", () => fetchRef.current?.())
-        socket.on("problem-statements-released", () => fetchRef.current?.())
+        socket.on("display:set-scene", debouncedFetch)
+        socket.on("problem-statements-released", debouncedFetch)
 
         return () => {
+            if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
             socket.off("score-updated")
             socket.off("checkpoint-updated")
             socket.off("display:freeze")
@@ -166,7 +186,7 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
                 return (prev + 2) % totalOptions - 1
             })
             setCurrentPage(0)
-        }, 15000)
+        }, 30000) // Changed from 15s to 30s per spec
 
         return () => clearInterval(cycleInterval)
     }, [data?.displayConfig?.mode, data?.problems?.length])
@@ -180,7 +200,7 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
                 const totalPages = Math.ceil(data.leaderboard.length / TEAMS_PER_PAGE)
                 return (prev + 1) % totalPages
             })
-        }, 8000)
+        }, 10000) // Changed from 8s to 10s per spec
 
         return () => clearInterval(pageInterval)
     }, [data, TEAMS_PER_PAGE])
