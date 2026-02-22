@@ -121,7 +121,7 @@ export async function checkSubmissionStatus(teamId: string, roundId: string) {
 
         // Group scores by judge
         const judgeScoresMap = new Map<string, typeof scores>()
-        scores.forEach(score => {
+        scores.forEach((score: typeof scores[0]) => {
             const existing = judgeScoresMap.get(score.judgeId) || []
             judgeScoresMap.set(score.judgeId, [...existing, score])
         })
@@ -132,7 +132,7 @@ export async function checkSubmissionStatus(teamId: string, roundId: string) {
         for (const [judgeId, judgeScores] of judgeScoresMap.entries()) {
             if (judgeScores.length === round.criteria.length) {
                 // This judge completed all criteria
-                const latestScore = judgeScores.reduce((latest, score) =>
+                const latestScore = judgeScores.reduce((latest: typeof scores[0], score: typeof scores[0]) =>
                     score.createdAt > latest.createdAt ? score : latest
                 )
                 completeJudges.push({
