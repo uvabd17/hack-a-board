@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { submitScore } from "@/actions/scoring"
+import { recordJudgingAttempt } from "@/actions/judging"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle2, AlertCircle } from "lucide-react"
+import { CheckCircle2, AlertCircle, Trophy } from "lucide-react"
 
 // Native range input is safer if Slider component missing, but let's try to be premium.
 // Actually, I'll use a styled native input for MVP reliability unless I check for Slider.
@@ -38,7 +39,17 @@ export function ScoringForm({
 }) {
     const [scores, setScores] = useState<Record<string, number>>(initialScores)
     const [loading, setLoading] = useState(false)
-    const [status, setStatus] = useState<{ error?: string, success?: string } | null>(null)
+    const [status, setStatus] = useState<{ 
+        error?: string
+        success?: string
+        submissionStatus?: {
+            submitted: boolean
+            judgeCount: number
+            requiredJudges: number
+            newSubmission: boolean
+            timeBonus?: number
+        }
+    } | null>(null)
 
     // Ensure at least one round exists
     if (rounds.length === 0) return <div>No scoring rounds configured yet</div>
@@ -79,7 +90,29 @@ export function ScoringForm({
         if (res.error) {
             setStatus({ error: res.error })
         } else {
-            setStatus({ success: "Scores saved successfully." })
+            // Check if this score triggered a submission
+            if (res.submissionStatus?.newSubmission && res.submissionStatus.submitted) {
+                const bonus = res.submissionStatus.timeBonus || 0
+                const bonusText = bonus > 0 
+                    ? `+${bonus} time bonus!` 
+                    : bonus < 0 
+                    ? `${bonus} time penalty` 
+                    : ''
+                setStatus({ 
+                    success: `🎉 Team submitted! ${bonusText}`,
+                    submissionStatus: res.submissionStatus
+                })
+            } else if (res.submissionStatus?.submitted) {
+                setStatus({ 
+                    success: `Scores saved. Team already submitted (${res.submissionStatus.judgeCount}/${res.submissionStatus.requiredJudges} judges).`,
+                    submissionStatus: res.submissionStatus
+                })
+            } else {
+                setStatus({ 
+                    success: `Scores saved! Team progress: ${res.submissionStatus?.judgeCount}/${res.submissionStatus?.requiredJudges} judges completed.`,
+                    submissionStatus: res.submissionStatus
+                })
+            }
         }
         setLoading(false)
     }
@@ -142,8 +175,13 @@ export function ScoringForm({
                     )}
 
                     {status?.success && (
-                        <div className="flex items-center gap-2 text-green-400 bg-green-900/20 p-4 rounded border border-green-900">
-                            <CheckCircle2 size={18} /> {status.success}
+                        <div className={`flex items-center gap-2 p-4 rounded border ${
+                            status.submissionStatus?.newSubmission 
+                                ? 'text-cyan-300 bg-cyan-900/30 border-cyan-700 shadow-[0_0_30px_rgba(34,211,238,0.2)]'
+                                : 'text-green-400 bg-green-900/20 border-green-900'
+                        }`}>
+                            {status.submissionStatus?.newSubmission ? <Trophy size={18} /> : <CheckCircle2 size={18} />}
+                            <span>{status.success}</span>
                         </div>
                     )}
 

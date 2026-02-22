@@ -10,7 +10,7 @@ import { emitTeamSubmitted } from "@/lib/socket-emit"
  */
 export async function recordJudgingAttempt(
     judgeToken: string,
-    teamQRToken: string,
+    teamId: string,
     roundId: string
 ) {
     try {
@@ -24,13 +24,13 @@ export async function recordJudgingAttempt(
             return { error: "Invalid or inactive judge" }
         }
 
-        // Find team by QR token
-        const participant = await prisma.participant.findUnique({
-            where: { qrToken: teamQRToken },
-            select: { teamId: true, hackathonId: true }
+        // Validate team belongs to same hackathon
+        const team = await prisma.team.findUnique({
+            where: { id: teamId },
+            select: { hackathonId: true }
         })
 
-        if (!participant || participant.hackathonId !== judge.hackathonId) {
+        if (!team || team.hackathonId !== judge.hackathonId) {
             return { error: "Team not found or not in this hackathon" }
         }
 
@@ -48,7 +48,7 @@ export async function recordJudgingAttempt(
         const existing = await prisma.judgingAttempt.findFirst({
             where: {
                 judgeId: judge.id,
-                teamId: participant.teamId,
+                teamId,
                 roundId
             }
         })
@@ -64,14 +64,14 @@ export async function recordJudgingAttempt(
             await prisma.judgingAttempt.create({
                 data: {
                     judgeId: judge.id,
-                    teamId: participant.teamId,
+                    teamId,
                     roundId,
                     scannedAt: new Date()
                 }
             })
         }
 
-        return { success: true, teamId: participant.teamId }
+        return { success: true, teamId }
     } catch (error) {
         console.error("Error recording judging attempt:", error)
         return { error: "Failed to record judging attempt" }
