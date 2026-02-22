@@ -10,7 +10,7 @@ import { unstable_cache } from "next/cache"
 import { getLeaderboardData } from "@/actions/leaderboard"
 import { ProblemSelection } from "@/components/problem-selection"
 import { SubmissionForm } from "@/components/submission-form"
-import { JudgingProgress } from "@/components/judging-progress"
+import { LiveJudgingProgress } from "@/components/live-judging-progress"
 import { LinkSubmissionForm } from "@/components/link-submission-form"
 import { getTeamJudgingProgress } from "@/actions/judging"
 import { CheckCircle2 } from "lucide-react"
@@ -294,17 +294,19 @@ export default async function DashboardPage({
                                     // Check if this round has judging progress data
                                     if (progressData && 'submitted' in progressData) {
                                         return (
-                                            <JudgingProgress
+                                            <LiveJudgingProgress
                                                 key={round.id}
                                                 roundName={round.name}
                                                 roundId={round.id}
+                                                teamId={participant.teamId}
+                                                hackathonId={participant.hackathonId}
                                                 checkpointTime={round.checkpointTime}
                                                 checkpointPausedAt={round.checkpointPausedAt}
-                                                requiredJudges={progressData.requiredJudges}
-                                                judgeCount={progressData.judgeCount}
-                                                submitted={progressData.submitted}
-                                                timeBonus={progressData.timeBonus}
-                                                judges={progressData.judges || []}
+                                                initialRequiredJudges={progressData.requiredJudges}
+                                                initialJudgeCount={progressData.judgeCount}
+                                                initialSubmitted={progressData.submitted}
+                                                initialTimeBonus={progressData.timeBonus}
+                                                initialJudges={progressData.judges || []}
                                             />
                                         )
                                     }

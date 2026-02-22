@@ -5,13 +5,13 @@ import { calculateTeamScore, breakTie, LeaderboardEntry, TeamWithRelations, Roun
 import { Round } from "@prisma/client"
 import { unstable_cache } from "next/cache"
 
-// Cached leaderboard — revalidated every 10s or on-demand via tag
+// Cached leaderboard — revalidated every 5s or on-demand via tag
 const getCachedLeaderboard = unstable_cache(
     async (hackathonId: string, problemId?: string | null) => {
         return computeLeaderboard(hackathonId, problemId)
     },
     ["leaderboard"],
-    { revalidate: 10, tags: ["leaderboard"] }
+    { revalidate: 2, tags: ["leaderboard"] }
 )
 
 export async function getLeaderboardData(slug: string, problemId?: string | null): Promise<{

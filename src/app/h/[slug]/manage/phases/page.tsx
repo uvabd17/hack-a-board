@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { PhaseForm, PhaseItem } from "./client-components"
+import { PhaseForm, PhaseItem, ShiftPhasesControl } from "./client-components"
 
 export default async function PhasesPage({
     params,
@@ -43,8 +43,11 @@ export default async function PhasesPage({
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Create Form */}
-                <div className="lg:col-span-1">
+                <div className="lg:col-span-1 space-y-4">
                     <PhaseForm hackathonId={hackathon.id} />
+                    {phases.length > 0 && (
+                        <ShiftPhasesControl hackathonId={hackathon.id} />
+                    )}
                 </div>
 
                 {/* Phase list */}

@@ -25,18 +25,24 @@ export function CeremonyDisplay({ slug, hackathonId }: { slug: string; hackathon
 
         const socket = connectSocket(hackathonId, ["display"])
 
-        socket.on("display:ceremony-started", () => {
-            getCeremonyState(slug).then(setState)
+        socket.on("display:ceremony-started", (payload) => {
+            // Force immediate re-fetch when ceremony starts
+            getCeremonyState(slug).then((newState) => {
+                if (newState) setState(newState)
+            })
         })
 
-        socket.on("display:ceremony-reveal", () => {
-            // Re-fetch state immediately on reveal
-            getCeremonyState(slug).then(setState)
+        socket.on("display:ceremony-reveal", (payload) => {
+            // Force immediate re-fetch on each reveal
+            getCeremonyState(slug).then((newState) => {
+                if (newState) setState(newState)
+            })
         })
 
         return () => {
             socket.off("display:ceremony-started")
             socket.off("display:ceremony-reveal")
+            disconnectSocket()
         }
     }, [hackathonId, slug])
 
@@ -73,7 +79,7 @@ export function CeremonyDisplay({ slug, hackathonId }: { slug: string; hackathon
                 ) : (
                     <div key={state.currentRound} className="animate-in zoom-in slide-in-from-bottom-10 fade-in duration-1000 fill-mode-forwards">
                         <div className="text-yellow-500 font-bold tracking-widest text-2xl mb-4 uppercase">
-                            {state.currentRound === state.totalWinners ? "🏆 GRAND WINNER 🏆" : `Rank #${10 - state.currentRound + 1}`}
+                            {state.currentRound === state.totalWinners ? "🏆 GRAND WINNER 🏆" : `Rank #${state.totalWinners - state.currentRound + 1}`}
                         </div>
 
                         <div className="relative">

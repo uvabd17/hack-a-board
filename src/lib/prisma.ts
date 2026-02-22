@@ -6,9 +6,11 @@ const connectionString = `${process.env.DATABASE_URL}`
 
 const pool = new Pool({
     connectionString,
-    max: 20,               // Max connections in pool (Neon free tier allows ~100)
+    max: 10,               // Reduced for serverless (Neon handles pooling)
+    min: 2,                // Keep 2 connections ready (reduces cold starts)
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000,
+    allowExitOnIdle: true, // Close pool when no activity (good for serverless)
 })
 const adapter = new PrismaPg(pool)
 

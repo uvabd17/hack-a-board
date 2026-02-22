@@ -1,12 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { createPhase, updatePhase, deletePhase } from "@/actions/phases"
+import { createPhase, updatePhase, deletePhase, shiftAllPhases } from "@/actions/phases"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Trash2, Pencil, Check, X, AlertCircle, CheckCircle2 } from "lucide-react"
+import { Trash2, Pencil, Check, X, AlertCircle, CheckCircle2, Clock } from "lucide-react"
 
 // ─────────────────────────────────────────────
 // CREATE FORM
@@ -71,6 +71,85 @@ export function PhaseForm({ hackathonId }: { hackathonId: string }) {
                         {loading ? "Creating..." : "Add Phase"}
                     </Button>
                 </form>
+            </CardContent>
+        </Card>
+    )
+}
+
+// ─────────────────────────────────────────────
+// BULK SHIFT CONTROL
+// ─────────────────────────────────────────────
+export function ShiftPhasesControl({ hackathonId }: { hackathonId: string }) {
+    const [loading, setLoading] = useState(false)
+    const [status, setStatus] = useState<{ error?: string; success?: string } | null>(null)
+    const [shiftMinutes, setShiftMinutes] = useState(0)
+
+    async function handleShift() {
+        if (shiftMinutes === 0) {
+            setStatus({ error: "Enter a non-zero value" })
+            return
+        }
+
+        if (!confirm(`Shift all phases by ${shiftMinutes > 0 ? '+' : ''}${shiftMinutes} minutes?`)) return
+
+        setLoading(true)
+        setStatus(null)
+        const res = await shiftAllPhases(hackathonId, shiftMinutes)
+        if (res.error) {
+            setStatus({ error: res.error })
+        } else {
+            setStatus({ success: `✓ Shifted ${res.shiftedPhases} phase${res.shiftedPhases !== 1 ? 's' : ''}` })
+            setShiftMinutes(0)
+        }
+        setLoading(false)
+    }
+
+    return (
+        <Card className="border-amber-500/30 bg-amber-500/5">
+            <CardHeader>
+                <CardTitle className="text-sm flex items-center gap-2">
+                    <Clock size={16} className="text-amber-500" />
+                    Bulk Time Shift
+                </CardTitle>
+                <CardDescription className="text-xs">
+                    Adjust all phases at once when the event runs ahead or behind schedule
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+                <div className="flex gap-3 items-end">
+                    <div className="flex-1 space-y-1">
+                        <Label className="text-xs uppercase tracking-wider">Shift Amount (minutes)</Label>
+                        <Input
+                            type="number"
+                            value={shiftMinutes}
+                            onChange={e => setShiftMinutes(parseInt(e.target.value) || 0)}
+                            placeholder="e.g., +30 or -15"
+                            className="font-mono"
+                        />
+                        <p className="text-[10px] text-muted-foreground">
+                            Positive = delay • Negative = move earlier • Max ±1440 (24h)
+                        </p>
+                    </div>
+                    <Button
+                        onClick={handleShift}
+                        disabled={loading || shiftMinutes === 0}
+                        variant="secondary"
+                        className="h-10"
+                    >
+                        {loading ? "SHIFTING..." : "SHIFT ALL"}
+                    </Button>
+                </div>
+
+                {status?.error && (
+                    <div className="flex items-center gap-2 text-destructive text-xs bg-destructive/10 p-2 rounded">
+                        <AlertCircle size={12} /> {status.error}
+                    </div>
+                )}
+                {status?.success && (
+                    <div className="flex items-center gap-2 text-green-600 text-xs bg-green-500/10 p-2 rounded">
+                        <CheckCircle2 size={12} /> {status.success}
+                    </div>
+                )}
             </CardContent>
         </Card>
     )

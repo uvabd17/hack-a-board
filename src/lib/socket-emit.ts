@@ -155,3 +155,11 @@ export async function emitTeamSubmitted(
         })
     ])
 }
+
+export function emitJudgingProgress(hackathonId: string, teamId: string, roundId: string) {
+    return socketEmit({
+        room: `hackathon:${hackathonId}`,
+        event: "judging-progress",
+        data: { teamId, roundId },
+    })
+}

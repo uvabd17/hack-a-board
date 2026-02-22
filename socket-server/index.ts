@@ -31,6 +31,58 @@ app.use(cors({ origin: CLIENT_ORIGIN, credentials: true }))
 app.use(express.json())
 
 // ──────────────────────────────────────────────
+// Root route - Status page
+// ──────────────────────────────────────────────
+app.get("/", (_req, res) => {
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Hackaboard Socket Server</title>
+            <style>
+                body { 
+                    font-family: monospace; 
+                    background: #0a0a0a; 
+                    color: #00ff00; 
+                    padding: 2rem;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    min-height: 100vh;
+                    margin: 0;
+                }
+                .container {
+                    border: 2px solid #00ff00;
+                    padding: 2rem;
+                    max-width: 600px;
+                }
+                h1 { color: #00ff00; margin: 0 0 1rem 0; }
+                .status { color: #00ff00; font-size: 1.2rem; margin: 1rem 0; }
+                .info { color: #888; font-size: 0.9rem; }
+                a { color: #00aaff; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>🔌 Hackaboard Socket Server</h1>
+                <div class="status">✅ RUNNING</div>
+                <div class="info">
+                    <p>Port: ${PORT}</p>
+                    <p>Active Connections: ${io.engine.clientsCount}</p>
+                    <p>Endpoints:</p>
+                    <ul>
+                        <li>WebSocket: <code>ws://localhost:${PORT}</code></li>
+                        <li>Health Check: <a href="/health">/health</a></li>
+                        <li>Internal Emit: POST /emit (requires auth)</li>
+                    </ul>
+                </div>
+            </div>
+        </body>
+        </html>
+    `)
+})
+
+// ──────────────────────────────────────────────
 // Health check
 // ──────────────────────────────────────────────
 app.get("/health", (_req, res) => {

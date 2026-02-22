@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { startCeremony, stopCeremony, revealNext, getCeremonyPreview } from "@/actions/ceremony"
+import { startCeremony, stopCeremony, revealNext, getCeremonyPreview, getCeremonyControllerState } from "@/actions/ceremony"
 import type { WinnerSnapshot } from "@/actions/ceremony"
 import { Trophy, Power, CheckCircle2, AlertTriangle } from "lucide-react"
 
@@ -24,6 +24,26 @@ export function CeremonyController({
     const [showConfirm, setShowConfirm] = useState(false)
     const [currentIndex, setCurrentIndex] = useState(0)
     const [totalWinners, setTotalWinners] = useState(0)
+    const [statusMessage, setStatusMessage] = useState<{type: 'success' | 'error', message: string} | null>(null)
+
+    // Load ceremony state on mount to check if ceremony is already active
+    useEffect(() => {
+        const loadState = async () => {
+            try {
+                const state = await getCeremonyControllerState(hackathonId)
+                if (state.isActive) {
+                    setIsActive(true)
+                    setCurrentIndex(state.currentIndex)
+                    setTotalWinners(state.totalWinners)
+                    setMode(state.mode)
+                    setRevealCount(state.revealCount)
+                }
+            } catch (err) {
+                console.error("Failed to load ceremony state:", err)
+            }
+        }
+        loadState()
+    }, [hackathonId])
 
     // Load preview when mode/count changes
     useEffect(() => {
@@ -45,15 +65,32 @@ export function CeremonyController({
     }, [hackathonId, mode, revealCount, isActive])
 
     const handleStart = async () => {
+        // Optimistic update - change UI immediately
+        setIsActive(true)
+        setShowConfirm(false)
+        setTotalWinners(winners.length)
         setIsLoading(true)
+        
         try {
             const res = await startCeremony(hackathonId, mode, revealCount)
-            if (res.success) {
-                setIsActive(true)
-                setShowConfirm(false)
-                setTotalWinners(winners.length)
+            if (!res.success) {
+                // Revert on failure
+                setIsActive(false)
+                setShowConfirm(true)
+                setTotalWinners(0)
+                setStatusMessage({type: 'error', message: res.error || "Failed to start ceremony"})
+                setTimeout(() => setStatusMessage(null), 3000)
+            } else {
+                setStatusMessage({type: 'success', message: 'Ceremony started successfully'})
+                setTimeout(() => setStatusMessage(null), 2000)
             }
         } catch (error) {
+            // Revert on error
+            setIsActive(false)
+            setShowConfirm(true)
+            setTotalWinners(0)
+            setStatusMessage({type: 'error', message: 'An error occurred'})
+            setTimeout(() => setStatusMessage(null), 3000)
             console.error(error)
         } finally {
             setIsLoading(false)
@@ -61,11 +98,28 @@ export function CeremonyController({
     }
 
     const handleReveal = async () => {
+        const previousIndex = currentIndex
+        
+        // Optimistic update - increment immediately
+        setCurrentIndex(prev => prev + 1)
         setIsLoading(true)
+        
         try {
-            await revealNext(hackathonId)
-            setCurrentIndex(prev => prev + 1)
+            const result = await revealNext(hackathonId)
+            if (!result.success) {
+                // Revert on failure
+                setCurrentIndex(previousIndex)
+                setStatusMessage({type: 'error', message: result.error || "Failed to reveal next winner"})
+                setTimeout(() => setStatusMessage(null), 3000)
+            } else {
+                setStatusMessage({type: 'success', message: 'Winner revealed!'})
+                setTimeout(() => setStatusMessage(null), 1500)
+            }
         } catch (error) {
+            // Revert on error
+            setCurrentIndex(previousIndex)
+            setStatusMessage({type: 'error', message: 'An error occurred'})
+            setTimeout(() => setStatusMessage(null), 3000)
             console.error(error)
         } finally {
             setIsLoading(false)
@@ -73,12 +127,32 @@ export function CeremonyController({
     }
 
     const handleStop = async () => {
+        // Optimistic update - change UI immediately
+        const wasActive = isActive
+        const wasIndex = currentIndex
+        
+        setIsActive(false)
+        setCurrentIndex(0)
         setIsLoading(true)
+        
         try {
-            await stopCeremony(hackathonId)
-            setIsActive(false)
-            setCurrentIndex(0)
+            const result = await stopCeremony(hackathonId)
+            if (!result.success) {
+                // Revert on failure
+                setIsActive(wasActive)
+                setCurrentIndex(wasIndex)
+                setStatusMessage({type: 'error', message: result.error || "Failed to stop ceremony"})
+                setTimeout(() => setStatusMessage(null), 3000)
+            } else {
+                setStatusMessage({type: 'success', message: 'Ceremony stopped'})
+                setTimeout(() => setStatusMessage(null), 2000)
+            }
         } catch (error) {
+            // Revert on error
+            setIsActive(wasActive)
+            setCurrentIndex(wasIndex)
+            setStatusMessage({type: 'error', message: 'An error occurred'})
+            setTimeout(() => setStatusMessage(null), 3000)
             console.error(error)
         } finally {
             setIsLoading(false)
@@ -94,11 +168,11 @@ export function CeremonyController({
                         Ceremony Control Center
                     </span>
                     {isActive ? (
-                        <Badge variant="default" className="bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20 border-yellow-500/50 flex gap-1 items-center animate-pulse">
+                        <Badge variant="default" className="bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20 border-yellow-500/50 flex gap-1 items-center animate-pulse transition-all duration-300">
                             ACTIVE
                         </Badge>
                     ) : (
-                        <Badge variant="secondary">OFFLINE</Badge>
+                        <Badge variant="secondary" className="transition-all duration-300">OFFLINE</Badge>
                     )}
                 </CardTitle>
                 <CardDescription>
@@ -106,6 +180,17 @@ export function CeremonyController({
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+                {/* Status Message */}
+                {statusMessage && (
+                    <div className={`p-3 rounded-lg border transition-all duration-300 ${
+                        statusMessage.type === 'success' 
+                            ? 'bg-green-500/10 border-green-500/50 text-green-500' 
+                            : 'bg-red-500/10 border-red-500/50 text-red-500'
+                    }`}>
+                        <p className="text-sm font-medium">{statusMessage.message}</p>
+                    </div>
+                )}
+                
                 {!isActive ? (
                     <div className="space-y-6">
                         {/* Mode Selection */}
@@ -115,14 +200,14 @@ export function CeremonyController({
                                 <Button
                                     variant={mode === "overall" ? "default" : "outline"}
                                     onClick={() => setMode("overall")}
-                                    className="text-xs uppercase"
+                                    className="text-xs uppercase transition-all duration-200"
                                 >
                                     Overall Rankings
                                 </Button>
                                 <Button
                                     variant={mode === "problem-wise" ? "default" : "outline"}
                                     onClick={() => setMode("problem-wise")}
-                                    className="text-xs uppercase"
+                                    className="text-xs uppercase transition-all duration-200"
                                 >
                                     Problem Winners
                                 </Button>
@@ -139,6 +224,7 @@ export function CeremonyController({
                                             variant={revealCount === count ? "secondary" : "outline"}
                                             onClick={() => setRevealCount(count)}
                                             size="sm"
+                                            className="transition-all duration-200"
                                         >
                                             Top {count}
                                         </Button>
@@ -175,15 +261,15 @@ export function CeremonyController({
                             <div className="space-y-3 animate-in fade-in zoom-in duration-200">
                                 <p className="text-xs text-center font-bold text-destructive uppercase tracking-widest">Confirm Detonation?</p>
                                 <div className="grid grid-cols-2 gap-2">
-                                    <Button variant="destructive" onClick={handleStart} disabled={isLoading || winners.length === 0} className="font-bold">YES, START</Button>
-                                    <Button variant="outline" onClick={() => setShowConfirm(false)} disabled={isLoading}>CANCEL</Button>
+                                    <Button variant="destructive" onClick={handleStart} disabled={isLoading || winners.length === 0} className="font-bold transition-all duration-200">YES, START</Button>
+                                    <Button variant="outline" onClick={() => setShowConfirm(false)} disabled={isLoading} className="transition-all duration-200">CANCEL</Button>
                                 </div>
                             </div>
                         ) : (
                             <Button
                                 onClick={() => setShowConfirm(true)}
                                 disabled={isLoading || winners.length === 0}
-                                className="w-full bg-yellow-600 hover:bg-yellow-700 text-black font-bold h-12"
+                                className="w-full bg-yellow-600 hover:bg-yellow-700 text-black font-bold h-12 transition-all duration-200"
                             >
                                 INITIATE CEREMONY
                             </Button>
@@ -202,14 +288,14 @@ export function CeremonyController({
                             onClick={handleReveal}
                             disabled={isLoading}
                             size="lg"
-                            className="w-full h-20 text-xl font-bold bg-green-600 hover:bg-green-700 text-black shadow-[0_0_20px_rgba(22,163,74,0.3)] animate-pulse"
+                            className="w-full h-20 text-xl font-bold bg-green-600 hover:bg-green-700 text-black shadow-[0_0_20px_rgba(22,163,74,0.3)] animate-pulse transition-all duration-200"
                         >
                             REVEAL NEXT
                         </Button>
 
                         <div className="flex justify-between items-center pt-4 border-t border-border/50">
                             <p className="text-[10px] text-muted-foreground uppercase">Snapshot Locked: {new Date().toLocaleTimeString()}</p>
-                            <Button variant="ghost" size="sm" onClick={handleStop} className="text-red-500 hover:text-red-400 hover:bg-red-500/10 text-[10px] uppercase">
+                            <Button variant="ghost" size="sm" onClick={handleStop} className="text-red-500 hover:text-red-400 hover:bg-red-500/10 text-[10px] uppercase transition-all duration-200">
                                 <Power className="w-3 h-3 mr-2" />
                                 Terminate
                             </Button>

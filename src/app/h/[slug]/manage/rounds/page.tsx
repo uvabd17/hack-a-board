@@ -2,6 +2,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { notFound, redirect } from "next/navigation"
 import { RoundForm, RoundItem } from "./client-components"
+import { LiveRefresher } from "@/components/live-refresher"
 
 interface Criterion {
     id: string;
@@ -44,6 +45,7 @@ export default async function RoundsPage({ params }: { params: Promise<{ slug: s
 
     return (
         <div className="max-w-5xl mx-auto space-y-8">
+            <LiveRefresher hackathonId={hackathon.id} />
             <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-bold text-primary">JUDGING_PROTOCOLS</h1>
                 <div className="text-sm text-muted-foreground">

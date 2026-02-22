@@ -127,3 +127,45 @@ export async function deletePhase(hackathonId: string, phaseId: string) {
         return { error: "Failed to delete phase" }
     }
 }
+
+/**
+ * Shift all phases by a specified number of minutes
+ * Useful for handling delays during events
+ */
+export async function shiftAllPhases(hackathonId: string, shiftMinutes: number) {
+    const hackathon = await assertOwner(hackathonId)
+    if (!hackathon) return { error: "Unauthorized" }
+
+    if (shiftMinutes === 0) return { error: "Shift amount cannot be zero" }
+    if (Math.abs(shiftMinutes) > 1440) return { error: "Shift amount cannot exceed 24 hours" }
+
+    try {
+        const phases = await prisma.phase.findMany({
+            where: { hackathonId },
+            select: { id: true, startTime: true, endTime: true }
+        })
+
+        if (phases.length === 0) return { error: "No phases to shift" }
+
+        const shiftMs = shiftMinutes * 60 * 1000
+
+        // Update all phases in parallel
+        await Promise.all(phases.map(phase => 
+            prisma.phase.update({
+                where: { id: phase.id },
+                data: {
+                    startTime: new Date(phase.startTime.getTime() + shiftMs),
+                    endTime: new Date(phase.endTime.getTime() + shiftMs)
+                }
+            })
+        ))
+
+        revalidatePath(`/h/${hackathon.slug}/manage/phases`)
+        revalidatePath(`/h/${hackathon.slug}/manage`)
+        revalidatePath(`/h/${hackathon.slug}`)
+        return { success: true, shiftedPhases: phases.length }
+    } catch (e) {
+        console.error(e)
+        return { error: "Failed to shift phases" }
+    }
+}

@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { cookies } from "next/headers"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
-import { emitScoreUpdated } from "@/lib/socket-emit"
+import { emitScoreUpdated, emitJudgingProgress } from "@/lib/socket-emit"
 import { checkSubmissionStatus, createSubmission, canJudgeScore } from "@/actions/judging"
 
 const ScoreSubmissionSchema = z.object({
@@ -118,8 +118,11 @@ export async function submitScore(data: {
                 submissionStatus.timeBonus
             )
         } else {
-            // Regular score update
-            await emitScoreUpdated(data.hackathonId, data.teamId)
+            // Regular score update - emit both score update and judging progress
+            await Promise.all([
+                emitScoreUpdated(data.hackathonId, data.teamId),
+                emitJudgingProgress(data.hackathonId, data.teamId, data.roundId)
+            ])
         }
 
         return {

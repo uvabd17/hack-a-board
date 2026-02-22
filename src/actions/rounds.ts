@@ -42,6 +42,9 @@ export async function createRound(hackathonId: string, formData: FormData) {
         ? new Date(checkpointRaw)
         : new Date(Date.now() + 86400000) // Default 24h from now
 
+    const requiredJudges = parseInt(formData.get("requiredJudges") as string) || 1
+    const requiresLinkSubmission = formData.get("requiresLinkSubmission") === "on"
+
     try {
         await prisma.round.create({
             data: {
@@ -50,6 +53,8 @@ export async function createRound(hackathonId: string, formData: FormData) {
                 order: validated.data.order,
                 weight: validated.data.weight,
                 checkpointTime,
+                requiredJudges,
+                requiresLinkSubmission,
             }
         })
 
@@ -183,7 +188,6 @@ export async function extendCheckpoint(hackathonId: string, roundId: string, min
         where: { id: roundId },
         data: { checkpointTime: new Date(round.checkpointTime.getTime() + addMs) }
     })
-    revalidatePath(`/h/${ctx.hackathon.slug}/manage/rounds`)
     await emitCheckpointUpdated(hackathonId)
     return { success: true }
 }
@@ -199,7 +203,6 @@ export async function pauseCheckpoint(hackathonId: string, roundId: string) {
         where: { id: roundId },
         data: { checkpointPausedAt: new Date() }
     })
-    revalidatePath(`/h/${ctx.hackathon.slug}/manage/rounds`)
     await emitCheckpointUpdated(hackathonId)
     return { success: true }
 }
@@ -213,16 +216,40 @@ export async function resumeCheckpoint(hackathonId: string, roundId: string) {
     const { round } = ctx
     if (!round.checkpointPausedAt) return { error: "Not paused" }
 
-    // How long was it paused?
-    const pausedDurationMs = Date.now() - round.checkpointPausedAt.getTime()
-    // Extend checkpoint by that duration so remaining time is preserved
-    const newCheckpointTime = new Date(round.checkpointTime.getTime() + pausedDurationMs)
+    // Calculate remaining time when it was paused
+    const remainingMsWhenPaused = round.checkpointTime.getTime() - round.checkpointPausedAt.getTime()
+    // Set new checkpoint to now + remaining time
+    const newCheckpointTime = new Date(Date.now() + remainingMsWhenPaused)
 
     await prisma.round.update({
         where: { id: roundId },
         data: { checkpointTime: newCheckpointTime, checkpointPausedAt: null }
     })
-    revalidatePath(`/h/${ctx.hackathon.slug}/manage/rounds`)
     await emitCheckpointUpdated(hackathonId)
+    return { success: true }
+}
+
+export async function updateRoundSettings(hackathonId: string, roundId: string, settings: { requiredJudges?: number; requiresLinkSubmission?: boolean }) {
+    const session = await auth()
+    if (!session?.user?.id) return { error: "Unauthorized" }
+    const ctx = await getRoundAndHackathon(hackathonId, roundId, session.user.id)
+    if (!ctx) return { error: "Access Denied" }
+
+    const updateData: any = {}
+    if (typeof settings.requiredJudges === 'number') {
+        if (settings.requiredJudges < 1 || settings.requiredJudges > 10) {
+            return { error: "Required judges must be between 1 and 10" }
+        }
+        updateData.requiredJudges = settings.requiredJudges
+    }
+    if (typeof settings.requiresLinkSubmission === 'boolean') {
+        updateData.requiresLinkSubmission = settings.requiresLinkSubmission
+    }
+
+    await prisma.round.update({
+        where: { id: roundId },
+        data: updateData
+    })
+    revalidatePath(`/h/${ctx.slug}/manage/rounds`)
     return { success: true }
 }

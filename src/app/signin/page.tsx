@@ -54,6 +54,36 @@ export default async function SignInPage() {
                             </div>
                         </div>
 
+                        {/* Development Test Accounts */}
+                        {process.env.NODE_ENV === "development" && (
+                            <div className="space-y-3 border-t border-b border-white/5 py-4">
+                                <div className="text-[9px] text-yellow-500/60 tracking-wider uppercase mb-2">
+                                    &gt; dev mode: test accounts
+                                </div>
+                                <form
+                                    action={async () => {
+                                        "use server"
+                                        await signIn("credentials", { 
+                                            email: "organizer@test.com",
+                                            redirectTo: "/dashboard" 
+                                        })
+                                    }}
+                                >
+                                    <button
+                                        type="submit"
+                                        className="w-full group relative overflow-hidden border border-yellow-500/20 hover:border-yellow-500/50 bg-yellow-500/[0.03] hover:bg-yellow-500/10 transition-all duration-300 px-4 py-2 text-left"
+                                    >
+                                        <div className="text-[10px] text-yellow-500/80 font-bold tracking-wider uppercase">
+                                            organizer@test.com
+                                        </div>
+                                        <div className="text-[8px] text-zinc-600 tracking-wider">
+                                            Test Organizer Account
+                                        </div>
+                                    </button>
+                                </form>
+                            </div>
+                        )}
+
                         <form
                             action={async () => {
                                 "use server"

@@ -283,3 +283,30 @@ export async function stopCeremony(hackathonId: string) {
 
     return { success: true }
 }
+
+export async function getCeremonyControllerState(hackathonId: string) {
+    const activeSession = await prisma.ceremonySession.findFirst({
+        where: { hackathonId, isStarted: true },
+        orderBy: { startedAt: 'desc' }
+    })
+
+    if (!activeSession) {
+        return {
+            isActive: false,
+            currentIndex: 0,
+            totalWinners: 0,
+            mode: "overall" as const,
+            revealCount: 3
+        }
+    }
+
+    const winners = JSON.parse(activeSession.winnersSnapshot as string) as WinnerSnapshot[]
+
+    return {
+        isActive: true,
+        currentIndex: activeSession.currentIndex,
+        totalWinners: winners.length,
+        mode: activeSession.mode as "overall" | "problem-wise",
+        revealCount: winners.length
+    }
+}

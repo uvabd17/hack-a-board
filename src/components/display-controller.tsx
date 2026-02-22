@@ -31,46 +31,92 @@ export function DisplayController({
     const [displayMode, setDisplayMode] = useState<"global" | "problem" | "auto">(initialMode as "global" | "problem" | "auto")
     const [activeProblemId, setActiveProblemId] = useState<string | null>(initialProblemId)
     const [isLoading, setIsLoading] = useState(false)
+    const [statusMessage, setStatusMessage] = useState<{type: 'success' | 'error', message: string} | null>(null)
 
     const handleToggleFreeze = async () => {
+        const newState = !isFrozen
+        const previousState = isFrozen
+        
+        // Optimistic update - change UI immediately
+        setIsFrozen(newState)
         setIsLoading(true)
+        
         try {
-            const newState = !isFrozen
             const result = await toggleFreeze(hackathonId, newState, slug)
-            if (result.success) setIsFrozen(newState)
+            if (!result.success) {
+                // Revert on failure
+                setIsFrozen(previousState)
+                setStatusMessage({type: 'error', message: result.error || "Failed to update freeze state"})
+                setTimeout(() => setStatusMessage(null), 3000)
+            } else {
+                setStatusMessage({type: 'success', message: `Leaderboard ${newState ? 'frozen' : 'unfrozen'} successfully`})
+                setTimeout(() => setStatusMessage(null), 2000)
+            }
         } catch (error) {
-            alert("An error occurred")
+            // Revert on error
+            setIsFrozen(previousState)
+            setStatusMessage({type: 'error', message: "An error occurred"})
+            setTimeout(() => setStatusMessage(null), 3000)
         } finally {
             setIsLoading(false)
         }
     }
 
     const handleConfigChange = async (mode: "global" | "problem" | "auto", problemId: string | null = null) => {
+        const previousMode = displayMode
+        const previousProblemId = activeProblemId
+        
+        // Optimistic update - change UI immediately
+        setDisplayMode(mode)
+        setActiveProblemId(problemId)
         setIsLoading(true)
+        
         try {
             const result = await updateDisplayConfig(hackathonId, { mode, problemId }, slug)
-            if (result.success) {
-                setDisplayMode(mode)
-                setActiveProblemId(problemId)
+            if (!result.success) {
+                // Revert on failure
+                setDisplayMode(previousMode)
+                setActiveProblemId(previousProblemId)
+                setStatusMessage({type: 'error', message: result.error || "Failed to update config"})
+                setTimeout(() => setStatusMessage(null), 3000)
+            } else {
+                setStatusMessage({type: 'success', message: 'Display updated successfully'})
+                setTimeout(() => setStatusMessage(null), 2000)
             }
         } catch (error) {
-            alert("Failed to update config")
+            // Revert on error
+            setDisplayMode(previousMode)
+            setActiveProblemId(previousProblemId)
+            setStatusMessage({type: 'error', message: "Failed to update config"})
+            setTimeout(() => setStatusMessage(null), 3000)
         } finally {
             setIsLoading(false)
         }
     }
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-4">
+            {/* Status Message */}
+            {statusMessage && (
+                <div className={`p-3 rounded-lg border transition-all duration-300 ${
+                    statusMessage.type === 'success' 
+                        ? 'bg-green-500/10 border-green-500/50 text-green-500' 
+                        : 'bg-red-500/10 border-red-500/50 text-red-500'
+                }`}>
+                    <p className="text-sm font-medium">{statusMessage.message}</p>
+                </div>
+            )}
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Freeze Control */}
             <Card className="border-border bg-card/50 backdrop-blur-sm">
                 <CardHeader>
                     <CardTitle className="flex items-center justify-between text-sm uppercase tracking-widest">
                         <span>LEADERBOARD LOCK</span>
                         {isFrozen ? (
-                            <Badge variant="destructive" className="text-[10px]">FROZEN</Badge>
+                            <Badge variant="destructive" className="text-[10px] transition-all duration-300">FROZEN</Badge>
                         ) : (
-                            <Badge variant="outline" className="text-[10px] text-green-500 border-green-500/50">LIVE</Badge>
+                            <Badge variant="outline" className="text-[10px] text-green-500 border-green-500/50 transition-all duration-300">LIVE</Badge>
                         )}
                     </CardTitle>
                     <CardDescription className="text-xs">
@@ -82,7 +128,7 @@ export function DisplayController({
                         onClick={handleToggleFreeze}
                         disabled={isLoading}
                         variant={isFrozen ? "outline" : "destructive"}
-                        className="w-full font-bold uppercase text-xs"
+                        className="w-full font-bold uppercase text-xs transition-all duration-200"
                     >
                         {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : isFrozen ? "UNFREEZE" : "FREEZE LEADERBOARD"}
                     </Button>
@@ -145,6 +191,7 @@ export function DisplayController({
                     </div>
                 </CardContent>
             </Card>
+            </div>
         </div>
     )
 }
