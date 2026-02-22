@@ -153,15 +153,16 @@ export async function checkSubmissionStatus(teamId: string, roundId: string) {
             // Nth judge's timestamp is the submission time
             const submissionTime = completeJudges[round.requiredJudges - 1].timestamp
 
-            // Check if we already have a submission record
+            // Check if we already have a completed submission record
             const existingSubmission = await prisma.submission.findUnique({
                 where: {
                     teamId_roundId: { teamId, roundId }
-                }
+                },
+                select: { submittedAt: true, timeBonus: true }
             })
 
-            // If no submission exists, this is a NEW submission
-            if (!existingSubmission) {
+            // If no submission exists OR submission exists but not completed (linksSubmittedAt only), this is NEW
+            if (!existingSubmission?.submittedAt) {
                 // Calculate time bonus/penalty
                 const { timeBonus, diffMinutes } = calculateTimeBonus(
                     submissionTime,
@@ -273,8 +274,16 @@ export async function createSubmission(
     timeBonus: number
 ) {
     try {
-        const submission = await prisma.submission.create({
-            data: {
+        // Use upsert to handle cases where submission was created earlier for link submission
+        const submission = await prisma.submission.upsert({
+            where: {
+                teamId_roundId: { teamId, roundId }
+            },
+            update: {
+                submittedAt,
+                timeBonus
+            },
+            create: {
                 teamId,
                 roundId,
                 submittedAt,
@@ -321,11 +330,30 @@ export async function canJudgeScore(
     try {
         const round = await prisma.round.findUnique({
             where: { id: roundId },
-            select: { checkpointTime: true, checkpointPausedAt: true }
+            select: { 
+                checkpointTime: true, 
+                checkpointPausedAt: true,
+                requiresLinkSubmission: true
+            }
         })
 
         if (!round) {
             return { allowed: false, reason: "Round not found" }
+        }
+
+        // NEW: Check if round requires link submission
+        if (round.requiresLinkSubmission) {
+            const submission = await prisma.submission.findUnique({
+                where: { teamId_roundId: { teamId, roundId } },
+                select: { linksSubmittedAt: true }
+            })
+
+            if (!submission?.linksSubmittedAt) {
+                return { 
+                    allowed: false, 
+                    reason: "Team must submit their project links before judging can begin" 
+                }
+            }
         }
 
         const now = new Date()

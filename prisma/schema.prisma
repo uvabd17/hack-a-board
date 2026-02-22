@@ -270,6 +270,7 @@ model Round {
   
   // Judging requirements
   requiredJudges Int @default(1) // How many judges must score team for submission
+  requiresLinkSubmission Boolean @default(false) // If true, teams must submit links before judging
 
   // Timestamps
   createdAt DateTime @default(now())
@@ -313,9 +314,10 @@ model Submission {
   demoUrl         String?
   presentationUrl String?
   otherUrl        String?
+  linksSubmittedAt DateTime? // When team submitted links (if required by round)
 
   // Timing - submission timestamp = when Nth judge completes scoring
-  submittedAt DateTime @default(now())
+  submittedAt DateTime? // Null until judging is complete
   
   // Time bonus/penalty calculated at submission based on checkpoint deadline
   timeBonus Float @default(0) // Can be negative for penalty

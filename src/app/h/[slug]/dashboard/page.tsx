@@ -5,13 +5,33 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import QRCode from "qrcode"
 import { Lock } from "lucide-react"
+import { unstable_cache } from "next/cache"
 
 import { getLeaderboardData } from "@/actions/leaderboard"
 import { ProblemSelection } from "@/components/problem-selection"
 import { SubmissionForm } from "@/components/submission-form"
+import { JudgingProgress } from "@/components/judging-progress"
+import { getTeamJudgingProgress } from "@/actions/judging"
 import { CheckCircle2 } from "lucide-react"
 import { CountdownTimer } from "@/components/countdown-timer"
 import { LiveRefresher } from "@/components/live-refresher"
+
+// Revalidate this page every 5 seconds for ISR performance
+export const revalidate = 5
+
+// Cache QR code generation - QR codes don't change
+const getCachedQRCode = unstable_cache(
+    async (token: string, slug: string) => {
+        try {
+            return await QRCode.toDataURL(`/h/${slug}/qr/${token}`)
+        } catch (err) {
+            console.error(err)
+            return ""
+        }
+    },
+    ["qr-code"],
+    { revalidate: 86400 } // 24 hours - QR codes never change
+)
 
 async function generateQR(text: string) {
     try {
@@ -51,10 +71,10 @@ export default async function DashboardPage({
         )
     }
 
-    const qrCodeDataUrl = await generateQR(`/h/${slug}/qr/${participant.qrToken}`)
+    const qrCodeDataUrl = await getCachedQRCode(participant.qrToken, slug)
 
     // Parallelize independent queries for better performance
-    const [{ leaderboard, frozen }, problems, rounds, submissions] = await Promise.all([
+    const [{ leaderboard, frozen }, problems, rounds, submissions, phases, roundsWithJudgingProgress] = await Promise.all([
         getLeaderboardData(slug),
         prisma.problemStatement.findMany({
             where: { hackathonId: participant.hackathonId, isReleased: true },
@@ -66,13 +86,30 @@ export default async function DashboardPage({
         }),
         prisma.submission.findMany({
             where: { teamId: participant.teamId }
-        })
+        }),
+        prisma.phase.findMany({
+            where: { hackathonId: participant.hackathonId },
+            orderBy: { order: 'asc' }
+        }),
+        // Fetch judging progress for all rounds
+        Promise.all(
+            (await prisma.round.findMany({
+                where: { hackathonId: participant.hackathonId },
+                select: { id: true }
+            })).map((r: { id: string }) => getTeamJudgingProgress(participant.teamId, r.id))
+        )
     ])
 
-    const teamEntry = leaderboard.find(e => e.teamId === participant.teamId)
+    // Find current active phase
+    const now = Date.now()
+    const currentPhase = phases.find((p: any) => 
+        new Date(p.startTime).getTime() <= now && new Date(p.endTime).getTime() > now
+    )
+
+    const teamEntry = leaderboard.find((e: any) => e.teamId === participant.teamId)
 
     const selectedProblem = participant.team.problemStatementId
-        ? problems.find(p => p.id === participant.team.problemStatementId)
+        ? problems.find((p: any) => p.id === participant.team.problemStatementId)
         : null
 
     return (
@@ -97,12 +134,14 @@ export default async function DashboardPage({
                 {/* Live timer bar — only shown when event is live */}
                 {participant.hackathon.status === "live" && (
                     <div className="flex items-center gap-6 bg-muted/30 border border-border rounded px-4 py-2">
-                        <CountdownTimer
-                            targetMs={new Date(participant.hackathon.endDate).getTime()}
-                            label="Event ends in"
-                            size="sm"
-                        />
-                        {rounds.filter(r => new Date(r.checkpointTime).getTime() > Date.now() || r.checkpointPausedAt).map(r => (
+                        {currentPhase && (
+                            <CountdownTimer
+                                targetMs={new Date(currentPhase.endTime).getTime()}
+                                label={`${currentPhase.name} ends in`}
+                                size="sm"
+                            />
+                        )}
+                        {rounds.filter((r: any) => new Date(r.checkpointTime).getTime() > Date.now() || r.checkpointPausedAt).map((r: any) => (
                             <CountdownTimer
                                 key={r.id}
                                 targetMs={new Date(r.checkpointTime).getTime()}
@@ -226,20 +265,44 @@ export default async function DashboardPage({
                         </CardContent>
                     </Card>
 
-                    {/* Submissions */}
+                    {/* Submissions / Judging Progress */}
                     {selectedProblem && rounds.length > 0 && (
                         <div className="space-y-4">
-                            <h2 className="text-sm text-muted-foreground uppercase tracking-widest pl-1">Submissions</h2>
+                            <h2 className="text-sm text-muted-foreground uppercase tracking-widest pl-1">Round Progress</h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {rounds.map(round => (
-                                    <SubmissionForm
-                                        key={round.id}
-                                        round={round}
-                                        teamId={participant.teamId}
-                                        slug={slug}
-                                        existingSubmission={submissions.find(s => s.roundId === round.id)}
-                                    />
-                                ))}
+                                {rounds.map((round: any, idx: number) => {
+                                    const submission = submissions.find((s: any) => s.roundId === round.id)
+                                    const progressData = roundsWithJudgingProgress[idx]
+                                    
+                                    // Check if this round has judging progress data
+                                    if (progressData && 'submitted' in progressData) {
+                                        return (
+                                            <JudgingProgress
+                                                key={round.id}
+                                                roundName={round.name}
+                                                roundId={round.id}
+                                                checkpointTime={round.checkpointTime}
+                                                checkpointPausedAt={round.checkpointPausedAt}
+                                                requiredJudges={progressData.requiredJudges}
+                                                judgeCount={progressData.judgeCount}
+                                                submitted={progressData.submitted}
+                                                timeBonus={progressData.timeBonus}
+                                                judges={progressData.judges || []}
+                                            />
+                                        )
+                                    }
+                                    
+                                    // Fallback to old submission form (for backwards compatibility)
+                                    return (
+                                        <SubmissionForm
+                                            key={round.id}
+                                            round={round}
+                                            teamId={participant.teamId}
+                                            slug={slug}
+                                            existingSubmission={submission}
+                                        />
+                                    )
+                                })}
                             </div>
                         </div>
                     )}
