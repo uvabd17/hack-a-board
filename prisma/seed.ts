@@ -29,6 +29,7 @@ async function main() {
     console.log('🧹 Cleaning existing data...')
     try {
       await prisma.score.deleteMany()
+      await prisma.judgingAttempt.deleteMany()
       await prisma.submission.deleteMany()
       await prisma.criterion.deleteMany()
       await prisma.round.deleteMany()
@@ -170,7 +171,7 @@ async function main() {
   // 5. Create Rounds with Criteria and REALISTIC TIMER STATES
   console.log('🎯 Creating rounds with checkpoint timers...')
   
-  // Round 1: Already expired (for testing past round display)
+  // Round 1: Already expired, 2 judges required, no link submission
   const round1 = await prisma.round.create({
     data: {
       hackathonId: hackathon.id,
@@ -179,10 +180,12 @@ async function main() {
       weight: 30,
       checkpointTime: new Date(startDate.getTime() + 1.5 * 60 * 60 * 1000), // 1.5 hours after start (already passed)
       checkpointPausedAt: null,
+      requiredJudges: 2, // Test multi-judge averaging
+      requiresLinkSubmission: false, // Direct judging
     },
   })
 
-  // Round 2: Currently PAUSED (for testing pause/resume functionality)
+  // Round 2: Currently PAUSED, 3 judges required, REQUIRES LINK SUBMISSION (full 2-step flow)
   const round2PausedAt = new Date(now.getTime() - 10 * 60 * 1000) // Paused 10 mins ago
   const round2 = await prisma.round.create({
     data: {
@@ -192,10 +195,12 @@ async function main() {
       weight: 35,
       checkpointTime: new Date(now.getTime() + 30 * 60 * 1000), // 30 minutes from now
       checkpointPausedAt: round2PausedAt, // Currently paused
+      requiredJudges: 3, // Test 3-judge requirement
+      requiresLinkSubmission: true, // REQUIRES links before judging
     },
   })
 
-  // Round 3: ACTIVE and running (for testing live countdown)
+  // Round 3: ACTIVE and running, single judge, no links required
   const round3 = await prisma.round.create({
     data: {
       hackathonId: hackathon.id,
@@ -204,6 +209,8 @@ async function main() {
       weight: 35,
       checkpointTime: new Date(now.getTime() + 90 * 60 * 1000), // 90 minutes from now (1.5 hours)
       checkpointPausedAt: null, // Running
+      requiredJudges: 1, // Simple single judge
+      requiresLinkSubmission: false,
     },
   })
 
@@ -312,97 +319,178 @@ async function main() {
       })
     }
 
-    // Create submissions for rounds
-    // Round 1 submissions (all before checkpoint - should have time bonuses)
+    // Create submissions for rounds using NEW JUDGING-IS-SUBMISSION FLOW
+    
+    // ROUND 1: Judging-is-submission flow (no link requirement, 2 judges)
+    // All teams have been judged by 2+ judges, so submissions auto-created
     const submissionTime1 = new Date(
       startDate.getTime() + (1 + Math.random() * 0.3) * 60 * 60 * 1000
-    ) // Random between 1-1.3 hours (all teams submitted before 1.5hr checkpoint)
+    ) // Random between 1-1.3 hours (when 2nd judge completed)
     
-    // Round 2 submissions (some teams haven't submitted yet - it's the active round)
-    const submissionTime2 = i < 7 
-      ? new Date(now.getTime() - (5 + Math.random() * 10) * 60 * 1000) // 7 teams submitted 5-15 mins ago
-      : null // 3 teams haven't submitted yet (round 2 is ongoing and paused)
-    
-    // Round 3 submissions (nobody submitted - it's in the future)
-    const submissionTime3 = null
-
-    // Calculate time bonuses for Round 1 (all submitted early)
     const checkpoint1 = new Date(round1.checkpointTime)
     const bonus1 = Math.max(
       0,
       Math.floor((checkpoint1.getTime() - submissionTime1.getTime()) / (60 * 1000)) * 2
     ) // 2 pts per minute early
 
-    // Create Round 1 submission (all teams)
     await prisma.submission.create({
       data: {
         teamId: team.id,
         roundId: round1.id,
-        githubUrl: `https://github.com/test/${teamInfo.name.toLowerCase().replace(/\s/g, '-')}`,
-        demoUrl: `https://demo.test.com/${teamInfo.name.toLowerCase().replace(/\s/g, '-')}`,
-        submittedAt: submissionTime1,
+        submittedAt: submissionTime1, // Set when 2nd judge completed
         timeBonus: bonus1,
       },
     })
 
-    // Create Round 2 submission (only for teams that have submitted)
-    if (submissionTime2) {
-      const checkpoint2 = new Date(round2.checkpointTime)
-      const bonus2 = Math.max(
-        0,
-        Math.floor((checkpoint2.getTime() - submissionTime2.getTime()) / (60 * 1000)) * 2
-      )
+    // ROUND 2: Full 2-step flow (requires links, then judging, 3 judges)
+    // 7 teams submitted links, 4 completed judging, 3 still need more judges
+    if (i < 7) {
+      // 7 teams submitted links
+      const linksTime = new Date(now.getTime() - (20 + Math.random() * 10) * 60 * 1000) // Links submitted 20-30 mins ago
+      
+      if (i < 4) {
+        // 4 teams completed judging (3 judges scored them)
+        const submissionTime2 = new Date(now.getTime() - (5 + Math.random() * 5) * 60 * 1000) // Completed 5-10 mins ago
+        const checkpoint2 = new Date(round2.checkpointTime)
+        const bonus2 = Math.max(
+          0,
+          Math.floor((checkpoint2.getTime() - submissionTime2.getTime()) / (60 * 1000)) * 2
+        )
 
-      await prisma.submission.create({
+        await prisma.submission.create({
+          data: {
+            teamId: team.id,
+            roundId: round2.id,
+            githubUrl: `https://github.com/test/${teamInfo.name.toLowerCase().replace(/\s/g, '-')}`,
+            demoUrl: `https://demo.test.com/${teamInfo.name.toLowerCase().replace(/\s/g, '-')}`,
+            presentationUrl: `https://slides.test.com/${teamInfo.name.toLowerCase().replace(/\s/g, '-')}`,
+            linksSubmittedAt: linksTime, // STEP 1: Links submitted
+            submittedAt: submissionTime2, // STEP 2: Judging completed (3rd judge done)
+            timeBonus: bonus2,
+          },
+        })
+      } else {
+        // 3 teams submitted links but haven't completed judging yet (only 1-2 judges scored)
+        await prisma.submission.create({
+          data: {
+            teamId: team.id,
+            roundId: round2.id,
+            githubUrl: `https://github.com/test/${teamInfo.name.toLowerCase().replace(/\s/g, '-')}`,
+            demoUrl: `https://demo.test.com/${teamInfo.name.toLowerCase().replace(/\s/g, '-')}`,
+            presentationUrl: `https://slides.test.com/${teamInfo.name.toLowerCase().replace(/\s/g, '-')}`,
+            linksSubmittedAt: linksTime, // STEP 1 complete
+            submittedAt: null, // STEP 2 incomplete (waiting for 3rd judge)
+            timeBonus: 0,
+          },
+        })
+      }
+    }
+    // 3 teams (i >= 7) haven't even submitted links yet
+
+    // ROUND 3: Not started yet (nobody judged)
+
+    // Create scores and JudgingAttempts using NEW FLOW
+    
+    // ROUND 1: All teams scored by 2-3 judges (completed)
+    const round1Criteria = await prisma.criterion.findMany({ where: { roundId: round1.id } })
+    const round1Judges = judges.slice(0, 2 + Math.floor(Math.random() * 2)) // 2-3 judges
+    
+    for (let jIdx = 0; jIdx < round1Judges.length; jIdx++) {
+      const judge = round1Judges[jIdx]
+      const scanTime = new Date(submissionTime1.getTime() - (15 - jIdx * 5) * 60 * 1000) // Scanned before completion
+      const completeTime = new Date(submissionTime1.getTime() - (10 - jIdx * 5) * 60 * 1000) // Completed progressively
+      
+      // Create JudgingAttempt
+      await prisma.judgingAttempt.create({
         data: {
+          judgeId: judge.id,
           teamId: team.id,
-          roundId: round2.id,
-          githubUrl: `https://github.com/test/${teamInfo.name.toLowerCase().replace(/\s/g, '-')}`,
-          demoUrl: `https://demo.test.com/${teamInfo.name.toLowerCase().replace(/\s/g, '-')}`,
-          presentationUrl: `https://slides.test.com/${teamInfo.name.toLowerCase().replace(/\s/g, '-')}`,
-          submittedAt: submissionTime2,
-          timeBonus: bonus2,
+          roundId: round1.id,
+          scannedAt: scanTime,
+          completedAt: jIdx < 2 ? completeTime : completeTime, // All completed
         },
       })
+      
+      // Create scores
+      for (const criterion of round1Criteria) {
+        const baseScore = 3 + Math.floor(Math.random() * 3)
+        await prisma.score.create({
+          data: {
+            teamId: team.id,
+            roundId: round1.id,
+            judgeId: judge.id,
+            criterionId: criterion.id,
+            value: baseScore,
+            comment: baseScore >= 4 ? 'Excellent work!' : 'Good effort, keep improving.',
+          },
+        })
+      }
     }
-
-    // No Round 3 submissions yet (round is in the future)
-
-    // Create scores from judges (only for submitted rounds)
-    const rounds = [
-      { round: round1, hasSubmission: true },
-      { round: round2, hasSubmission: submissionTime2 !== null },
-      { round: round3, hasSubmission: false },
-    ]
-
-    for (const { round, hasSubmission } of rounds) {
-      if (!hasSubmission) continue
-
-      const criteria = await prisma.criterion.findMany({
-        where: { roundId: round.id },
-      })
-
-      // Have 3-4 judges score each team (randomize)
-      const numJudges = 3 + Math.floor(Math.random() * 2)
-      const selectedJudges = judges.slice(0, numJudges)
-
-      for (const judge of selectedJudges) {
-        for (const criterion of criteria) {
-          // Random score between 3-5 with some variation
-          const baseScore = 3 + Math.floor(Math.random() * 3)
+    
+    // ROUND 2: Different judging states per team
+    const round2Criteria = await prisma.criterion.findMany({ where: { roundId: round2.id } })
+    if (i < 4) {
+      // 4 teams: Fully judged (3 judges completed)
+      for (let jIdx = 0; jIdx < 3; jIdx++) {
+        const judge = judges[jIdx]
+        const scanTime = new Date(now.getTime() - (25 - jIdx * 5) * 60 * 1000)
+        const completeTime = new Date(now.getTime() - (20 - jIdx * 5) * 60 * 1000)
+        
+        await prisma.judgingAttempt.create({
+          data: {
+            judgeId: judge.id,
+            teamId: team.id,
+            roundId: round2.id,
+            scannedAt: scanTime,
+            completedAt: completeTime,
+          },
+        })
+        
+        for (const criterion of round2Criteria) {
           await prisma.score.create({
             data: {
               teamId: team.id,
-              roundId: round.id,
+              roundId: round2.id,
               judgeId: judge.id,
               criterionId: criterion.id,
-              value: baseScore,
-              comment: baseScore >= 4 ? 'Excellent work!' : 'Good effort, keep improving.',
+              value: 3 + Math.floor(Math.random() * 3),
+            },
+          })
+        }
+      }
+    } else if (i < 7) {
+      // 3 teams: Partially judged (only 2 judges, waiting for 3rd)
+      for (let jIdx = 0; jIdx < 2; jIdx++) {
+        const judge = judges[jIdx]
+        const scanTime = new Date(now.getTime() - (15 - jIdx * 5) * 60 * 1000)
+        const completeTime = new Date(now.getTime() - (10 - jIdx * 5) * 60 * 1000)
+        
+        await prisma.judgingAttempt.create({
+          data: {
+            judgeId: judge.id,
+            teamId: team.id,
+            roundId: round2.id,
+            scannedAt: scanTime,
+            completedAt: completeTime,
+          },
+        })
+        
+        for (const criterion of round2Criteria) {
+          await prisma.score.create({
+            data: {
+              teamId: team.id,
+              roundId: round2.id,
+              judgeId: judge.id,
+              criterionId: criterion.id,
+              value: 3 + Math.floor(Math.random() * 3),
             },
           })
         }
       }
     }
+    // 3 teams (i >= 7): No judging yet (haven't submitted links)
+    
+    // ROUND 3: No judging yet (round hasn't started)
   }
 
   console.log('✅ Database seeding completed!')
@@ -418,10 +506,16 @@ async function main() {
   console.log(`  - Round 1: EXPIRED (${round1.checkpointTime.toISOString()})`)
   console.log(`  - Round 2: PAUSED (deadline in 30 mins, paused 10 mins ago)`)
   console.log(`  - Round 3: ACTIVE (deadline in 90 mins, running)`)
-  console.log('\n📝 Submission Status:')
-  console.log(`  - Round 1: 10/10 teams submitted (all early - time bonuses)`)
-  console.log(`  - Round 2: 7/10 teams submitted (3 still working)`)
-  console.log(`  - Round 3: 0/10 teams submitted (round not started)`)
+  console.log('\n🎯 JUDGING-IS-SUBMISSION FLOW:')
+  console.log(`  - Round 1: 2 judges required, NO link submission`)
+  console.log(`    ✅ 10/10 teams COMPLETED (2+ judges scored each)`)
+  console.log(`  - Round 2: 3 judges required, REQUIRES link submission (2-step)`)
+  console.log(`    📎 7/10 teams submitted links (STEP 1)`)
+  console.log(`    ✅ 4/7 teams COMPLETED judging (3 judges - STEP 2)`)
+  console.log(`    ⏳ 3/7 teams need 1 more judge (2/3 judges done)`)
+  console.log(`    ❌ 3/10 teams haven't submitted links yet`)
+  console.log(`  - Round 3: 1 judge required, NO link submission`)
+  console.log(`    ⏳ 0/10 teams judged (round not started)`)
   console.log(
     `\n🔗 Access URLs (assuming local dev on http://localhost:3000):`
   )
@@ -433,12 +527,15 @@ async function main() {
   console.log(`  - Judge Tokens: test_judge_token_001 through test_judge_token_005`)
   console.log(`  - Judge Login: http://localhost:3000/h/${hackathon.slug}/judge`)
   console.log(`\n💡 Testing Scenarios:`)
-  console.log(`  ✅ Display should show Round 3 timer counting down`)
-  console.log(`  ✅ Display should show Round 2 as PAUSED`)
-  console.log(`  ✅ 3 teams haven't submitted Round 2 yet (testing late submissions)`)
-  console.log(`  ✅ Test pause/resume Round 3 timer from manage/rounds`)
-  console.log(`  ✅ All Round 1 submissions have time bonuses (submitted early)`)
-  console.log(`  ✅ Leaderboard trends and rank changes working`)
+  console.log(`  ✅ Judge QR scanning creates JudgingAttempts (grace period)`)
+  console.log(`  ✅ Multi-judge averaging (Round 1: 2 judges, Round 2: 3 judges)`)
+  console.log(`  ✅ 2-step flow: Submit links → Get judged (Round 2)`)
+  console.log(`  ✅ Participant dashboard shows live judging progress (2/3 judges)`)
+  console.log(`  ✅ Display screen shows submission celebrations (socket events)`)
+  console.log(`  ✅ Time bonus calculated from Nth judge completion time`)
+  console.log(`  ✅ Link submission guard (can't judge until links submitted)`)
+  console.log(`  ✅ Organizer can toggle requiresLinkSubmission per round`)
+  console.log(`  ✅ Test completing 3rd judge → auto-submission`)
 }
 
 main()
