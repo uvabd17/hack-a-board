@@ -210,6 +210,7 @@ model Team {
   participants     Participant[]
   submissions      Submission[]
   scores           Score[]
+  judgingAttempts  JudgingAttempt[]
 
   @@index([hackathonId])
   @@index([inviteCode])
@@ -266,16 +267,20 @@ model Round {
   // Checkpoint
   checkpointTime   DateTime
   checkpointPausedAt DateTime? // When set, timer is paused; remaining = checkpointTime - checkpointPausedAt
+  
+  // Judging requirements
+  requiredJudges Int @default(1) // How many judges must score team for submission
 
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
-  hackathon   Hackathon   @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
-  criteria    Criterion[]
-  submissions Submission[]
-  scores      Score[]
+  hackathon      Hackathon        @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
+  criteria       Criterion[]
+  submissions    Submission[]
+  scores         Score[]
+  judgingAttempts JudgingAttempt[]
 
   @@index([hackathonId])
   @@index([order])
@@ -303,16 +308,16 @@ model Submission {
   teamId  String
   roundId String
 
-  // Links
+  // Optional links (teams can provide these, but not required for submission)
   githubUrl       String?
   demoUrl         String?
   presentationUrl String?
   otherUrl        String?
 
-  // Timing
+  // Timing - submission timestamp = when Nth judge completes scoring
   submittedAt DateTime @default(now())
   
-  // Time bonus/penalty (calculated at submission)
+  // Time bonus/penalty calculated at submission based on checkpoint deadline
   timeBonus Float @default(0) // Can be negative for penalty
 
   // Relations
@@ -337,11 +342,29 @@ model Judge {
 
   createdAt DateTime @default(now())
 
-  hackathon Hackathon @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
-  scores    Score[]
+  hackathon       Hackathon        @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
+  scores          Score[]
+  judgingAttempts JudgingAttempt[]
 
   @@index([hackathonId])
   @@index([token])
+}
+
+model JudgingAttempt {
+  id          String   @id @default(cuid())
+  judgeId     String
+  teamId      String
+  roundId     String
+  scannedAt   DateTime @default(now()) // When judge scanned QR (started judging session)
+  completedAt DateTime? // When judge submitted scores (nullable if abandoned)
+
+  judge Judge @relation(fields: [judgeId], references: [id], onDelete: Cascade)
+  team  Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  round Round @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
+  @@index([judgeId, teamId, roundId])
+  @@index([roundId, scannedAt])
+  @@index([teamId, roundId])
 }
 
 model Score {
