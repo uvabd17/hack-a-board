@@ -11,6 +11,7 @@ import { getLeaderboardData } from "@/actions/leaderboard"
 import { ProblemSelection } from "@/components/problem-selection"
 import { SubmissionForm } from "@/components/submission-form"
 import { JudgingProgress } from "@/components/judging-progress"
+import { LinkSubmissionForm } from "@/components/link-submission-form"
 import { getTeamJudgingProgress } from "@/actions/judging"
 import { CheckCircle2 } from "lucide-react"
 import { CountdownTimer } from "@/components/countdown-timer"
@@ -273,6 +274,22 @@ export default async function DashboardPage({
                                 {rounds.map((round: any, idx: number) => {
                                     const submission = submissions.find((s: any) => s.roundId === round.id)
                                     const progressData = roundsWithJudgingProgress[idx]
+                                    
+                                    // Check if round requires link submission and if links are submitted
+                                    if (round.requiresLinkSubmission && !submission?.linksSubmittedAt) {
+                                        // Show link submission form
+                                        return (
+                                            <LinkSubmissionForm
+                                                key={round.id}
+                                                roundId={round.id}
+                                                roundName={round.name}
+                                                teamId={participant.teamId}
+                                                slug={slug}
+                                                checkpointTime={round.checkpointTime}
+                                                checkpointPausedAt={round.checkpointPausedAt}
+                                            />
+                                        )
+                                    }
                                     
                                     // Check if this round has judging progress data
                                     if (progressData && 'submitted' in progressData) {
