@@ -5,6 +5,7 @@ import { cookies } from "next/headers"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { emitScoreUpdated } from "@/lib/socket-emit"
+import { checkSubmissionStatus, createSubmission, canJudgeScore } from "@/actions/judging"
 
 const ScoreSubmissionSchema = z.object({
     hackathonId: z.string(),
@@ -55,6 +56,12 @@ export async function submitScore(data: {
         return { error: "Invalid criterion IDs" }
     }
 
+    // Check if judge can still score this team (grace period logic)
+    const canScore = await canJudgeScore(judge.id, data.teamId, data.roundId)
+    if (!canScore.allowed) {
+        return { error: canScore.reason || "Cannot score at this time" }
+    }
+
     // Transactional Write
     try {
         await prisma.$transaction(
@@ -80,10 +87,51 @@ export async function submitScore(data: {
             })
         )
 
-        revalidatePath(`/h/${judge.hackathonId}/judge`)
-        // Emit real-time event (non-fatal if socket server is down)
-        await emitScoreUpdated(data.hackathonId, data.teamId)
-        return { success: true }
+        // Mark judging attempt as completed
+        await prisma.judgingAttempt.updateMany({
+            where: {
+                judgeId: judge.id,
+                teamId: data.teamId,
+                roundId: data.roundId,
+                completedAt: null
+            },
+            data: {
+                completedAt: new Date()
+            }
+        })
+
+        // Check if this completes the submission requirement
+        const submissionStatus = await checkSubmissionStatus(data.teamId, data.roundId)
+
+        if ('error' in submissionStatus) {
+            // Still emit score update even if submission check fails
+            await emitScoreUpdated(data.hackathonId, data.teamId)
+            return { success: true, warning: "Score saved but submission check failed" }
+        }
+
+        // If this creates a new submission, create the submission record
+        if (submissionStatus.newSubmission && submissionStatus.submitted) {
+            await createSubmission(
+                data.teamId,
+                data.roundId,
+                submissionStatus.submittedAt,
+                submissionStatus.timeBonus
+            )
+        } else {
+            // Regular score update
+            await emitScoreUpdated(data.hackathonId, data.teamId)
+        }
+
+        return {
+            success: true,
+            submissionStatus: {
+                submitted: submissionStatus.submitted,
+                judgeCount: submissionStatus.judgeCount,
+                requiredJudges: submissionStatus.requiredJudges,
+                newSubmission: submissionStatus.newSubmission,
+                timeBonus: 'timeBonus' in submissionStatus ? submissionStatus.timeBonus : undefined
+            }
+        }
     } catch (e) {
         console.error("Scoring Error", e)
         return { error: "Failed to save scores." }

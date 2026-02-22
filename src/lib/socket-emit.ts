@@ -129,3 +129,29 @@ export function emitParticipantCheckedIn(hackathonId: string, teamId: string, te
         data: { teamId, teamName },
     })
 }
+
+export async function emitTeamSubmitted(
+    hackathonId: string,
+    data: {
+        teamId: string
+        roundId: string
+        submittedAt: Date
+        timeBonus: number
+        teamName: string
+        roundName: string
+    }
+) {
+    // Emit to both display and hackathon rooms for real-time updates
+    await Promise.all([
+        socketEmit({
+            room: `display:${hackathonId}`,
+            event: "team-submitted",
+            data,
+        }),
+        socketEmit({
+            room: `hackathon:${hackathonId}`,
+            event: "team-submitted",
+            data,
+        })
+    ])
+}
