@@ -10,13 +10,13 @@ interface LiveJudgingProgressProps {
     roundId: string
     teamId: string
     hackathonId: string
-    checkpointTime: string
-    checkpointPausedAt: string | null
+    checkpointTime: Date
+    checkpointPausedAt: Date | null
     initialRequiredJudges: number
     initialJudgeCount: number
     initialSubmitted: boolean
     initialTimeBonus: number | null
-    initialJudges: Array<{ judgeName: string; completedAt: string }>
+    initialJudges: Array<{ judgeId: string; timestamp: Date; judgeName: string }>
 }
 
 export function LiveJudgingProgress({
@@ -35,11 +35,13 @@ export function LiveJudgingProgress({
     const [requiredJudges, setRequiredJudges] = useState(initialRequiredJudges)
     const [judgeCount, setJudgeCount] = useState(initialJudgeCount)
     const [submitted, setSubmitted] = useState(initialSubmitted)
-    const [timeBonus, setTimeBonus] = useState(initialTimeBonus)
-    const [judges, setJudges] = useState(initialJudges)
+    const [timeBonus, setTimeBonus] = useState(initialTimeBonus ?? undefined)
+    const [judges, setJudges] = useState(
+        initialJudges.map(j => ({ name: j.judgeName, timestamp: j.timestamp }))
+    )
 
     useEffect(() => {
-        const socket = connectSocket()
+        const socket = connectSocket(hackathonId, ["hackathon"])
         socket.emit("join:hackathon", hackathonId)
 
         // Listen for team-submitted events (when judging completes)
@@ -52,8 +54,11 @@ export function LiveJudgingProgress({
                     setRequiredJudges(progressData.requiredJudges)
                     setJudgeCount(progressData.judgeCount)
                     setSubmitted(progressData.submitted)
-                    setTimeBonus(progressData.timeBonus)
-                    setJudges(progressData.judges || [])
+                    setTimeBonus(progressData.timeBonus ?? undefined)
+                    setJudges((progressData.judges || []).map((j: any) => ({ 
+                        name: j.judgeName, 
+                        timestamp: j.timestamp 
+                    })))
                 }
             }
         })
@@ -68,8 +73,11 @@ export function LiveJudgingProgress({
                     setRequiredJudges(progressData.requiredJudges)
                     setJudgeCount(progressData.judgeCount)
                     setSubmitted(progressData.submitted)
-                    setTimeBonus(progressData.timeBonus)
-                    setJudges(progressData.judges || [])
+                    setTimeBonus(progressData.timeBonus ?? undefined)
+                    setJudges((progressData.judges || []).map((j: any) => ({ 
+                        name: j.judgeName, 
+                        timestamp: j.timestamp 
+                    })))
                 }
             }
         })

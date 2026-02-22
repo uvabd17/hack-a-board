@@ -300,12 +300,12 @@ export default async function DashboardPage({
                                                 roundId={round.id}
                                                 teamId={participant.teamId}
                                                 hackathonId={participant.hackathonId}
-                                                checkpointTime={round.checkpointTime}
-                                                checkpointPausedAt={round.checkpointPausedAt}
+                                                checkpointTime={new Date(round.checkpointTime)}
+                                                checkpointPausedAt={round.checkpointPausedAt ? new Date(round.checkpointPausedAt) : null}
                                                 initialRequiredJudges={progressData.requiredJudges}
                                                 initialJudgeCount={progressData.judgeCount}
                                                 initialSubmitted={progressData.submitted}
-                                                initialTimeBonus={progressData.timeBonus}
+                                                initialTimeBonus={progressData.timeBonus ?? null}
                                                 initialJudges={progressData.judges || []}
                                             />
                                         )
