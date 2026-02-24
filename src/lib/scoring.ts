@@ -110,7 +110,7 @@ export function breakTie(a: TeamWithRelations, b: TeamWithRelations, allRounds: 
         const subA = a.submissions.find(s => s.roundId === firstRound.id);
         const subB = b.submissions.find(s => s.roundId === firstRound.id);
 
-        if (subA && subB) {
+        if (subA && subB && subA.submittedAt && subB.submittedAt) {
             // Both submitted: Earlier wins (Smaller timestamp is earlier)
             if (subA.submittedAt.getTime() !== subB.submittedAt.getTime()) {
                 return subA.submittedAt.getTime() - subB.submittedAt.getTime();

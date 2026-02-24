@@ -1,10 +1,11 @@
 import NextAuth from "next-auth"
+import type { Provider } from "next-auth/providers"
 import Google from "next-auth/providers/google"
 import Credentials from "next-auth/providers/credentials"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "@/lib/prisma"
 
-const providers = [Google]
+const providers: Provider[] = [Google]
 
 // Add test credentials provider in development
 if (process.env.NODE_ENV === "development") {
