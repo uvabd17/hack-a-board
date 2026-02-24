@@ -250,6 +250,6 @@ export async function updateRoundSettings(hackathonId: string, roundId: string, 
         where: { id: roundId },
         data: updateData
     })
-    revalidatePath(`/h/${ctx.slug}/manage/rounds`)
+    revalidatePath(`/h/${ctx.hackathon.slug}/manage/rounds`)
     return { success: true }
 }
