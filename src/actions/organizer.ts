@@ -20,19 +20,40 @@ export async function getUserHackathons() {
     return { authorized: true, hackathons }
 }
 
-export async function createNewHackathon() {
+export async function createNewHackathon(customSlug?: string) {
     const session = await auth()
     if (!session?.user?.id) redirect("/signin")
 
-    // Generate a random slug for the new hackathon
-    const randomSlug = `hack-${Math.random().toString(36).substring(7)}`
+    // Use custom slug if provided, otherwise generate random
+    let slug = customSlug 
+        ? customSlug.toLowerCase().trim().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-')
+        : `hack-${Math.random().toString(36).substring(7)}`
+
+    // Validate slug format
+    if (!/^[a-z0-9-]+$/.test(slug)) {
+        return { success: false, error: "Slug must contain only lowercase letters, numbers, and dashes" }
+    }
+
+    if (slug.length < 3) {
+        return { success: false, error: "Slug must be at least 3 characters long" }
+    }
+
+    // Check if slug is already taken
+    const existing = await prisma.hackathon.findUnique({
+        where: { slug },
+        select: { id: true }
+    })
+
+    if (existing) {
+        return { success: false, error: "This slug is already taken. Please choose another." }
+    }
 
     // Create a draft hackathon
     try {
         const hackathon = await prisma.hackathon.create({
             data: {
-                name: "Untitled Hackathon",
-                slug: randomSlug,
+                name: customSlug ? customSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : "Untitled Hackathon",
+                slug,
                 userId: session.user.id,
                 startDate: new Date(),
                 endDate: new Date(Date.now() + 24 * 60 * 60 * 1000), // +1 day
