@@ -24,7 +24,7 @@ type Team = {
     isCheckedIn: boolean
     problemStatement: { title: string; icon: string | null } | null
     participants: Participant[]
-    submissions: { roundId: string; submittedAt: Date }[]
+    submissions: { roundId: string; submittedAt: Date | null }[]
 }
 
 export function TeamsTable({ teams, slug }: { teams: Team[], slug: string }) {
