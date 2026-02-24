@@ -46,7 +46,7 @@ export function ScoringForm({
             submitted: boolean
             judgeCount: number
             requiredJudges: number
-            newSubmission: boolean
+            newSubmission?: boolean
             timeBonus?: number
         }
     } | null>(null)
