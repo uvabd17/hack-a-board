@@ -70,7 +70,7 @@ export function CreateHackathonButton() {
                                 className="font-mono"
                             />
                             <p className="text-xs text-muted-foreground">
-                                URL: <span className="font-mono">hackaboard.com/h/{customSlug || "your-slug"}</span>
+                                URL: <span className="font-mono">/h/{customSlug || "your-slug"}</span>
                             </p>
                             <p className="text-xs text-muted-foreground">
                                 Only lowercase letters, numbers, and dashes allowed
