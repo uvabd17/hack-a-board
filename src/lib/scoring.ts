@@ -72,7 +72,7 @@ export function calculateTeamScore(
         let roundBase = 0;
 
         if (judgeIds.length > 0) {
-            const sumJudgeScores = judgeIds.reduce((sum, jId) => sum + scoresByJudge[jId], 0);
+            const sumJudgeScores = judgeIds.reduce((sum: number, jId: string) => sum + scoresByJudge[jId], 0);
             roundBase = sumJudgeScores / judgeIds.length;
         }
 

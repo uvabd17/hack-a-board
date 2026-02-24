@@ -354,7 +354,7 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
         // Shuffle teams when frozen to hide rankings
         if (data.hackathon.isFrozen) {
             // Create seeded random number generator
-            const seed = data.hackathon.id.split('').reduce((acc: number, char) => acc + char.charCodeAt(0), 0)
+            const seed = data.hackathon.id.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0)
             const seededRandom = (index: number) => {
                 const x = Math.sin(seed + index) * 10000
                 return x - Math.floor(x)
