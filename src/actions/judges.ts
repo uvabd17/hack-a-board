@@ -63,7 +63,7 @@ export async function deleteJudge(hackathonId: string, judgeId: string) {
         return { error: "Access Denied" }
     }
 
-    await prisma.judge.delete({ where: { id: judgeId } })
+    await prisma.judge.delete({ where: { id: judgeId, hackathonId } })
     revalidatePath(`/h/${hackathon.slug}/manage/judges`)
     return { success: true }
 }
@@ -81,7 +81,7 @@ export async function toggleJudgeStatus(hackathonId: string, judgeId: string) {
         return { error: "Access Denied" }
     }
 
-    const judge = await prisma.judge.findUnique({ where: { id: judgeId } })
+    const judge = await prisma.judge.findUnique({ where: { id: judgeId, hackathonId } })
     if (!judge) return { error: "Judge not found" }
 
     await prisma.judge.update({

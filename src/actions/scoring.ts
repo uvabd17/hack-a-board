@@ -2,19 +2,16 @@
 
 import { prisma } from "@/lib/prisma"
 import { cookies } from "next/headers"
-import { revalidatePath } from "next/cache"
 import { z } from "zod"
+import { emitScoreUpdated, emitJudgingProgress } from "@/lib/socket-emit"
+import { checkSubmissionStatus, createSubmission, canJudgeScore } from "@/actions/judging"
+import { checkRateLimit } from "@/lib/rate-limit"
 
 const ScoreSubmissionSchema = z.object({
     hackathonId: z.string(),
     teamId: z.string(),
     roundId: z.string(),
-    scores: z.record(z.string(), z.number().min(1).max(10)) // CriterionID -> Score (1-10 allowing more nuance than 1-5?)
-    // Schema says 1-5 in comments, but int is int. Let's do 1-10 for better distribution if weight is high.
-    // Actually adhering to spec comments is safer. Let's do 1-10 to be "premium" and granular?
-    // User Instructions said "Score value (1-5)" in schema. Let's stick to 1-5 to match schema intent. 
-    // Actually, I'll update schema comment or just use 1-10. 1-10 is better for "Standard Linear Decay" and math. 
-    // Let's use 1-10.
+    scores: z.record(z.string(), z.number().min(1).max(5)) // CriterionID -> Score (1-5 per spec)
 })
 
 export async function submitScore(data: {
@@ -23,6 +20,10 @@ export async function submitScore(data: {
     roundId: string,
     scores: Record<string, number>
 }) {
+    // Validate schema — enforces score range 1-5 server-side
+    const parsed = ScoreSubmissionSchema.safeParse(data)
+    if (!parsed.success) return { error: "Invalid score data: " + parsed.error.issues[0].message }
+
     const cookieStore = await cookies()
     const token = cookieStore.get("hackaboard_judge_token")?.value
 
@@ -37,12 +38,38 @@ export async function submitScore(data: {
         return { error: "Invalid Judge Session" }
     }
 
+    const scoreRateLimit = await checkRateLimit({
+        namespace: "score-submit",
+        identifier: judge.id,
+        limit: 120,
+        windowSec: 60,
+    })
+    if (!scoreRateLimit.allowed) {
+        return { error: "Too many score submissions. Please wait a moment and retry." }
+    }
+
     // Validate Team & Round belong to hackathon
     const team = await prisma.team.findUnique({ where: { id: data.teamId } })
-    const round = await prisma.round.findUnique({ where: { id: data.roundId } })
+    const round = await prisma.round.findUnique({
+        where: { id: data.roundId },
+        include: { criteria: { select: { id: true } } }
+    })
 
     if (team?.hackathonId !== data.hackathonId || round?.hackathonId !== data.hackathonId) {
         return { error: "Data Mismatch" }
+    }
+
+    // Verify all submitted criterion IDs belong to this round (prevent cross-round score injection)
+    const validCriterionIds = new Set(round.criteria.map(c => c.id))
+    const submittedIds = Object.keys(data.scores)
+    if (submittedIds.some(id => !validCriterionIds.has(id))) {
+        return { error: "Invalid criterion IDs" }
+    }
+
+    // Check if judge can still score this team (grace period logic)
+    const canScore = await canJudgeScore(judge.id, data.teamId, data.roundId)
+    if (!canScore.allowed) {
+        return { error: canScore.reason || "Cannot score at this time" }
     }
 
     // Transactional Write
@@ -70,8 +97,54 @@ export async function submitScore(data: {
             })
         )
 
-        revalidatePath(`/h/${judge.hackathonId}/judge`)
-        return { success: true }
+        // Mark judging attempt as completed
+        await prisma.judgingAttempt.updateMany({
+            where: {
+                judgeId: judge.id,
+                teamId: data.teamId,
+                roundId: data.roundId,
+                completedAt: null
+            },
+            data: {
+                completedAt: new Date()
+            }
+        })
+
+        // Check if this completes the submission requirement
+        const submissionStatus = await checkSubmissionStatus(data.teamId, data.roundId)
+
+        if ('error' in submissionStatus) {
+            // Still emit score update even if submission check fails
+            await emitScoreUpdated(data.hackathonId, data.teamId)
+            return { success: true, warning: "Score saved but submission check failed" }
+        }
+
+        // If this creates a new submission, create the submission record
+        if (submissionStatus.newSubmission && submissionStatus.submitted) {
+            await createSubmission(
+                data.teamId,
+                data.roundId,
+                submissionStatus.submittedAt,
+                submissionStatus.timeBonus
+            )
+        } else {
+            // Regular score update - emit both score update and judging progress
+            await Promise.all([
+                emitScoreUpdated(data.hackathonId, data.teamId),
+                emitJudgingProgress(data.hackathonId, data.teamId, data.roundId)
+            ])
+        }
+
+        return {
+            success: true,
+            submissionStatus: {
+                submitted: submissionStatus.submitted,
+                judgeCount: submissionStatus.judgeCount,
+                requiredJudges: submissionStatus.requiredJudges,
+                newSubmission: submissionStatus.newSubmission,
+                timeBonus: 'timeBonus' in submissionStatus ? submissionStatus.timeBonus : undefined
+            }
+        }
     } catch (e) {
         console.error("Scoring Error", e)
         return { error: "Failed to save scores." }

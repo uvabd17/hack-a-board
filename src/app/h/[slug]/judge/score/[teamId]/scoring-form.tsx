@@ -1,10 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { submitScore } from "@/actions/scoring"
+import { recordJudgingAttempt } from "@/actions/judging"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { CheckCircle2, AlertCircle } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { CheckCircle2, AlertCircle, Trophy } from "lucide-react"
 
 // Native range input is safer if Slider component missing, but let's try to be premium.
 // Actually, I'll use a styled native input for MVP reliability unless I check for Slider.
@@ -37,10 +39,20 @@ export function ScoringForm({
 }) {
     const [scores, setScores] = useState<Record<string, number>>(initialScores)
     const [loading, setLoading] = useState(false)
-    const [status, setStatus] = useState<{ error?: string, success?: string } | null>(null)
+    const [status, setStatus] = useState<{ 
+        error?: string
+        success?: string
+        submissionStatus?: {
+            submitted: boolean
+            judgeCount: number
+            requiredJudges: number
+            newSubmission?: boolean
+            timeBonus?: number
+        }
+    } | null>(null)
 
     // Ensure at least one round exists
-    if (rounds.length === 0) return <div>NO_ROUNDS_CONFIGURED</div>
+    if (rounds.length === 0) return <div>No scoring rounds configured yet</div>
 
     const handleScoreChange = (criterionId: string, value: number) => {
         setScores(prev => ({ ...prev, [criterionId]: value }))
@@ -78,7 +90,29 @@ export function ScoringForm({
         if (res.error) {
             setStatus({ error: res.error })
         } else {
-            setStatus({ success: "Scores saved successfully." })
+            // Check if this score triggered a submission
+            if (res.submissionStatus?.newSubmission && res.submissionStatus.submitted) {
+                const bonus = res.submissionStatus.timeBonus || 0
+                const bonusText = bonus > 0 
+                    ? `+${bonus} time bonus!` 
+                    : bonus < 0 
+                    ? `${bonus} time penalty` 
+                    : ''
+                setStatus({ 
+                    success: `🎉 Team submitted! ${bonusText}`,
+                    submissionStatus: res.submissionStatus
+                })
+            } else if (res.submissionStatus?.submitted) {
+                setStatus({ 
+                    success: `Scores saved. Team already submitted (${res.submissionStatus.judgeCount}/${res.submissionStatus.requiredJudges} judges).`,
+                    submissionStatus: res.submissionStatus
+                })
+            } else {
+                setStatus({ 
+                    success: `Scores saved! Team progress: ${res.submissionStatus?.judgeCount}/${res.submissionStatus?.requiredJudges} judges completed.`,
+                    submissionStatus: res.submissionStatus
+                })
+            }
         }
         setLoading(false)
     }
@@ -87,7 +121,7 @@ export function ScoringForm({
         <Tabs defaultValue={rounds[0].id} className="w-full">
             <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 bg-zinc-800">
                 {rounds.map(round => (
-                    <TabsTrigger key={round.id} value={round.id} className="data-[state=active]:bg-green-600 data-[state=active]:text-white">
+                    <TabsTrigger key={round.id} value={round.id} className="data-[state=active]:bg-cyan-600 data-[state=active]:text-white">
                         {round.name}
                     </TabsTrigger>
                 ))}
@@ -95,31 +129,44 @@ export function ScoringForm({
 
             {rounds.map(round => (
                 <TabsContent key={round.id} value={round.id} className="space-y-6 mt-6">
-                    {round.criteria.map(criterion => (
-                        <div key={criterion.id} className="p-4 bg-zinc-900 border border-zinc-800 rounded-lg space-y-4">
-                            <div className="flex justify-between items-center">
-                                <label className="font-bold text-lg text-white">{criterion.name}</label>
-                                <span className="text-2xl font-mono text-green-400">
-                                    {scores[criterion.id] || 0}<span className="text-zinc-600 text-sm">/10</span>
-                                </span>
-                            </div>
-
-                            <input
-                                type="range"
-                                min="1"
-                                max="10"
-                                step="1"
-                                value={scores[criterion.id] || 0}
-                                onChange={(e) => handleScoreChange(criterion.id, parseInt(e.target.value))}
-                                className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-green-500"
-                            />
-
-                            <div className="flex justify-between text-xs text-zinc-500 font-mono">
-                                <span>POOR (1)</span>
-                                <span>EXCELLENT (10)</span>
-                            </div>
+                    <div className="flex justify-between items-center bg-zinc-900/50 p-3 border-x border-t border-zinc-800 rounded-t-lg">
+                        <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">
+                            Round: {round.name}
                         </div>
-                    ))}
+                        {round.criteria.some(c => initialScores[c.id] !== undefined) && (
+                            <Badge variant="outline" className="text-[10px] border-yellow-500/30 text-yellow-500 bg-yellow-500/5 rounded-none px-2 py-0">
+                                RE-SCORING
+                            </Badge>
+                        )}
+                    </div>
+
+                    <div className="space-y-6">
+                        {round.criteria.map(criterion => (
+                            <div key={criterion.id} className="p-4 bg-zinc-900 border border-zinc-800 rounded-lg space-y-4">
+                                <div className="flex justify-between items-center">
+                                    <label className="font-bold text-lg text-white">{criterion.name}</label>
+                                    <span className="text-2xl font-mono text-cyan-400">
+                                        {scores[criterion.id] || 0}<span className="text-zinc-600 text-sm">/5</span>
+                                    </span>
+                                </div>
+
+                                <input
+                                    type="range"
+                                    min="1"
+                                    max="5"
+                                    step="1"
+                                    value={scores[criterion.id] || 0}
+                                    onChange={(e) => handleScoreChange(criterion.id, parseInt(e.target.value))}
+                                    className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                                />
+
+                                <div className="flex justify-between text-xs text-zinc-500 font-mono">
+                                    <span>POOR (1)</span>
+                                    <span>EXCELLENT (5)</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
 
                     {status?.error && (
                         <div className="flex items-center gap-2 text-red-400 bg-red-900/20 p-4 rounded border border-red-900">
@@ -128,20 +175,25 @@ export function ScoringForm({
                     )}
 
                     {status?.success && (
-                        <div className="flex items-center gap-2 text-green-400 bg-green-900/20 p-4 rounded border border-green-900">
-                            <CheckCircle2 size={18} /> {status.success}
+                        <div className={`flex items-center gap-2 p-4 rounded border ${
+                            status.submissionStatus?.newSubmission 
+                                ? 'text-cyan-300 bg-cyan-900/30 border-cyan-700 shadow-[0_0_30px_rgba(34,211,238,0.2)]'
+                                : 'text-green-400 bg-green-900/20 border-green-900'
+                        }`}>
+                            {status.submissionStatus?.newSubmission ? <Trophy size={18} /> : <CheckCircle2 size={18} />}
+                            <span>{status.success}</span>
                         </div>
                     )}
 
                     <Button
                         onClick={() => handleSubmit(round.id)}
                         disabled={loading}
-                        className="w-full h-14 text-xl font-bold bg-white text-black hover:bg-zinc-200"
+                        className="w-full h-14 text-xl font-bold bg-white text-black hover:bg-zinc-200 shadow-[0_0_20px_rgba(255,255,255,0.05)]"
                     >
-                        {loading ? "SAVING..." : "CONFIRM_SCORES"}
+                        {loading ? "SAVING..." : "SUBMIT SCORES"}
                     </Button>
                 </TabsContent>
             ))}
-        </Tabs>
+        </Tabs >
     )
 }

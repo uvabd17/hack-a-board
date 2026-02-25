@@ -14,7 +14,7 @@ function SubmitButton() {
     const { pending } = useFormStatus()
     return (
         <Button type="submit" className="w-full bg-primary text-primary-foreground text-lg py-6 font-mono" disabled={pending}>
-            {pending ? "INITIATING..." : "CONFIRM_REGISTRATION >"}
+            {pending ? "REGISTERING..." : "REGISTER >"}
         </Button>
     )
 }
@@ -37,7 +37,7 @@ export default function RegistrationForm({ hackathonSlug }: { hackathonSlug: str
         if (result.error) {
             setError(result.error)
         } else if (result.success && result.qrToken) {
-            router.push(`/h/${hackathonSlug}/dashboard?token=${result.qrToken}`)
+            router.push(`/h/${hackathonSlug}/qr/${result.qrToken}`)
         }
     }
 
@@ -45,18 +45,18 @@ export default function RegistrationForm({ hackathonSlug }: { hackathonSlug: str
         <div className="max-w-md mx-auto py-10 px-4 font-mono">
             <Card className="border-primary/20 bg-card">
                 <CardHeader>
-                    <CardTitle className="text-2xl text-primary text-center">ACCESS_REQUEST_FORM</CardTitle>
-                    <CardDescription className="text-center">Identify yourself to proceed.</CardDescription>
+                    <CardTitle className="text-2xl text-primary text-center">REGISTRATION</CardTitle>
+                    <CardDescription className="text-center">Fill in your details to join the hackathon.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <form action={clientAction} className="space-y-6">
                         <div className="space-y-2">
-                            <Label htmlFor="name">AGENT_NAME</Label>
+                            <Label htmlFor="name">FULL NAME</Label>
                             <Input id="name" name="name" required placeholder="John Doe" className="border-border bg-background focus:ring-primary" />
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="email">COMM_LINK (EMAIL)</Label>
+                            <Label htmlFor="email">EMAIL ADDRESS</Label>
                             <Input id="email" name="email" type="email" required placeholder="john@example.com" className="border-border bg-background focus:ring-primary" />
                         </div>
 
@@ -66,13 +66,13 @@ export default function RegistrationForm({ hackathonSlug }: { hackathonSlug: str
                                 <Input id="phone" name="phone" placeholder="+1234567890" className="border-border bg-background" />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="college">AFFILIATION (OPT)</Label>
+                                <Label htmlFor="college">COLLEGE / ORG (OPT)</Label>
                                 <Input id="college" name="college" placeholder="University..." className="border-border bg-background" />
                             </div>
                         </div>
 
                         <div className="pt-4 border-t border-border">
-                            <Label className="mb-4 block text-center text-primary">UNIT_ASSIGNMENT</Label>
+                            <Label className="mb-4 block text-center text-primary">TEAM SETUP</Label>
                             <Tabs value={mode} onValueChange={(v) => setMode(v as "create" | "join" | "solo")} className="w-full">
                                 <TabsList className="grid w-full grid-cols-3 bg-muted">
                                     <TabsTrigger value="create">CREATE</TabsTrigger>
@@ -81,18 +81,18 @@ export default function RegistrationForm({ hackathonSlug }: { hackathonSlug: str
                                 </TabsList>
 
                                 <TabsContent value="create" className="pt-4 space-y-2">
-                                    <Label htmlFor="teamName">NEW_UNIT_DESIGNATION</Label>
+                                    <Label htmlFor="teamName">TEAM NAME</Label>
                                     <Input id="teamName" name="teamName" placeholder="Team Phoenix" required={mode === "create"} className="border-border bg-background" />
                                 </TabsContent>
 
                                 <TabsContent value="join" className="pt-4 space-y-2">
-                                    <Label htmlFor="inviteCode">ACCESS_CODE</Label>
+                                    <Label htmlFor="inviteCode">INVITE CODE</Label>
                                     <Input id="inviteCode" name="inviteCode" placeholder="XYZ123" required={mode === "join"} className="border-border bg-background uppercase tracking-widest" maxLength={6} />
                                 </TabsContent>
 
                                 <TabsContent value="solo" className="pt-4">
                                     <p className="text-xs text-muted-foreground text-center">
-                                        A temporary single-operative unit will be established.
+                                        You&apos;ll be registered as a solo participant.
                                     </p>
                                 </TabsContent>
                             </Tabs>

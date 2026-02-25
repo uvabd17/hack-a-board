@@ -1,13 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { createProblemStatement, deleteProblemStatement, toggleProblemRelease } from "@/actions/problems"
+import { createProblemStatement, deleteProblemStatement, toggleProblemRelease, releaseAllProblems } from "@/actions/problems"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { AlertCircle, CheckCircle2, Trash2, Eye, EyeOff } from "lucide-react"
+import { AlertCircle, CheckCircle2, Trash2, Eye, EyeOff, Radio } from "lucide-react"
 
 export function ProblemForm({ hackathonId }: { hackathonId: string }) {
     const [loading, setLoading] = useState(false)
@@ -150,5 +150,31 @@ export function ProblemItem({ problem, hackathonId }: { problem: ProblemStatemen
                 </Button>
             </div>
         </div>
+    )
+}
+
+export function ReleaseAllButton({ hackathonId, hiddenCount }: { hackathonId: string; hiddenCount: number }) {
+    const [loading, setLoading] = useState(false)
+
+    async function handleReleaseAll() {
+        if (!confirm(`Release all ${hiddenCount} hidden problem statement(s) to participants?`)) return
+        setLoading(true)
+        await releaseAllProblems(hackathonId)
+        setLoading(false)
+    }
+
+    if (hiddenCount === 0) return null
+
+    return (
+        <Button
+            variant="default"
+            size="sm"
+            className="gap-2 uppercase text-xs"
+            onClick={handleReleaseAll}
+            disabled={loading}
+        >
+            <Radio size={14} />
+            {loading ? "RELEASING..." : `RELEASE_ALL (${hiddenCount})`}
+        </Button>
     )
 }

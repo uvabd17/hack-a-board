@@ -1,7 +1,7 @@
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { notFound, redirect } from "next/navigation"
-import { ProblemForm, ProblemItem } from "./client-components"
+import { ProblemForm, ProblemItem, ReleaseAllButton } from "./client-components"
 
 interface ProblemStatement {
     id: string;
@@ -31,12 +31,17 @@ export default async function ProblemsPage({ params }: { params: Promise<{ slug:
         notFound()
     }
 
+    const hiddenCount = hackathon.problemStatements.filter((p: ProblemStatement) => !p.isReleased).length
+
     return (
         <div className="max-w-5xl mx-auto space-y-8">
             <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-bold text-primary">PROBLEM_STATEMENTS</h1>
-                <div className="text-sm text-muted-foreground">
-                    TOTAL_COUNT: {hackathon.problemStatements.length}
+                <div className="flex items-center gap-4">
+                    <ReleaseAllButton hackathonId={hackathon.id} hiddenCount={hiddenCount} />
+                    <div className="text-sm text-muted-foreground">
+                        TOTAL_COUNT: {hackathon.problemStatements.length}
+                    </div>
                 </div>
             </div>
 

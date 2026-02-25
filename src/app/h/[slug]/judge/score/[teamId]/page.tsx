@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { ScoringForm } from "./scoring-form"
+import { recordJudgingAttempt } from "@/actions/judging"
 
 export default async function ScoringPage({
     params
@@ -35,6 +36,12 @@ export default async function ScoringPage({
         include: { criteria: true },
         orderBy: { order: 'asc' }
     })
+
+    // Record judging attempts for all rounds (for grace period tracking)
+    // This marks when the judge started the scoring session
+    for (const round of rounds) {
+        await recordJudgingAttempt(token, teamId, round.id)
+    }
 
     // Fetch Existing Scores
     const existingScores = await prisma.score.findMany({

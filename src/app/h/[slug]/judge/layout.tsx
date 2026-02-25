@@ -16,7 +16,7 @@ export default async function JudgeLayout({
     if (!token) {
         return (
             <div className="flex items-center justify-center min-h-screen text-destructive font-mono">
-                ACCESS_DENIED: MISSING_CREDENTIALS
+                ACCESS DENIED — Missing judge credentials
             </div>
         )
     }
@@ -29,7 +29,7 @@ export default async function JudgeLayout({
     if (!judge || judge.hackathon.slug !== slug || !judge.isActive) {
         return (
             <div className="flex items-center justify-center min-h-screen text-destructive font-mono">
-                ACCESS_DENIED: INVALID_TOKEN_OR_INACTIVE
+                ACCESS DENIED — Invalid or inactive judge token
             </div>
         )
     }
@@ -39,7 +39,7 @@ export default async function JudgeLayout({
             {/* Judge Header */}
             <header className="border-b border-white/20 p-4 flex items-center justify-between bg-zinc-900">
                 <div>
-                    <h1 className="text-sm font-bold text-green-400">JUDGE_TERMINAL</h1>
+                    <h1 className="text-sm font-bold text-green-400">JUDGE PANEL</h1>
                     <p className="text-xs text-zinc-500">{judge.name}</p>
                 </div>
                 <div className="text-xs text-zinc-600">

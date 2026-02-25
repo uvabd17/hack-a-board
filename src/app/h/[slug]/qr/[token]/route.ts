@@ -1,11 +1,32 @@
 import { prisma } from "@/lib/prisma"
 import { NextRequest, NextResponse } from "next/server"
+import { checkRateLimit } from "@/lib/rate-limit"
 
 export async function GET(
     request: NextRequest,
     context: { params: Promise<{ slug: string; token: string }> } // Correct type for Next.js 15+ route handlers
 ) {
     const { slug, token } = await context.params
+    const ip =
+        request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        request.headers.get("x-real-ip") ||
+        "unknown"
+
+    const limited = await checkRateLimit({
+        namespace: "qr-auth",
+        identifier: `${ip}:${slug.toLowerCase()}`,
+        limit: 60,
+        windowSec: 60,
+    })
+    if (!limited.allowed) {
+        return NextResponse.json(
+            { error: "Too many QR auth attempts. Try again shortly." },
+            {
+                status: 429,
+                headers: { "Retry-After": String(limited.retryAfterSec || 60) },
+            }
+        )
+    }
 
     // 1. Check if Judge
     const judge = await prisma.judge.findUnique({
@@ -26,9 +47,9 @@ export async function GET(
             response.cookies.set("hackaboard_judge_token", token, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === "production",
-                sameSite: "lax",
-                path: "/",
-                maxAge: 60 * 60 * 24 // 24 hours
+                sameSite: "strict",
+                path: `/h/${slug}`,
+                maxAge: 60 * 60 * 12 // 12 hours (single event day)
             })
 
             return response
@@ -65,9 +86,9 @@ export async function GET(
             response.cookies.set("hackaboard_participant_token", token, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === "production",
-                sameSite: "lax",
-                path: "/",
-                maxAge: 60 * 60 * 24 * 7 // 1 week
+                sameSite: "strict",
+                path: `/h/${slug}`,
+                maxAge: 60 * 60 * 24 * 3 // 3 days
             })
 
             return response

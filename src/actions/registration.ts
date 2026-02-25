@@ -2,8 +2,8 @@
 
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
-import { redirect } from "next/navigation"
 import crypto from "crypto"
+import { getRequestIp, checkRateLimit } from "@/lib/rate-limit"
 
 // Zod Schemas
 const registerSchema = z.object({
@@ -37,11 +37,42 @@ export async function registerParticipant(prevState: RegisterState, formData: Fo
     const { hackathonSlug, name, email, phone, college, mode, teamName, inviteCode } = parsed.data
 
     try {
+        const ip = await getRequestIp()
+        const limited = await checkRateLimit({
+            namespace: "registration",
+            identifier: `${ip}:${hackathonSlug.toLowerCase()}`,
+            limit: 20,
+            windowSec: 10 * 60,
+        })
+        if (!limited.allowed) {
+            return { error: "Too many registration attempts. Please try again shortly." }
+        }
+
         const hackathon = await prisma.hackathon.findUnique({
             where: { slug: hackathonSlug }
         })
 
         if (!hackathon) return { error: "Hackathon not found" }
+
+        // Block registration if hackathon is not published or live
+        if (hackathon.status !== "published" && hackathon.status !== "live") {
+            return { error: "Registration is not available for this hackathon" }
+        }
+
+        // Enforce registration deadline
+        if (hackathon.registrationDeadline && new Date() > hackathon.registrationDeadline) {
+            return { error: "Registration deadline has passed" }
+        }
+
+        // Enforce max team capacity
+        if (hackathon.maxTeams > 0 && (mode === "create" || mode === "solo")) {
+            const teamCount = await prisma.team.count({
+                where: { hackathonId: hackathon.id }
+            })
+            if (teamCount >= hackathon.maxTeams) {
+                return { error: "This hackathon has reached its maximum number of teams" }
+            }
+        }
 
         // Check if email already registered for this hackathon
         const existingParticipant = await prisma.participant.findUnique({
@@ -85,6 +116,11 @@ export async function registerParticipant(prevState: RegisterState, formData: Fo
             })
 
             if (!team) return { error: "Invalid invite code" }
+
+            // Ensure the team belongs to this hackathon (prevent cross-hackathon joins)
+            if (team.hackathonId !== hackathon.id) {
+                return { error: "Invalid invite code" }
+            }
 
             // Check team size
             const memberCount = await prisma.participant.count({

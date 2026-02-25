@@ -48,7 +48,7 @@ export default async function JudgesPage({ params }: { params: Promise<{ slug: s
                     </div>
                 ) : (
                     hackathon.judges.map((judge: Judge) => (
-                        <JudgeItem key={judge.id} judge={judge} hackathonId={hackathon.id} />
+                            <JudgeItem key={judge.id} judge={judge} hackathonId={hackathon.id} slug={slug} />
                     ))
                 )}
             </div>
