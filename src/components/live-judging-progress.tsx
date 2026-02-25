@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { JudgingProgress } from "@/components/judging-progress"
-import { connectSocket } from "@/lib/socket-client"
+import { useRealtime } from "@/lib/realtime-client"
 import { getTeamJudgingProgress } from "@/actions/judging"
 
 interface LiveJudgingProgressProps {
@@ -40,53 +40,25 @@ export function LiveJudgingProgress({
         initialJudges.map(j => ({ name: j.judgeName, timestamp: j.timestamp }))
     )
 
-    useEffect(() => {
-        const socket = connectSocket(hackathonId, ["hackathon"])
-        socket.emit("join:hackathon", hackathonId)
-
-        // Listen for team-submitted events (when judging completes)
-        socket.on("team-submitted", async (payload: { teamId: string; roundId: string }) => {
-            // Check if this event is for our team and round
-            if (payload.teamId === teamId && payload.roundId === roundId) {
-                // Fetch updated progress data
-                const progressData = await getTeamJudgingProgress(teamId, roundId)
-                if (progressData && 'submitted' in progressData) {
-                    setRequiredJudges(progressData.requiredJudges)
-                    setJudgeCount(progressData.judgeCount)
-                    setSubmitted(progressData.submitted)
-                    setTimeBonus(progressData.timeBonus ?? undefined)
-                    setJudges((progressData.judges || []).map((j: any) => ({ 
-                        name: j.judgeName, 
-                        timestamp: j.timestamp 
-                    })))
-                }
+    useRealtime({
+        events: ["teamSubmitted", "judgingProgress"],
+        channels: [`hackathon:${hackathonId}`],
+        enabled: !!hackathonId,
+        onData: async ({ event, data: payload }) => {
+            if (payload.teamId !== teamId || payload.roundId !== roundId) return
+            const progressData = await getTeamJudgingProgress(teamId, roundId)
+            if (progressData && "submitted" in progressData) {
+                setRequiredJudges(progressData.requiredJudges)
+                setJudgeCount(progressData.judgeCount)
+                setSubmitted(progressData.submitted)
+                setTimeBonus(progressData.timeBonus ?? undefined)
+                setJudges((progressData.judges || []).map((j: any) => ({
+                    name: j.judgeName,
+                    timestamp: j.timestamp,
+                })))
             }
-        })
-
-        // Listen for judging-progress events (when individual judges score)
-        socket.on("judging-progress", async (payload: { teamId: string; roundId: string }) => {
-            // Check if this event is for our team and round
-            if (payload.teamId === teamId && payload.roundId === roundId) {
-                // Fetch updated progress data
-                const progressData = await getTeamJudgingProgress(teamId, roundId)
-                if (progressData && 'submitted' in progressData) {
-                    setRequiredJudges(progressData.requiredJudges)
-                    setJudgeCount(progressData.judgeCount)
-                    setSubmitted(progressData.submitted)
-                    setTimeBonus(progressData.timeBonus ?? undefined)
-                    setJudges((progressData.judges || []).map((j: any) => ({ 
-                        name: j.judgeName, 
-                        timestamp: j.timestamp 
-                    })))
-                }
-            }
-        })
-
-        return () => {
-            socket.off("team-submitted")
-            socket.off("judging-progress")
-        }
-    }, [hackathonId, teamId, roundId])
+        },
+    })
 
     return (
         <JudgingProgress
