@@ -300,14 +300,15 @@ export async function createSubmission(
         })
 
         // Emit socket event for real-time leaderboard update
-        await emitTeamSubmitted(submission.team.hackathonId, {
+        await emitTeamSubmitted(
+            submission.team.hackathonId,
             teamId,
             roundId,
             submittedAt,
             timeBonus,
-            teamName: submission.team.name,
-            roundName: submission.round.name
-        })
+            submission.team.name,
+            submission.round.name,
+        )
 
         return { success: true, submission }
     } catch (error) {
