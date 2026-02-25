@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { JudgingProgress } from "@/components/judging-progress"
-import { useRealtime } from "@/lib/realtime-client"
+import { connectSocket, disconnectSocket } from "@/lib/socket-client"
 import { getTeamJudgingProgress } from "@/actions/judging"
 
 interface LiveJudgingProgressProps {
@@ -40,11 +40,10 @@ export function LiveJudgingProgress({
         initialJudges.map(j => ({ name: j.judgeName, timestamp: j.timestamp }))
     )
 
-    useRealtime({
-        events: ["teamSubmitted", "judgingProgress"],
-        channels: [`hackathon:${hackathonId}`],
-        enabled: !!hackathonId,
-        onData: async ({ event, data: payload }) => {
+    useEffect(() => {
+        if (!hackathonId) return
+        const socket = connectSocket(hackathonId, ["hackathon"])
+        const handleUpdate = async (payload: { teamId: string; roundId: string }) => {
             if (payload.teamId !== teamId || payload.roundId !== roundId) return
             const progressData = await getTeamJudgingProgress(teamId, roundId)
             if (progressData && "submitted" in progressData) {
@@ -57,8 +56,15 @@ export function LiveJudgingProgress({
                     timestamp: j.timestamp,
                 })))
             }
-        },
-    })
+        }
+        socket.on("team-submitted", handleUpdate)
+        socket.on("judging-progress", handleUpdate)
+        return () => {
+            socket.off("team-submitted", handleUpdate)
+            socket.off("judging-progress", handleUpdate)
+            disconnectSocket()
+        }
+    }, [hackathonId, teamId, roundId])
 
     return (
         <JudgingProgress
