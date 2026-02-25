@@ -1,11 +1,11 @@
 import NextAuth from "next-auth"
 import type { Provider } from "next-auth/providers"
-import Google from "next-auth/providers/google"
 import Credentials from "next-auth/providers/credentials"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "@/lib/prisma"
+import { authConfig } from "@/auth.config"
 
-const providers: Provider[] = [Google]
+const providers: Provider[] = [...authConfig.providers]
 
 // Add test credentials provider in development
 if (process.env.NODE_ENV === "development") {
@@ -35,31 +35,7 @@ if (process.env.NODE_ENV === "development") {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+    ...authConfig,
     adapter: PrismaAdapter(prisma),
     providers,
-    // Use JWT sessions for credentials provider compatibility
-    session: {
-        strategy: "jwt"
-    },
-    callbacks: {
-        async jwt({ token, user, account }) {
-            if (user) {
-                token.id = user.id
-                token.email = user.email
-                token.name = user.name
-            }
-            return token
-        },
-        async session({ session, token }) {
-            if (session.user) {
-                session.user.id = token.id as string
-                session.user.email = token.email as string
-                session.user.name = token.name as string
-            }
-            return session
-        }
-    },
-    pages: {
-        signIn: "/signin",
-    },
 })

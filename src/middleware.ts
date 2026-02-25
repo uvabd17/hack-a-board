@@ -1,36 +1,21 @@
-import { auth } from "@/auth"
-import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
+import NextAuth from "next-auth"
+import { authConfig } from "@/auth.config"
+
+// Initialise NextAuth with the Edge-safe config (no Prisma, no Node.js-only imports)
+const { auth } = NextAuth(authConfig)
 
 /**
- * Middleware — protects organizer routes and adds security headers.
- * 
+ * Middleware — protects organizer routes.
+ *
  * Protected routes:
  *   /dashboard          — organizer dashboard (requires NextAuth session)
  *   /h/[slug]/manage/*  — hackathon management (requires NextAuth session)
- * 
- * Judge & participant routes are protected via cookie checks in their layouts,
- * so they don't need middleware-level protection.
+ *
+ * Judge & participant routes are protected via cookie checks in their layouts.
  */
-export default auth((req: NextRequest & { auth?: unknown }) => {
-    const { pathname } = req.nextUrl
-
-    // Check if route requires organizer auth
-    const isOrganizerRoute =
-        pathname.startsWith("/dashboard") ||
-        pathname.match(/^\/h\/[^/]+\/manage/)
-
-    if (isOrganizerRoute && !req.auth) {
-        const signInUrl = new URL("/signin", req.url)
-        signInUrl.searchParams.set("callbackUrl", pathname)
-        return NextResponse.redirect(signInUrl)
-    }
-
-    return NextResponse.next()
-})
+export default auth
 
 export const config = {
-    // Run middleware on organizer-facing routes only (skip static, api, _next)
     matcher: [
         "/dashboard/:path*",
         "/h/:slug/manage/:path*",
