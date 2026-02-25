@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { getLeaderboard } from "@/actions/leaderboard"
+import { getLeaderboardData } from "@/actions/leaderboard"
 import { TickerRow } from "./components/ticker-row"
 import { Loader2 } from "lucide-react"
 
@@ -20,9 +20,16 @@ export function ClientLeaderboard({ slug }: { slug: string }) {
     const [loading, setLoading] = useState(true)
 
     const fetchData = async () => {
-        const res = await getLeaderboard(slug)
-        if (res && !('error' in res)) {
-            setData(res)
+        try {
+            const res = await getLeaderboardData(slug)
+            if (res) {
+                setData({
+                    isFrozen: res.frozen,
+                    teams: res.leaderboard
+                })
+            }
+        } catch (e) {
+            console.error(e)
         }
         setLoading(false)
     }
