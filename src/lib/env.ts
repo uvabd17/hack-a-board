@@ -37,8 +37,17 @@ export const EMIT_SECRET = isProduction
     ? requireEnv("EMIT_SECRET")
     : optionalEnv("EMIT_SECRET", "dev-secret")
 
-export const SOCKET_SERVER_URL = optionalEnv("SOCKET_SERVER_URL", "http://localhost:3001")
-export const NEXT_PUBLIC_SOCKET_SERVER_URL = optionalEnv("NEXT_PUBLIC_SOCKET_SERVER_URL", "http://localhost:3001")
+export const SOCKET_SERVER_URL = isProduction
+    ? requireEnv("SOCKET_SERVER_URL")
+    : optionalEnv("SOCKET_SERVER_URL", "http://localhost:3001")
+
+export const NEXT_PUBLIC_SOCKET_SERVER_URL = isProduction
+    ? requireEnv("NEXT_PUBLIC_SOCKET_SERVER_URL")
+    : optionalEnv("NEXT_PUBLIC_SOCKET_SERVER_URL", "http://localhost:3001")
+
+export const NEXT_PUBLIC_BASE_URL = isProduction
+    ? requireEnv("NEXT_PUBLIC_BASE_URL")
+    : optionalEnv("NEXT_PUBLIC_BASE_URL", "http://localhost:3000")
 
 // ── Optional integrations ─────────────────────────────────────────
 export const UPSTASH_REDIS_REST_URL = process.env.UPSTASH_REDIS_REST_URL || ""

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { submitProject } from "@/actions/submissions"
-import { CheckCircle2, Clock } from "lucide-react"
+import { CheckCircle2 } from "lucide-react"
 import { CountdownTimer } from "@/components/countdown-timer"
 
 export function SubmissionForm({
@@ -60,7 +60,7 @@ export function SubmissionForm({
                     </div>
                 </div>
                 {existingSubmission && (
-                    <Badge variant="outline" className="text-[10px] text-green-500 border-green-500/50">
+                    <Badge className="text-[10px] text-green-500 border-green-500/50">
                         <CheckCircle2 className="w-3 h-3 mr-1" />
                         SUBMITTED
                     </Badge>
@@ -102,7 +102,7 @@ export function SubmissionForm({
     )
 }
 
-function Badge({ children, variant, className }: any) {
+function Badge({ children, className }: { children: React.ReactNode; className?: string }) {
     return (
         <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${className}`}>
             {children}

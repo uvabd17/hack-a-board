@@ -26,7 +26,7 @@ export default async function ManageDisplayPage({ params }: { params: Promise<{ 
                 initialIsFrozen={hackathon.isFrozen}
                 slug={slug}
                 problemStatements={hackathon.problemStatements}
-                initialMode={hackathon.displayMode as any}
+                initialMode={hackathon.displayMode as "global" | "problem" | "auto"}
                 initialProblemId={hackathon.displayProblemId}
             />
 

@@ -2,10 +2,10 @@
 
 import { prisma } from "@/lib/prisma"
 import { cookies } from "next/headers"
-import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { emitScoreUpdated, emitJudgingProgress } from "@/lib/socket-emit"
 import { checkSubmissionStatus, createSubmission, canJudgeScore } from "@/actions/judging"
+import { checkRateLimit } from "@/lib/rate-limit"
 
 const ScoreSubmissionSchema = z.object({
     hackathonId: z.string(),
@@ -36,6 +36,16 @@ export async function submitScore(data: {
 
     if (!judge || !judge.isActive || judge.hackathonId !== data.hackathonId) {
         return { error: "Invalid Judge Session" }
+    }
+
+    const scoreRateLimit = await checkRateLimit({
+        namespace: "score-submit",
+        identifier: judge.id,
+        limit: 120,
+        windowSec: 60,
+    })
+    if (!scoreRateLimit.allowed) {
+        return { error: "Too many score submissions. Please wait a moment and retry." }
     }
 
     // Validate Team & Round belong to hackathon

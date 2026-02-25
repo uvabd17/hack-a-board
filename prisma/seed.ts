@@ -43,8 +43,8 @@ async function main() {
       await prisma.account.deleteMany()
       await prisma.session.deleteMany()
       await prisma.user.deleteMany()
-    } catch (error: any) {
-      if (error.code === 'P2021') {
+    } catch (error: unknown) {
+      if (typeof error === "object" && error && "code" in error && (error as { code?: string }).code === 'P2021') {
         console.log('⚠️  Tables don\'t exist yet - skipping cleanup (this is normal for first run)')
       } else {
         throw error

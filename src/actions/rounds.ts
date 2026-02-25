@@ -235,7 +235,7 @@ export async function updateRoundSettings(hackathonId: string, roundId: string, 
     const ctx = await getRoundAndHackathon(hackathonId, roundId, session.user.id)
     if (!ctx) return { error: "Access Denied" }
 
-    const updateData: any = {}
+    const updateData: { requiredJudges?: number; requiresLinkSubmission?: boolean } = {}
     if (typeof settings.requiredJudges === 'number') {
         if (settings.requiredJudges < 1 || settings.requiredJudges > 10) {
             return { error: "Required judges must be between 1 and 10" }

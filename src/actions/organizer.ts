@@ -25,7 +25,7 @@ export async function createNewHackathon(customSlug?: string) {
     if (!session?.user?.id) redirect("/signin")
 
     // Use custom slug if provided, otherwise generate random
-    let slug = customSlug 
+    const slug = customSlug 
         ? customSlug.toLowerCase().trim().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-')
         : `hack-${Math.random().toString(36).substring(7)}`
 

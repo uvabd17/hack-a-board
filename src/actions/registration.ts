@@ -2,8 +2,8 @@
 
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
-import { redirect } from "next/navigation"
 import crypto from "crypto"
+import { getRequestIp, checkRateLimit } from "@/lib/rate-limit"
 
 // Zod Schemas
 const registerSchema = z.object({
@@ -37,6 +37,17 @@ export async function registerParticipant(prevState: RegisterState, formData: Fo
     const { hackathonSlug, name, email, phone, college, mode, teamName, inviteCode } = parsed.data
 
     try {
+        const ip = await getRequestIp()
+        const limited = await checkRateLimit({
+            namespace: "registration",
+            identifier: `${ip}:${hackathonSlug.toLowerCase()}`,
+            limit: 20,
+            windowSec: 10 * 60,
+        })
+        if (!limited.allowed) {
+            return { error: "Too many registration attempts. Please try again shortly." }
+        }
+
         const hackathon = await prisma.hackathon.findUnique({
             where: { slug: hackathonSlug }
         })

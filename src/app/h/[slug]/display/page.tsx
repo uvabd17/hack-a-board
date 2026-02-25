@@ -8,6 +8,8 @@ import { CeremonyDisplay } from "@/components/ceremony-display"
 import { connectSocket, disconnectSocket } from "@/lib/socket-client"
 import { CountdownTimer } from "@/components/countdown-timer"
 
+const WATCHDOG_POLL_MS = 15000
+
 // ── Leaderboard Row (extracted for reuse in both columns) ──────────
 function TeamRow({ team, isFrozen, isRecentlySubmitted }: { 
     team: any
@@ -196,7 +198,11 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
 
         fetchRef.current = fetchData
         fetchData()
-        const interval = setInterval(fetchData, 1000) // Poll every 1s for timer accuracy
+        const interval = setInterval(() => {
+            if (document.visibilityState !== "hidden") {
+                fetchData()
+            }
+        }, WATCHDOG_POLL_MS) // Socket-first updates with light watchdog polling
         return () => clearInterval(interval)
     }, [slug]) // Keep stable dependency array
 

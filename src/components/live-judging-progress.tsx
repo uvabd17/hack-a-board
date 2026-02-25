@@ -19,6 +19,8 @@ interface LiveJudgingProgressProps {
     initialJudges: Array<{ judgeId: string; timestamp: Date; judgeName: string }>
 }
 
+type JudgingProgressJudge = { judgeId: string; timestamp: Date; judgeName: string }
+
 export function LiveJudgingProgress({
     roundName,
     roundId,
@@ -51,7 +53,7 @@ export function LiveJudgingProgress({
                 setJudgeCount(progressData.judgeCount)
                 setSubmitted(progressData.submitted)
                 setTimeBonus(progressData.timeBonus ?? undefined)
-                setJudges((progressData.judges || []).map((j: any) => ({
+                setJudges((progressData.judges || []).map((j: JudgingProgressJudge) => ({
                     name: j.judgeName,
                     timestamp: j.timestamp,
                 })))

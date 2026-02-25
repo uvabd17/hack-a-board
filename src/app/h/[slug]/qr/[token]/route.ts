@@ -1,11 +1,32 @@
 import { prisma } from "@/lib/prisma"
 import { NextRequest, NextResponse } from "next/server"
+import { checkRateLimit } from "@/lib/rate-limit"
 
 export async function GET(
     request: NextRequest,
     context: { params: Promise<{ slug: string; token: string }> } // Correct type for Next.js 15+ route handlers
 ) {
     const { slug, token } = await context.params
+    const ip =
+        request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        request.headers.get("x-real-ip") ||
+        "unknown"
+
+    const limited = await checkRateLimit({
+        namespace: "qr-auth",
+        identifier: `${ip}:${slug.toLowerCase()}`,
+        limit: 60,
+        windowSec: 60,
+    })
+    if (!limited.allowed) {
+        return NextResponse.json(
+            { error: "Too many QR auth attempts. Try again shortly." },
+            {
+                status: 429,
+                headers: { "Retry-After": String(limited.retryAfterSec || 60) },
+            }
+        )
+    }
 
     // 1. Check if Judge
     const judge = await prisma.judge.findUnique({

@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# hack<a>board
 
-## Getting Started
+Real-time hackathon operations platform with:
+- organizer control panel
+- participant dashboard + submissions
+- judge QR scoring flow
+- live public/display leaderboard
+- ceremony reveal mode
 
-First, run the development server:
+## Stack
+- Next.js (App Router) on Vercel
+- PostgreSQL + Prisma
+- Socket.IO server (Render)
+- Optional Upstash Redis (rate limit + realtime helpers)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Local setup
+1. Install deps: `npm ci`
+2. Copy env: `cp .env.example .env`
+3. Set required variables in `.env`
+4. Run migrations: `npx prisma migrate dev`
+5. Seed (optional): `npm run db:seed`
+6. Start app: `npm run dev`
+7. Start socket server: `cd socket-server && npm ci && npm run dev`
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Scripts
+- `npm run dev`
+- `npm run build`
+- `npm run start`
+- `npm run lint`
+- `npm run typecheck`
+- `npm run db:migrate:deploy`
+- `npm run db:seed`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Production deployment
+1. Set all required env vars in Vercel and Render.
+2. Ensure DB migrations are committed in `prisma/migrations`.
+3. Run migrations during deploy (`npm run db:migrate:deploy` or `npm run build`).
+4. Configure Render socket `CLIENT_ORIGIN` and `EMIT_SECRET` to match app env.
+5. Keep socket health endpoint monitored (`/health`) and alerting enabled.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Security + reliability notes
+- Server actions are role-scoped (organizer/judge/participant).
+- Judge/participant token routes are rate-limited.
+- Registration and scoring submissions are rate-limited.
+- CSP is stricter in production than development.
+- CI runs typecheck on push/PR.
 
-## Learn More
+## Governance (GitHub)
+- [CONTRIBUTING.md](CONTRIBUTING.md)
+- [SECURITY.md](SECURITY.md)
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- issue templates and PR template under `.github/`
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Legal Pages (App)
+- `/terms`
+- `/privacy`
+- `/security`

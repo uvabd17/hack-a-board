@@ -3,6 +3,7 @@
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { emitTeamSubmitted } from "@/lib/socket-emit"
+import { cookies } from "next/headers"
 
 /**
  * Record when a judge scans a team's QR code (starts judging session)
@@ -247,6 +248,52 @@ function calculateTimeBonus(
  */
 export async function getTeamJudgingProgress(teamId: string, roundId: string) {
     try {
+        const [cookieStore, session] = await Promise.all([cookies(), auth()])
+        const participantToken = cookieStore.get("hackaboard_participant_token")?.value ?? null
+        const judgeToken = cookieStore.get("hackaboard_judge_token")?.value ?? null
+
+        // Authorization: organizer owner, same-team participant, or judge in same hackathon only.
+        const [team, round] = await Promise.all([
+            prisma.team.findUnique({
+                where: { id: teamId },
+                select: { id: true, hackathonId: true },
+            }),
+            prisma.round.findUnique({
+                where: { id: roundId },
+                select: { id: true, hackathonId: true },
+            }),
+        ])
+        if (!team || !round || team.hackathonId !== round.hackathonId) {
+            return { error: "Invalid team or round" }
+        }
+
+        let authorized = false
+        if (session?.user?.id) {
+            const ownsHackathon = await prisma.hackathon.findUnique({
+                where: { id: team.hackathonId, userId: session.user.id },
+                select: { id: true },
+            })
+            authorized = !!ownsHackathon
+        }
+
+        if (!authorized && participantToken) {
+            const participant = await prisma.participant.findUnique({
+                where: { qrToken: participantToken },
+                select: { teamId: true, hackathonId: true },
+            })
+            authorized = !!participant && participant.teamId === teamId && participant.hackathonId === team.hackathonId
+        }
+
+        if (!authorized && judgeToken) {
+            const judge = await prisma.judge.findUnique({
+                where: { token: judgeToken },
+                select: { hackathonId: true, isActive: true },
+            })
+            authorized = !!judge && judge.isActive && judge.hackathonId === team.hackathonId
+        }
+
+        if (!authorized) return { error: "Unauthorized" }
+
         const result = await checkSubmissionStatus(teamId, roundId)
 
         if ('error' in result) {

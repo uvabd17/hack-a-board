@@ -107,9 +107,9 @@ export default function Home() {
         <div className="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6 text-zinc-600 text-[10px] uppercase tracking-[0.2em]">
           <p>© 2026 HACKABOARD_SYSTEMS</p>
           <div className="flex gap-8">
-            <Link href="#" className="hover:text-white transition-colors">TERMS</Link>
-            <Link href="#" className="hover:text-white transition-colors">PRIVACY</Link>
-            <Link href="#" className="hover:text-white transition-colors">SECURITY</Link>
+            <Link href="/terms" className="hover:text-white transition-colors">TERMS</Link>
+            <Link href="/privacy" className="hover:text-white transition-colors">PRIVACY</Link>
+            <Link href="/security" className="hover:text-white transition-colors">SECURITY</Link>
           </div>
         </div>
       </footer>

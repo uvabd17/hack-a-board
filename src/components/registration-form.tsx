@@ -92,7 +92,7 @@ export default function RegistrationForm({ hackathonSlug }: { hackathonSlug: str
 
                                 <TabsContent value="solo" className="pt-4">
                                     <p className="text-xs text-muted-foreground text-center">
-                                        You'll be registered as a solo participant.
+                                        You&apos;ll be registered as a solo participant.
                                     </p>
                                 </TabsContent>
                             </Tabs>

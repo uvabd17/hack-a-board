@@ -1,5 +1,6 @@
 import { auth, signIn } from "@/auth"
 import { redirect } from "next/navigation"
+import Link from "next/link"
 
 export default async function SignInPage() {
     const session = await auth()
@@ -89,9 +90,9 @@ export default async function SignInPage() {
 
                 {/* Back Link */}
                 <div className="mt-8 text-center">
-                    <a href="/" className="text-[10px] text-zinc-600 hover:text-zinc-400 tracking-widest uppercase transition-colors">
+                    <Link href="/" className="text-[10px] text-zinc-600 hover:text-zinc-400 tracking-widest uppercase transition-colors">
                         &lt;- return to homepage
-                    </a>
+                    </Link>
                 </div>
 
                 {/* Decorative bottom element */}

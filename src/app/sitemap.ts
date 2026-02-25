@@ -12,6 +12,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
             changeFrequency: "monthly",
             priority: 1,
         },
+        {
+            url: `${baseUrl}/terms`,
+            lastModified: new Date("2026-02-25"),
+            changeFrequency: "yearly",
+            priority: 0.2,
+        },
+        {
+            url: `${baseUrl}/privacy`,
+            lastModified: new Date("2026-02-25"),
+            changeFrequency: "yearly",
+            priority: 0.2,
+        },
+        {
+            url: `${baseUrl}/security`,
+            lastModified: new Date("2026-02-25"),
+            changeFrequency: "yearly",
+            priority: 0.2,
+        },
     ]
 
     // Dynamic hackathon public pages (only published/live ones)
