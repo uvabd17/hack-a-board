@@ -1,127 +1,42 @@
 /**
- * Server-side socket emit utility.
- * Called from Next.js server actions to broadcast real-time events
- * via the standalone Socket.IO server.
+ * Server-side emit utility.
+ * Uses @upstash/realtime to broadcast typed, real-time events.
  */
-
-const SOCKET_SERVER_URL = process.env.SOCKET_SERVER_URL || "http://localhost:3001"
-const EMIT_SECRET = process.env.EMIT_SECRET
-
-// Upstash publish configuration (optional):
-const UPSTASH_PUBLISH_URL = process.env.UPSTASH_PUBLISH_URL
-const UPSTASH_PUBLISH_TOKEN = process.env.UPSTASH_PUBLISH_TOKEN
-
-type EmitPayload = {
-    room: string
-    event: string
-    data?: unknown
-}
-
-export async function socketEmit({ room, event, data }: EmitPayload): Promise<void> {
-    if (!process.env.SOCKET_SERVER_URL && process.env.NODE_ENV === "production") {
-        console.warn("[socketEmit] SOCKET_SERVER_URL not set — skipping emit")
-        return
-    }
-    if (!EMIT_SECRET) {
-        console.warn("[socketEmit] EMIT_SECRET not set — skipping emit")
-        return
-    }
-    try {
-        // If Upstash publish vars are provided, use Upstash as the transport
-        if (UPSTASH_PUBLISH_URL && UPSTASH_PUBLISH_TOKEN) {
-            // Import lazy to avoid pulling in dependencies when unused
-            const { upstashPublish } = await import("./upstash-publish")
-            await upstashPublish(UPSTASH_PUBLISH_URL, UPSTASH_PUBLISH_TOKEN, {
-                channel: room,
-                event,
-                data,
-            })
-            return
-        }
-
-        const res = await fetch(`${SOCKET_SERVER_URL}/emit`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "x-emit-secret": EMIT_SECRET,
-            },
-            body: JSON.stringify({ room, event, data }),
-        })
-        if (!res.ok) {
-            console.warn("[socketEmit] Emit failed:", event, res.status)
-        }
-    } catch (err) {
-        // Non-fatal — real-time update missed, polling will catch up
-        console.warn("[socketEmit] Failed to emit:", event, err)
-    }
-}
+import { realtime } from "./realtime"
 
 // ──────────────────────────────────────────────
-// Convenience helpers per event type
+// Typed emit helpers per event
 // ──────────────────────────────────────────────
 
 export function emitScoreUpdated(hackathonId: string, teamId: string) {
-    return socketEmit({
-        room: `hackathon:${hackathonId}`,
-        event: "score-updated",
-        data: { teamId },
-    })
+    return realtime.channel(`hackathon:${hackathonId}`).emit("scoreUpdated", { teamId })
 }
 
 export async function emitFreeze(hackathonId: string, frozen: boolean) {
-    // Emit to both display and hackathon rooms so participants also receive freeze updates
+    const event = frozen ? "displayFreeze" : "displayUnfreeze"
     await Promise.all([
-        socketEmit({
-            room: `display:${hackathonId}`,
-            event: frozen ? "display:freeze" : "display:unfreeze",
-            data: {},
-        }),
-        socketEmit({
-            room: `hackathon:${hackathonId}`,
-            event: frozen ? "display:freeze" : "display:unfreeze",
-            data: {},
-        })
+        realtime.channel(`display:${hackathonId}`).emit(event, {}),
+        realtime.channel(`hackathon:${hackathonId}`).emit(event, {}),
     ])
 }
 
 export async function emitCheckpointUpdated(hackathonId: string) {
-    // Emit to both rooms so participant dashboards also get timer updates
     await Promise.all([
-        socketEmit({
-            room: `display:${hackathonId}`,
-            event: "checkpoint-updated",
-            data: {},
-        }),
-        socketEmit({
-            room: `hackathon:${hackathonId}`,
-            event: "checkpoint-updated",
-            data: {},
-        })
+        realtime.channel(`display:${hackathonId}`).emit("checkpointUpdated", {}),
+        realtime.channel(`hackathon:${hackathonId}`).emit("checkpointUpdated", {}),
     ])
 }
 
 export function emitDisplayConfig(hackathonId: string, mode: string, problemId?: string | null) {
-    return socketEmit({
-        room: `display:${hackathonId}`,
-        event: "display:set-scene",
-        data: { mode, problemId },
-    })
+    return realtime.channel(`display:${hackathonId}`).emit("displaySetScene", { mode, problemId: problemId ?? null })
 }
 
 export function emitProblemsReleased(hackathonId: string) {
-    return socketEmit({
-        room: `hackathon:${hackathonId}`,
-        event: "problem-statements-released",
-        data: {},
-    })
+    return realtime.channel(`hackathon:${hackathonId}`).emit("problemsReleased", {})
 }
 
 export function emitCeremonyStarted(hackathonId: string, mode: string, totalWinners: number) {
-    return socketEmit({
-        room: `display:${hackathonId}`,
-        event: "display:ceremony-started",
-        data: { mode, totalWinners },
-    })
+    return realtime.channel(`display:${hackathonId}`).emit("displayCeremonyStarted", { mode, totalWinners })
 }
 
 export function emitCeremonyReveal(
@@ -129,21 +44,13 @@ export function emitCeremonyReveal(
     index: number,
     teamName: string,
     score: number,
-    problemStatement?: string
+    problemStatement?: string,
 ) {
-    return socketEmit({
-        room: `display:${hackathonId}`,
-        event: "display:ceremony-reveal",
-        data: { index, teamName, score, problemStatement },
-    })
+    return realtime.channel(`display:${hackathonId}`).emit("displayCeremonyReveal", { index, teamName, score, problemStatement })
 }
 
 export function emitParticipantCheckedIn(hackathonId: string, teamId: string, teamName: string) {
-    return socketEmit({
-        room: `hackathon:${hackathonId}`,
-        event: "participant-checked-in",
-        data: { teamId, teamName },
-    })
+    return realtime.channel(`hackathon:${hackathonId}`).emit("participantCheckedIn", { teamId, teamName })
 }
 
 export async function emitTeamSubmitted(
@@ -155,27 +62,15 @@ export async function emitTeamSubmitted(
         timeBonus: number
         teamName: string
         roundName: string
-    }
+    },
 ) {
-    // Emit to both display and hackathon rooms for real-time updates
+    const payload = { ...data, submittedAt: data.submittedAt.toISOString() }
     await Promise.all([
-        socketEmit({
-            room: `display:${hackathonId}`,
-            event: "team-submitted",
-            data,
-        }),
-        socketEmit({
-            room: `hackathon:${hackathonId}`,
-            event: "team-submitted",
-            data,
-        })
+        realtime.channel(`display:${hackathonId}`).emit("teamSubmitted", payload),
+        realtime.channel(`hackathon:${hackathonId}`).emit("teamSubmitted", payload),
     ])
 }
 
 export function emitJudgingProgress(hackathonId: string, teamId: string, roundId: string) {
-    return socketEmit({
-        room: `hackathon:${hackathonId}`,
-        event: "judging-progress",
-        data: { teamId, roundId },
-    })
+    return realtime.channel(`hackathon:${hackathonId}`).emit("judgingProgress", { teamId, roundId })
 }

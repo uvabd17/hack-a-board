@@ -5,7 +5,7 @@ import { getDisplayState, getTrackStanding } from "@/actions/display"
 import { Badge } from "@/components/ui/badge"
 import { ArrowUp, ArrowDown, Minus, Trophy, Terminal, Lock } from "lucide-react"
 import { CeremonyDisplay } from "@/components/ceremony-display"
-import { connectSocket, disconnectSocket } from "@/lib/socket-client"
+import { useRealtime } from "@/lib/realtime-client"
 import { CountdownTimer } from "@/components/countdown-timer"
 
 // ── Leaderboard Row (extracted for reuse in both columns) ──────────
@@ -207,97 +207,59 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
         }
     }, [autoTrackIndex])
 
-    // ── Socket.IO real-time with debouncing ───────────────────────
-    useEffect(() => {
-        const hackathonId = data?.hackathon?.id
-        if (!hackathonId) return
+    // ── Realtime events with debouncing ──────────────────────────
+    const hackathonId = data?.hackathon?.id
 
-        const socket = connectSocket(hackathonId, ["display", "hackathon"])
-
-        // Debounced fetch to prevent server hammering during scoring bursts
-        const debouncedFetch = () => {
-            if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
-            debounceTimerRef.current = setTimeout(() => {
-                fetchRef.current?.()
-            }, 100) // Reduced from 500ms to 100ms for near-instant updates
-        }
-
-        // Instant fetch with no debounce for critical display changes
-        const instantFetch = () => {
-            if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
-            fetchRef.current?.()
-        }
-
-        socket.on("score-updated", debouncedFetch)
-        socket.on("checkpoint-updated", instantFetch) // Use instant fetch for timer updates
-        socket.on("team-submitted", (payload: {
-            teamId: string
-            teamName: string
-            roundName: string
-            timeBonus: number
-        }) => {
-            // Show notification toast
-            setSubmissionNotification({
-                teamName: payload.teamName,
-                roundName: payload.roundName,
-                timeBonus: payload.timeBonus
-            })
-            
-            // Add team to recently submitted set for visual highlight
-            setRecentlySubmittedTeams(prev => new Set(prev).add(payload.teamId))
-            
-            // Remove from highlight after 5 seconds
-            setTimeout(() => {
-                setRecentlySubmittedTeams(prev => {
-                    const newSet = new Set(prev)
-                    newSet.delete(payload.teamId)
-                    return newSet
-                })
-            }, 5000)
-            
-            // Remove notification after 8 seconds
-            setTimeout(() => {
-                setSubmissionNotification(null)
-            }, 8000)
-            
-            // Instant fetch to update leaderboard
-            instantFetch()
-        })
-        socket.on("display:freeze", () => {
-            setData((prev: any) => prev ? { ...prev, hackathon: { ...prev.hackathon, isFrozen: true } } : prev)
-            instantFetch() // Fetch immediately to sync leaderboard
-        })
-        socket.on("display:unfreeze", () => {
-            setData((prev: any) => prev ? { ...prev, hackathon: { ...prev.hackathon, isFrozen: false } } : prev)
-            instantFetch() // Fetch immediately to show updated scores
-        })
-        socket.on("display:set-scene", (payload) => {
-            // Handle display mode change immediately
-            if (payload?.mode) {
-                setData((prev: any) => prev ? {
-                    ...prev,
-                    displayConfig: {
-                        mode: payload.mode,
-                        problemId: payload.problemId || null
-                    }
-                } : prev)
+    useRealtime({
+        events: ["scoreUpdated", "checkpointUpdated", "teamSubmitted", "displayFreeze", "displayUnfreeze", "displaySetScene", "problemsReleased"],
+        channels: hackathonId ? [`hackathon:${hackathonId}`, `display:${hackathonId}`] : [],
+        enabled: !!hackathonId,
+        onData: ({ event, data: eventData }) => {
+            const debouncedFetch = () => {
+                if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+                debounceTimerRef.current = setTimeout(() => {
+                    fetchRef.current?.()
+                }, 100)
             }
-            instantFetch() // Fetch immediately for mode changes
-        })
-        socket.on("problem-statements-released", debouncedFetch)
+            const instantFetch = () => {
+                if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+                fetchRef.current?.()
+            }
 
-        return () => {
-            if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
-            socket.off("score-updated")
-            socket.off("checkpoint-updated")
-            socket.off("team-submitted")
-            socket.off("display:freeze")
-            socket.off("display:unfreeze")
-            socket.off("display:set-scene")
-            socket.off("problem-statements-released")
-            disconnectSocket()
-        }
-    }, [data?.hackathon?.id])
+            if (event === "scoreUpdated") {
+                debouncedFetch()
+            } else if (event === "checkpointUpdated") {
+                instantFetch()
+            } else if (event === "teamSubmitted") {
+                const p = eventData as { teamId: string; teamName: string; roundName: string; timeBonus: number }
+                setSubmissionNotification({ teamName: p.teamName, roundName: p.roundName, timeBonus: p.timeBonus })
+                setRecentlySubmittedTeams(prev => new Set(prev).add(p.teamId))
+                setTimeout(() => {
+                    setRecentlySubmittedTeams(prev => {
+                        const s = new Set(prev)
+                        s.delete(p.teamId)
+                        return s
+                    })
+                }, 5000)
+                setTimeout(() => setSubmissionNotification(null), 8000)
+                instantFetch()
+            } else if (event === "displayFreeze") {
+                setData((prev: any) => prev ? { ...prev, hackathon: { ...prev.hackathon, isFrozen: true } } : prev)
+                instantFetch()
+            } else if (event === "displayUnfreeze") {
+                setData((prev: any) => prev ? { ...prev, hackathon: { ...prev.hackathon, isFrozen: false } } : prev)
+                instantFetch()
+            } else if (event === "displaySetScene") {
+                const p = eventData as { mode: string; problemId?: string | null }
+                if (p?.mode) {
+                    setData((prev: any) => prev ? { ...prev, displayConfig: { mode: p.mode, problemId: p.problemId || null } } : prev)
+                }
+                instantFetch()
+            } else if (event === "problemsReleased") {
+                debouncedFetch()
+            }
+        },
+    })
 
     // ── Auto-cycle tracks ─────────────────────────────────────────
     useEffect(() => {
