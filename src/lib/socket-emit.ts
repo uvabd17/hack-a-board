@@ -7,6 +7,10 @@
 const SOCKET_SERVER_URL = process.env.SOCKET_SERVER_URL || "http://localhost:3001"
 const EMIT_SECRET = process.env.EMIT_SECRET
 
+// Upstash publish configuration (optional):
+const UPSTASH_PUBLISH_URL = process.env.UPSTASH_PUBLISH_URL
+const UPSTASH_PUBLISH_TOKEN = process.env.UPSTASH_PUBLISH_TOKEN
+
 type EmitPayload = {
     room: string
     event: string
@@ -23,6 +27,18 @@ export async function socketEmit({ room, event, data }: EmitPayload): Promise<vo
         return
     }
     try {
+        // If Upstash publish vars are provided, use Upstash as the transport
+        if (UPSTASH_PUBLISH_URL && UPSTASH_PUBLISH_TOKEN) {
+            // Import lazy to avoid pulling in dependencies when unused
+            const { upstashPublish } = await import("./upstash-publish")
+            await upstashPublish(UPSTASH_PUBLISH_URL, UPSTASH_PUBLISH_TOKEN, {
+                channel: room,
+                event,
+                data,
+            })
+            return
+        }
+
         const res = await fetch(`${SOCKET_SERVER_URL}/emit`, {
             method: "POST",
             headers: {
