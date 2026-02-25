@@ -43,6 +43,26 @@ export async function registerParticipant(prevState: RegisterState, formData: Fo
 
         if (!hackathon) return { error: "Hackathon not found" }
 
+        // Block registration if hackathon is not published or live
+        if (hackathon.status !== "published" && hackathon.status !== "live") {
+            return { error: "Registration is not available for this hackathon" }
+        }
+
+        // Enforce registration deadline
+        if (hackathon.registrationDeadline && new Date() > hackathon.registrationDeadline) {
+            return { error: "Registration deadline has passed" }
+        }
+
+        // Enforce max team capacity
+        if (hackathon.maxTeams > 0 && (mode === "create" || mode === "solo")) {
+            const teamCount = await prisma.team.count({
+                where: { hackathonId: hackathon.id }
+            })
+            if (teamCount >= hackathon.maxTeams) {
+                return { error: "This hackathon has reached its maximum number of teams" }
+            }
+        }
+
         // Check if email already registered for this hackathon
         const existingParticipant = await prisma.participant.findUnique({
             where: {

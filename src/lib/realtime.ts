@@ -46,5 +46,17 @@ const schema = {
     }),
 }
 
-export const realtime = new Realtime({ schema, redis })
-export type RealtimeEvents = InferRealtimeEvents<typeof realtime>
+// If Redis isn't configured, expose a no-op realtime shim so imports are safe
+export const realtime = redis ? new Realtime({ schema, redis }) : ({
+    channel: (_: string) => ({
+        emit: async (_event: string, _data?: unknown) => {
+            // noop when realtime is not configured
+            return
+        },
+    }),
+} as unknown as Realtime)
+
+// Conditional type: use fully-typed events only when Redis is configured
+export type RealtimeEvents = typeof redis extends NonNullable<typeof redis>
+    ? InferRealtimeEvents<typeof realtime>
+    : Record<string, unknown>

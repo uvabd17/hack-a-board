@@ -1,21 +1,32 @@
 /**
  * Server-side emit utility.
  * Calls the Socket.IO server's internal /emit HTTP endpoint.
+ *
+ * Fire-and-forget by design: emit failures are logged but never thrown,
+ * so a Socket.IO server outage cannot break score saving or other DB writes.
  */
 
 const SOCKET_SERVER_URL = process.env.SOCKET_SERVER_URL || "http://localhost:3001"
 const EMIT_SECRET = process.env.EMIT_SECRET
 
-async function socketEmit(room: string, event: string, data?: Record<string, unknown>) {
-    const res = await fetch(`${SOCKET_SERVER_URL}/emit`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "x-emit-secret": EMIT_SECRET || "",
-        },
-        body: JSON.stringify({ room, event, data }),
-    })
-    if (!res.ok) throw new Error(`Socket emit failed: ${res.status}`)
+async function socketEmit(room: string, event: string, data?: Record<string, unknown>): Promise<void> {
+    try {
+        const res = await fetch(`${SOCKET_SERVER_URL}/emit`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-emit-secret": EMIT_SECRET || "",
+            },
+            body: JSON.stringify({ room, event, data }),
+            signal: AbortSignal.timeout(5000), // 5s max — never block indefinitely
+        })
+        if (!res.ok) {
+            console.warn(`[socket-emit] ${event} → ${room} failed: HTTP ${res.status}`)
+        }
+    } catch (err) {
+        // Log but don't propagate — socket server being down must not break DB operations
+        console.warn(`[socket-emit] ${event} → ${room} unreachable:`, (err as Error).message)
+    }
 }
 
 export function emitScoreUpdated(hackathonId: string, teamId: string) {

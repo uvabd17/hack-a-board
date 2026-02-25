@@ -26,9 +26,9 @@ export async function GET(
             response.cookies.set("hackaboard_judge_token", token, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === "production",
-                sameSite: "lax",
-                path: "/",
-                maxAge: 60 * 60 * 24 // 24 hours
+                sameSite: "strict",
+                path: `/h/${slug}`,
+                maxAge: 60 * 60 * 12 // 12 hours (single event day)
             })
 
             return response
@@ -65,9 +65,9 @@ export async function GET(
             response.cookies.set("hackaboard_participant_token", token, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === "production",
-                sameSite: "lax",
-                path: "/",
-                maxAge: 60 * 60 * 24 * 7 // 1 week
+                sameSite: "strict",
+                path: `/h/${slug}`,
+                maxAge: 60 * 60 * 24 * 3 // 3 days
             })
 
             return response

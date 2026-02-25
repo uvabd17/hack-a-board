@@ -20,11 +20,15 @@ import { LiveRefresher } from "@/components/live-refresher"
 // Revalidate this page every 5 seconds for ISR performance
 export const revalidate = 5
 
-// Cache QR code generation - QR codes don't change
+// Cache QR code generation - QR codes don't change (but are domain-specific)
 const getCachedQRCode = unstable_cache(
     async (token: string, slug: string) => {
         try {
-            return await QRCode.toDataURL(`/h/${slug}/qr/${token}`)
+            // Use NEXT_PUBLIC_BASE_URL, fall back to VERCEL_URL (auto-set by Vercel), then empty string
+            const baseUrl =
+                process.env.NEXT_PUBLIC_BASE_URL ||
+                (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "")
+            return await QRCode.toDataURL(`${baseUrl}/h/${slug}/qr/${token}`)
         } catch (err) {
             console.error(err)
             return ""

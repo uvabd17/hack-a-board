@@ -3,6 +3,7 @@ import express from "express"
 import { createServer } from "http"
 import { Server } from "socket.io"
 import cors from "cors"
+import helmet from "helmet"
 
 const app = express()
 const httpServer = createServer(app)
@@ -10,6 +11,7 @@ const httpServer = createServer(app)
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:3000"
 const EMIT_SECRET = process.env.EMIT_SECRET
 const PORT = process.env.PORT || 3001
+const MAX_CONNECTIONS_PER_IP = 20 // Prevent connection flooding
 
 if (!EMIT_SECRET) {
     console.warn("⚠️  EMIT_SECRET not set — /emit endpoint will reject all requests")
@@ -25,10 +27,26 @@ const io = new Server(httpServer, {
         methods: ["GET", "POST"],
         credentials: true,
     },
+    // Connection hardening
+    maxHttpBufferSize: 1e5, // 100KB max message size
+    pingTimeout: 20000,
+    pingInterval: 25000,
+    connectTimeout: 10000,
 })
 
+// ── Security middleware ─────────────────────────────────────────
+app.use(helmet())
 app.use(cors({ origin: CLIENT_ORIGIN, credentials: true }))
-app.use(express.json())
+app.use(express.json({ limit: "10kb" })) // Limit request body size
+
+// ── Connection tracking for flood protection ────────────────────
+const connectionsPerIP = new Map<string, number>()
+
+function getClientIP(socket: { handshake: { headers: Record<string, string | string[] | undefined>; address: string } }): string {
+    const forwarded = socket.handshake.headers["x-forwarded-for"]
+    if (typeof forwarded === "string") return forwarded.split(",")[0].trim()
+    return socket.handshake.address
+}
 
 // ──────────────────────────────────────────────
 // Root route - Status page
@@ -117,26 +135,66 @@ app.post("/emit", (req, res): void => {
 // Socket.IO connection handling
 // ──────────────────────────────────────────────
 io.on("connection", (socket) => {
-    console.log(`[connect] ${socket.id}`)
+    // ── Flood protection ────────────────────────
+    const ip = getClientIP(socket)
+    const current = connectionsPerIP.get(ip) || 0
+    if (current >= MAX_CONNECTIONS_PER_IP) {
+        console.warn(`[flood] Rejecting connection from ${ip} (${current} active)`)
+        socket.disconnect(true)
+        return
+    }
+    connectionsPerIP.set(ip, current + 1)
+
+    console.log(`[connect] ${socket.id} (${ip})`)
+
+    // Limit rooms per socket to prevent abuse
+    let joinedRooms = 0
+    const MAX_ROOMS = 4
 
     // Client joins rooms by sending a "join" event with hackathonId
     socket.on("join:hackathon", (hackathonId: string) => {
-        if (!isValidHackathonId(hackathonId)) return
+        if (!isValidHackathonId(hackathonId) || joinedRooms >= MAX_ROOMS) return
         socket.join(`hackathon:${hackathonId}`)
+        joinedRooms++
         console.log(`[join] ${socket.id} → hackathon:${hackathonId}`)
     })
 
     socket.on("join:display", (hackathonId: string) => {
-        if (!isValidHackathonId(hackathonId)) return
+        if (!isValidHackathonId(hackathonId) || joinedRooms >= MAX_ROOMS) return
         socket.join(`display:${hackathonId}`)
+        joinedRooms++
         console.log(`[join] ${socket.id} → display:${hackathonId}`)
     })
 
     socket.on("disconnect", () => {
+        const remaining = (connectionsPerIP.get(ip) || 1) - 1
+        if (remaining <= 0) connectionsPerIP.delete(ip)
+        else connectionsPerIP.set(ip, remaining)
         console.log(`[disconnect] ${socket.id}`)
     })
 })
 
-httpServer.listen(PORT, () => {
+const server = httpServer.listen(PORT, () => {
     console.log(`🔌 Hackaboard Socket Server running on port ${PORT}`)
 })
+
+// ──────────────────────────────────────────────
+// Graceful shutdown — allow in-flight requests to finish
+// ──────────────────────────────────────────────
+function shutdown(signal: string) {
+    console.log(`[shutdown] ${signal} received — closing connections`)
+    io.close(() => {
+        server.close(() => {
+            console.log("[shutdown] Server closed")
+            process.exit(0)
+        })
+    })
+    // Force exit if graceful close takes too long
+    setTimeout(() => {
+        console.error("[shutdown] Timeout — forcing exit")
+        process.exit(1)
+    }, 10000).unref()
+}
+
+process.on("SIGTERM", () => shutdown("SIGTERM"))
+process.on("SIGINT", () => shutdown("SIGINT"))

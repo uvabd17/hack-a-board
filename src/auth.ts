@@ -35,9 +35,7 @@ if (process.env.NODE_ENV === "development") {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-    // Only use adapter for OAuth providers (Google)
-    // Credentials provider uses JWT sessions without adapter
-    ...(process.env.NODE_ENV === "production" ? { adapter: PrismaAdapter(prisma) } : {}),
+    adapter: PrismaAdapter(prisma),
     providers,
     // Use JWT sessions for credentials provider compatibility
     session: {

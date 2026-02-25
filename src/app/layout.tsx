@@ -15,6 +15,18 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "hackaboard — Real-time Hackathon Scoring",
   description: "Live leaderboards, QR judging, and ceremony reveals for hackathons.",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "https://hackaboard.dev"),
+  openGraph: {
+    title: "hackaboard — Real-time Hackathon Scoring",
+    description: "Live leaderboards, QR judging, and ceremony reveals for hackathons.",
+    type: "website",
+    siteName: "hackaboard",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "hackaboard — Real-time Hackathon Scoring",
+    description: "Live leaderboards, QR judging, and ceremony reveals for hackathons.",
+  },
 };
 
 export default function RootLayout({

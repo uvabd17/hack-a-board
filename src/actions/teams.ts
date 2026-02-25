@@ -98,19 +98,26 @@ export async function exportTeamsCSV(slug: string): Promise<{ csv: string } | { 
         orderBy: { createdAt: 'asc' }
     })
 
+    // Sanitize CSV values to prevent formula injection (=, +, -, @, \t, \r)
+    function sanitizeCSV(value: string): string {
+        const dangerous = /^[=+\-@\t\r]/
+        const escaped = value.replace(/"/g, '""')
+        return dangerous.test(escaped) ? `"'${escaped}"` : `"${escaped}"`
+    }
+
     const rows: string[] = [
         "Team Name,Invite Code,Status,Checked In,Problem Statement,Members,Emails"
     ]
 
     for (const team of teams) {
         rows.push([
-            `"${team.name}"`,
-            team.inviteCode,
-            team.status,
+            sanitizeCSV(team.name),
+            sanitizeCSV(team.inviteCode),
+            sanitizeCSV(team.status),
             team.isCheckedIn ? "Yes" : "No",
-            `"${team.problemStatement?.title || 'None'}"`,
-            `"${team.participants.map(p => p.name).join(', ')}"`,
-            `"${team.participants.map(p => p.email).join(', ')}"`,
+            sanitizeCSV(team.problemStatement?.title || 'None'),
+            sanitizeCSV(team.participants.map(p => p.name).join(', ')),
+            sanitizeCSV(team.participants.map(p => p.email).join(', ')),
         ].join(","))
     }
 
