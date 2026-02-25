@@ -1,4 +1,5 @@
 import { Realtime, type InferRealtimeEvents } from "@upstash/realtime"
+import { Redis } from "@upstash/redis"
 import { redis } from "./redis"
 import z from "zod/v4"
 
@@ -46,16 +47,13 @@ const schema = {
     }),
 }
 
-// If Redis isn't configured, expose a no-op realtime shim so imports are safe
-export const realtime = redis
-    ? new Realtime({ schema, redis })
-    : ({
-        channel: (_: string) => ({
-            emit: async (_event: string, _data?: unknown) => {
-                // noop when realtime is not configured
-                return
-            },
-        }),
-    } as unknown as Realtime<typeof schema>)
+// Strongly-typed alias for the realtime instance and its events
+type AppRealtimeOpts = { schema: typeof schema; redis: Redis }
+type AppRealtime = Realtime<AppRealtimeOpts>
 
-export type RealtimeEvents = InferRealtimeEvents<typeof realtime>
+// If Redis isn't configured, expose a no-op realtime shim so imports are safe
+export const realtime: AppRealtime = redis
+    ? new Realtime({ schema, redis })
+    : ({ channel: (_: string) => ({ emit: async () => {} }) } as unknown as AppRealtime)
+
+export type RealtimeEvents = InferRealtimeEvents<AppRealtime>
