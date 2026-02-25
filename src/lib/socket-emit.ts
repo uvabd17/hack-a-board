@@ -89,29 +89,3 @@ export function emitJudgingProgress(hackathonId: string, teamId: string, roundId
 export function emitParticipantCheckedIn(hackathonId: string, teamId: string, teamName: string) {
     return socketEmit(`hackathon:${hackathonId}`, "participant-checked-in", { teamId, teamName })
 }
-
-export function emitParticipantCheckedIn(hackathonId: string, teamId: string, teamName: string) {
-    return realtime.channel(`hackathon:${hackathonId}`).emit("participantCheckedIn", { teamId, teamName })
-}
-
-export async function emitTeamSubmitted(
-    hackathonId: string,
-    data: {
-        teamId: string
-        roundId: string
-        submittedAt: Date
-        timeBonus: number
-        teamName: string
-        roundName: string
-    },
-) {
-    const payload = { ...data, submittedAt: data.submittedAt.toISOString() }
-    await Promise.all([
-        realtime.channel(`display:${hackathonId}`).emit("teamSubmitted", payload),
-        realtime.channel(`hackathon:${hackathonId}`).emit("teamSubmitted", payload),
-    ])
-}
-
-export function emitJudgingProgress(hackathonId: string, teamId: string, roundId: string) {
-    return realtime.channel(`hackathon:${hackathonId}`).emit("judgingProgress", { teamId, roundId })
-}
