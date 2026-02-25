@@ -12,7 +12,7 @@ const EMIT_SECRET = process.env.EMIT_SECRET
 const PORT = process.env.PORT || 3001
 
 if (!EMIT_SECRET) {
-    throw new Error("EMIT_SECRET is required for socket-server")
+    console.warn("⚠️  EMIT_SECRET not set — /emit endpoint will reject all requests")
 }
 
 function isValidHackathonId(value: unknown): value is string {
