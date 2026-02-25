@@ -3,8 +3,7 @@
 import { prisma } from "@/lib/prisma"
 import { calculateTeamScore, breakTie, LeaderboardEntry, TeamWithRelations, RoundWithCriteria } from "@/lib/scoring"
 import { Round } from "@prisma/client"
-import { unstable_cache, revalidatePath } from "next/cache"
-import { auth } from "@/auth"
+import { unstable_cache } from "next/cache"
 
 // Cached leaderboard — revalidated every 5s or on-demand via tag
 const getCachedLeaderboard = unstable_cache(
@@ -113,27 +112,4 @@ async function computeLeaderboard(hackathonId: string, problemId?: string | null
         lastUpdated: new Date(),
         frozen: false
     }
-}
-
-export async function toggleFreeze(hackathonId: string, currentState: boolean) {
-    const session = await auth()
-    if (!session?.user?.id) return { error: "Unauthorized" }
-
-    const hackathon = await prisma.hackathon.findUnique({
-        where: { id: hackathonId },
-        select: { userId: true, slug: true }
-    })
-
-    if (!hackathon || hackathon.userId !== session.user.id) {
-        return { error: "Unauthorized" }
-    }
-
-    await prisma.hackathon.update({
-        where: { id: hackathonId },
-        data: { isFrozen: !currentState }
-    })
-
-    revalidatePath(`/h/${hackathon.slug}`)
-    revalidatePath(`/h/${hackathon.slug}/manage`)
-    return { success: true }
 }
