@@ -94,7 +94,7 @@ app.get("/health", (_req, res) => {
 // Called by Next.js server actions to broadcast events
 // POST /emit  { room, event, data }
 // ──────────────────────────────────────────────
-app.post("/emit", (req, res) => {
+app.post("/emit", (req, res): void => {
     const secret = req.headers["x-emit-secret"]
     if (secret !== EMIT_SECRET) {
         res.status(401).json({ error: "Unauthorized" })
