@@ -4,7 +4,22 @@ import Link from "next/link"
 import { useState } from "react"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Menu, X, PanelLeftClose, PanelLeftOpen } from "lucide-react"
+import {
+  type LucideIcon,
+  Menu,
+  X,
+  PanelLeftClose,
+  PanelLeftOpen,
+  LayoutDashboard,
+  Users,
+  ClipboardCheck,
+  Lightbulb,
+  Trophy,
+  CalendarClock,
+  Scale,
+  MonitorPlay,
+  Settings,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 
 type ManageShellProps = {
@@ -16,6 +31,7 @@ type ManageShellProps = {
 type NavItem = {
   label: string
   href: string
+  icon: LucideIcon
 }
 
 function NavLink({
@@ -37,7 +53,10 @@ function NavLink({
       onClick={onClick}
     >
       <Link href={item.href} title={collapsed ? item.label : undefined}>
-        {collapsed ? item.label.slice(0, 2) : item.label}
+        <span className={cn("inline-flex items-center", collapsed ? "justify-center" : "gap-2")}>
+          <item.icon className="h-4 w-4 shrink-0" />
+          {!collapsed && <span>{item.label}</span>}
+        </span>
       </Link>
     </Button>
   )
@@ -49,15 +68,15 @@ export function ManageShell({ hackathonName, hackathonSlug, children }: ManageSh
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const navItems: NavItem[] = [
-    { label: ":: DASHBOARD", href: `/h/${hackathonSlug}/manage` },
-    { label: ":: TEAMS", href: `/h/${hackathonSlug}/manage/teams` },
-    { label: ":: CHECK-IN", href: `/h/${hackathonSlug}/manage/check-in` },
-    { label: ":: PROBLEMS", href: `/h/${hackathonSlug}/manage/problems` },
-    { label: ":: ROUNDS", href: `/h/${hackathonSlug}/manage/rounds` },
-    { label: ":: PHASES", href: `/h/${hackathonSlug}/manage/phases` },
-    { label: ":: JUDGES", href: `/h/${hackathonSlug}/manage/judges` },
-    { label: ":: DISPLAY", href: `/h/${hackathonSlug}/manage/display` },
-    { label: ":: SETTINGS", href: `/h/${hackathonSlug}/manage/settings` },
+    { label: "DASHBOARD", href: `/h/${hackathonSlug}/manage`, icon: LayoutDashboard },
+    { label: "TEAMS", href: `/h/${hackathonSlug}/manage/teams`, icon: Users },
+    { label: "CHECK-IN", href: `/h/${hackathonSlug}/manage/check-in`, icon: ClipboardCheck },
+    { label: "PROBLEMS", href: `/h/${hackathonSlug}/manage/problems`, icon: Lightbulb },
+    { label: "ROUNDS", href: `/h/${hackathonSlug}/manage/rounds`, icon: Trophy },
+    { label: "PHASES", href: `/h/${hackathonSlug}/manage/phases`, icon: CalendarClock },
+    { label: "JUDGES", href: `/h/${hackathonSlug}/manage/judges`, icon: Scale },
+    { label: "DISPLAY", href: `/h/${hackathonSlug}/manage/display`, icon: MonitorPlay },
+    { label: "SETTINGS", href: `/h/${hackathonSlug}/manage/settings`, icon: Settings },
   ]
 
   return (
