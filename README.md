@@ -1,4 +1,4 @@
-# hack<<a>>board
+# hack<<aa>>board
 
 Real-time hackathon operations platform with:
 - organizer control panel
