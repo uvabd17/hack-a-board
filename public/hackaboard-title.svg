@@ -1,0 +1,30 @@
+<svg width="736" height="151" viewBox="0 0 736 151" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">hack&lt;a&gt;board</title>
+  <desc id="desc">Hackaboard title banner with dark grid background and metallic text.</desc>
+  <defs>
+    <linearGradient id="bgFade" x1="0" y1="0" x2="0" y2="151" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#07110D"/>
+      <stop offset="1" stop-color="#020705"/>
+    </linearGradient>
+    <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
+      <path d="M 28 0 L 0 0 0 28" fill="none" stroke="#133327" stroke-opacity="0.55" stroke-width="1"/>
+    </pattern>
+    <linearGradient id="metal" x1="0" y1="35" x2="0" y2="112" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F2F4F6"/>
+      <stop offset="0.58" stop-color="#BFC4C9"/>
+      <stop offset="1" stop-color="#868C92"/>
+    </linearGradient>
+    <filter id="softGlow" x="0" y="0" width="736" height="151" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="1.4"/>
+    </filter>
+  </defs>
+
+  <rect width="736" height="151" fill="url(#bgFade)"/>
+  <rect width="736" height="151" fill="url(#grid)"/>
+
+  <g filter="url(#softGlow)" opacity="0.2">
+    <text x="47" y="111" fill="#F4F7FA" font-size="88" font-family="Segoe UI, Arial, sans-serif" font-weight="700">hack&lt;a&gt;board</text>
+  </g>
+
+  <text x="47" y="111" fill="url(#metal)" font-size="88" font-family="Segoe UI, Arial, sans-serif" font-weight="700" letter-spacing="0.2">hack&lt;a&gt;board</text>
+</svg>

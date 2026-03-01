@@ -1,57 +1,104 @@
-# hack<<aa>>board
+<p align="center">
+  <img src="public/hackaboard-title.svg" alt="hack<a>board" width="736" />
+</p>
 
-Real-time hackathon operations platform with:
-- organizer control panel
-- participant dashboard + submissions
-- judge QR scoring flow
-- live public/display leaderboard
-- ceremony reveal mode
+<p align="center">
+  Real-time hackathon operations platform for organizers, judges, and participants.
+</p>
 
-## Stack
-- Next.js (App Router) on Vercel
-- PostgreSQL + Prisma
-- Socket.IO server (Render)
-- Optional Upstash Redis (rate limit + realtime helpers)
+<p align="center">
+  <a href="#features">Features</a> |
+  <a href="#tech-stack">Tech Stack</a> |
+  <a href="#local-setup">Local Setup</a> |
+  <a href="#production-deployment">Deployment</a> |
+  <a href="#governance">Governance</a>
+</p>
 
-## Local setup
-1. Install deps: `npm ci`
-2. Copy env: `cp .env.example .env`
-3. Set required variables in `.env`
-4. Run migrations: `npx prisma migrate dev`
-5. Seed (optional): `npm run db:seed`
-6. Start app: `npm run dev`
-7. Start socket server: `cd socket-server && npm ci && npm run dev`
+## Features
+
+| Area | What you get |
+| --- | --- |
+| Organizer | Control panel for phases, rounds, teams, judges, and display state |
+| Participants | Registration flow, dashboard, and submission handling |
+| Judges | QR-based scoring flow with protected scoring routes |
+| Audience | Live display leaderboard and ceremony reveal mode |
+| Platform | Role-scoped server actions, rate limits, and production CSP hardening |
+
+## Tech Stack
+
+- Frontend/App: Next.js (App Router), React, TypeScript
+- Data layer: PostgreSQL, Prisma
+- Realtime: Socket.IO server (`socket-server/`), optional Upstash Redis helpers
+- Deploy: Vercel (app) + Render (socket server)
+
+## Local Setup
+
+1. Install dependencies:
+   ```bash
+   npm ci
+   ```
+2. Create environment file:
+   ```bash
+   cp .env.example .env
+   ```
+3. Fill required variables in `.env`.
+4. Run migrations:
+   ```bash
+   npx prisma migrate dev
+   ```
+5. Seed sample data (optional):
+   ```bash
+   npm run db:seed
+   ```
+6. Start the app:
+   ```bash
+   npm run dev
+   ```
+7. Start the socket server in another terminal:
+   ```bash
+   cd socket-server
+   npm ci
+   npm run dev
+   ```
 
 ## Scripts
-- `npm run dev`
-- `npm run build`
-- `npm run start`
-- `npm run lint`
-- `npm run typecheck`
-- `npm run db:migrate:deploy`
-- `npm run db:seed`
 
-## Production deployment
-1. Set all required env vars in Vercel and Render.
-2. Ensure DB migrations are committed in `prisma/migrations`.
-3. Run migrations during deploy (`npm run db:migrate:deploy` or `npm run build`).
-4. Configure Render socket `CLIENT_ORIGIN` and `EMIT_SECRET` to match app env.
-5. Keep socket health endpoint monitored (`/health`) and alerting enabled.
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Run Next.js in development |
+| `npm run build` | Generate Prisma client and build app |
+| `npm run start` | Run production server |
+| `npm run lint` | Run ESLint |
+| `npm run typecheck` | Run TypeScript checks |
+| `npm run db:migrate:deploy` | Apply production migrations |
+| `npm run db:seed` | Seed database |
+| `npm run db:reset` | Reset DB and reseed |
 
-## Security + reliability notes
-- Server actions are role-scoped (organizer/judge/participant).
-- Judge/participant token routes are rate-limited.
-- Registration and scoring submissions are rate-limited.
-- CSP is stricter in production than development.
-- CI runs typecheck on push/PR.
+## Production Deployment
 
-## Governance (GitHub)
+1. Configure all required environment variables in Vercel and Render.
+2. Commit Prisma migrations under `prisma/migrations`.
+3. Run migrations during deploy (`npm run db:migrate:deploy`).
+4. Configure socket server `CLIENT_ORIGIN` and `EMIT_SECRET` to match app settings.
+5. Monitor socket health endpoint at `/health`.
+
+## Security and Reliability
+
+- Role-scoped server actions (organizer/judge/participant).
+- Rate limits on judge/participant token routes.
+- Rate limits on registration and scoring submissions.
+- Stronger CSP rules in production.
+- CI includes type checking on push and pull requests.
+
+## Governance
+
 - [CONTRIBUTING.md](CONTRIBUTING.md)
 - [SECURITY.md](SECURITY.md)
 - [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
-- issue templates and PR template under `.github/`
+- Issue templates and PR template under `.github/`
 
-## Legal Pages (App)
+## Legal Pages
+
 - `/terms`
 - `/privacy`
 - `/security`
