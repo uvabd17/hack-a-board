@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
 import { z } from "zod"
 import { emitProblemsReleased } from "@/lib/socket-emit"
+import { canManageHackathon } from "@/lib/access-control"
 
 const ProblemSchema = z.object({
     title: z.string().min(3),
@@ -21,10 +22,10 @@ export async function createProblemStatement(hackathonId: string, formData: Form
     // Verify ownership
     const hackathon = await prisma.hackathon.findUnique({
         where: { id: hackathonId },
-        select: { userId: true, slug: true }
+        select: { userId: true, organizerEmails: true, slug: true }
     })
 
-    if (!hackathon || hackathon.userId !== session.user.id) {
+    if (!hackathon || !canManageHackathon(hackathon, session.user)) {
         return { error: "Access Denied" }
     }
 
@@ -68,10 +69,10 @@ export async function toggleProblemRelease(hackathonId: string, problemId: strin
 
     const hackathon = await prisma.hackathon.findUnique({
         where: { id: hackathonId },
-        select: { userId: true, slug: true }
+        select: { userId: true, organizerEmails: true, slug: true }
     })
 
-    if (!hackathon || hackathon.userId !== session.user.id) {
+    if (!hackathon || !canManageHackathon(hackathon, session.user)) {
         return { error: "Access Denied" }
     }
 
@@ -101,10 +102,10 @@ export async function deleteProblemStatement(hackathonId: string, problemId: str
 
     const hackathon = await prisma.hackathon.findUnique({
         where: { id: hackathonId },
-        select: { userId: true, slug: true }
+        select: { userId: true, organizerEmails: true, slug: true }
     })
 
-    if (!hackathon || hackathon.userId !== session.user.id) {
+    if (!hackathon || !canManageHackathon(hackathon, session.user)) {
         return { error: "Access Denied" }
     }
 
@@ -169,10 +170,10 @@ export async function releaseAllProblems(hackathonId: string) {
 
     const hackathon = await prisma.hackathon.findUnique({
         where: { id: hackathonId },
-        select: { userId: true, slug: true }
+        select: { userId: true, organizerEmails: true, slug: true }
     })
 
-    if (!hackathon || hackathon.userId !== session.user.id) {
+    if (!hackathon || !canManageHackathon(hackathon, session.user)) {
         return { error: "Access Denied" }
     }
 

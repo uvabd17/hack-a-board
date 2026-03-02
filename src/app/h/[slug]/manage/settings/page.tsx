@@ -2,6 +2,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { notFound, redirect } from "next/navigation"
 import { HackathonSettingsForm } from "./client-components"
+import { canManageHackathon, isHackathonOwner } from "@/lib/access-control"
 
 export default async function SettingsPage({ params }: { params: Promise<{ slug: string }> }) {
     const session = await auth()
@@ -13,7 +14,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
         where: { slug },
     })
 
-    if (!hackathon || hackathon.userId !== session.user.id) {
+    if (!hackathon || !canManageHackathon(hackathon, session.user)) {
         notFound()
     }
 
@@ -42,6 +43,8 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
         status: hackathon.status,
         isArchived: hackathon.isArchived,
         archivedAt: hackathon.archivedAt ? hackathon.archivedAt.toISOString() : null,
+        organizerEmails: hackathon.organizerEmails,
+        isOwner: isHackathonOwner(hackathon, session.user),
     }
 
     return (

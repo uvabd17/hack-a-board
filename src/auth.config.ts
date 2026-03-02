@@ -5,6 +5,7 @@
  */
 import type { NextAuthConfig } from "next-auth"
 import Google from "next-auth/providers/google"
+import { isPrivateBetaAllowed } from "@/lib/access-control"
 
 export const authConfig: NextAuthConfig = {
     providers: [Google],
@@ -27,7 +28,8 @@ export const authConfig: NextAuthConfig = {
             return session
         },
         authorized({ auth }) {
-            return !!auth?.user
+            if (!auth?.user) return false
+            return isPrivateBetaAllowed(auth.user.email)
         },
     },
     pages: {

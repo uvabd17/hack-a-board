@@ -270,10 +270,13 @@ export async function getTeamJudgingProgress(teamId: string, roundId: string) {
         let authorized = false
         if (session?.user?.id) {
             const ownsHackathon = await prisma.hackathon.findUnique({
-                where: { id: team.hackathonId, userId: session.user.id },
-                select: { id: true },
+                where: { id: team.hackathonId },
+                select: { userId: true, organizerEmails: true },
             })
-            authorized = !!ownsHackathon
+            authorized = !!ownsHackathon && (
+                ownsHackathon.userId === session.user.id ||
+                (!!session.user.email && ownsHackathon.organizerEmails.includes(session.user.email))
+            )
         }
 
         if (!authorized && participantToken) {

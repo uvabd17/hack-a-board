@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { PhaseForm, PhaseItem, ShiftPhasesControl } from "./client-components"
+import { canManageHackathon } from "@/lib/access-control"
 
 export default async function PhasesPage({
     params,
@@ -21,7 +22,7 @@ export default async function PhasesPage({
     })
 
     if (!hackathon) notFound()
-    if (hackathon.userId !== session.user.id) redirect("/dashboard")
+    if (!canManageHackathon(hackathon, session.user)) redirect("/dashboard")
 
     // Serialize DateTime → ISO string for client components
     const phases = hackathon.phases.map((p) => ({

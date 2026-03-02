@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache"
 import { emitCeremonyStarted, emitCeremonyReveal } from "@/lib/socket-emit"
 
 import { getLeaderboardData } from "@/actions/leaderboard"
+import { canManageHackathon } from "@/lib/access-control"
 
 export type WinnerSnapshot = {
     rank: number
@@ -103,8 +104,8 @@ export async function getCeremonyPreview(hackathonId: string, mode: "overall" | 
     const session = await auth()
     if (!session?.user?.id) return { success: false, error: "Unauthorized" }
 
-    const hackathon = await prisma.hackathon.findUnique({ where: { id: hackathonId, userId: session.user.id } })
-    if (!hackathon) return { success: false, error: "Access Denied" }
+    const hackathon = await prisma.hackathon.findUnique({ where: { id: hackathonId }, select: { userId: true, organizerEmails: true } })
+    if (!hackathon || !canManageHackathon(hackathon, session.user)) return { success: false, error: "Access Denied" }
 
     try {
         const winners = await calculateWinners(hackathonId, mode, revealCount)
@@ -120,10 +121,11 @@ export async function startCeremony(hackathonId: string, mode: "overall" | "prob
     if (!session?.user?.id) return { success: false, error: "Unauthorized" }
 
     const hackathon = await prisma.hackathon.findUnique({
-        where: { id: hackathonId, userId: session.user.id }
+        where: { id: hackathonId },
+        select: { userId: true, organizerEmails: true, slug: true }
     })
 
-    if (!hackathon) return { success: false, error: "Hackathon not found" }
+    if (!hackathon || !canManageHackathon(hackathon, session.user)) return { success: false, error: "Hackathon not found" }
 
     const winners = await calculateWinners(hackathonId, mode, revealCount)
 
@@ -151,8 +153,8 @@ export async function revealNext(hackathonId: string) {
     const session = await auth()
     if (!session?.user?.id) return { success: false, error: "Unauthorized" }
 
-    const hackathon = await prisma.hackathon.findUnique({ where: { id: hackathonId, userId: session.user.id } })
-    if (!hackathon) return { success: false, error: "Access Denied" }
+    const hackathon = await prisma.hackathon.findUnique({ where: { id: hackathonId }, select: { userId: true, organizerEmails: true } })
+    if (!hackathon || !canManageHackathon(hackathon, session.user)) return { success: false, error: "Access Denied" }
 
     // Find active session
     const activeSession = await prisma.ceremonySession.findFirst({
@@ -265,8 +267,8 @@ export async function stopCeremony(hackathonId: string) {
     const session = await auth()
     if (!session?.user?.id) return { success: false, error: "Unauthorized" }
 
-    const hackathon = await prisma.hackathon.findUnique({ where: { id: hackathonId, userId: session.user.id } })
-    if (!hackathon) return { success: false, error: "Access Denied" }
+    const hackathon = await prisma.hackathon.findUnique({ where: { id: hackathonId }, select: { userId: true, organizerEmails: true } })
+    if (!hackathon || !canManageHackathon(hackathon, session.user)) return { success: false, error: "Access Denied" }
 
     // Find active session
     const activeSession = await prisma.ceremonySession.findFirst({

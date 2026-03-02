@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
+import { canManageHackathon, isHackathonOwner, isPrivateBetaAllowed, parseEmailList } from "@/lib/access-control"
 
 export async function getUserHackathons() {
     const session = await auth()
@@ -12,13 +13,26 @@ export async function getUserHackathons() {
         return { authorized: false, activeHackathons: [], archivedHackathons: [] }
     }
 
+    const email = session.user.email || ""
     const activeHackathons = await prisma.hackathon.findMany({
-        where: { userId: session.user.id, isArchived: false },
+        where: {
+            isArchived: false,
+            OR: [
+                { userId: session.user.id },
+                ...(email ? [{ organizerEmails: { has: email } }] : []),
+            ],
+        },
         orderBy: { createdAt: 'desc' }
     })
 
     const archivedHackathons = await prisma.hackathon.findMany({
-        where: { userId: session.user.id, isArchived: true },
+        where: {
+            isArchived: true,
+            OR: [
+                { userId: session.user.id },
+                ...(email ? [{ organizerEmails: { has: email } }] : []),
+            ],
+        },
         orderBy: { archivedAt: "desc" }
     })
 
@@ -28,6 +42,9 @@ export async function getUserHackathons() {
 export async function createNewHackathon(customSlug?: string) {
     const session = await auth()
     if (!session?.user?.id) redirect("/signin")
+    if (!isPrivateBetaAllowed(session.user.email)) {
+        return { success: false, error: "Private beta access is required" }
+    }
 
     // Use custom slug if provided, otherwise generate random
     const slug = customSlug 
@@ -101,10 +118,10 @@ export async function updateHackathon(hackathonId: string, data: z.infer<typeof 
 
     const hackathon = await prisma.hackathon.findUnique({
         where: { id: hackathonId },
-        select: { userId: true, slug: true }
+        select: { userId: true, slug: true, organizerEmails: true }
     })
 
-    if (!hackathon || hackathon.userId !== session.user.id) {
+    if (!hackathon || !canManageHackathon(hackathon, session.user)) {
         return { error: "Access Denied" }
     }
 
@@ -173,10 +190,10 @@ export async function updateHackathonStatus(hackathonId: string, newStatus: stri
 
     const hackathon = await prisma.hackathon.findUnique({
         where: { id: hackathonId },
-        select: { userId: true, slug: true, status: true }
+        select: { userId: true, slug: true, status: true, organizerEmails: true }
     })
 
-    if (!hackathon || hackathon.userId !== session.user.id) {
+    if (!hackathon || !canManageHackathon(hackathon, session.user)) {
         return { error: "Access Denied" }
     }
 
@@ -208,10 +225,10 @@ export async function archiveHackathon(hackathonId: string) {
 
     const hackathon = await prisma.hackathon.findUnique({
         where: { id: hackathonId },
-        select: { userId: true, slug: true, isArchived: true }
+        select: { userId: true, slug: true, isArchived: true, organizerEmails: true }
     })
 
-    if (!hackathon || hackathon.userId !== session.user.id) {
+    if (!hackathon || !canManageHackathon(hackathon, session.user)) {
         return { error: "Access Denied" }
     }
 
@@ -237,10 +254,10 @@ export async function restoreHackathon(hackathonId: string) {
 
     const hackathon = await prisma.hackathon.findUnique({
         where: { id: hackathonId },
-        select: { userId: true, slug: true, isArchived: true }
+        select: { userId: true, slug: true, isArchived: true, organizerEmails: true }
     })
 
-    if (!hackathon || hackathon.userId !== session.user.id) {
+    if (!hackathon || !canManageHackathon(hackathon, session.user)) {
         return { error: "Access Denied" }
     }
 
@@ -258,4 +275,30 @@ export async function restoreHackathon(hackathonId: string) {
     revalidatePath(`/h/${hackathon.slug}/manage/settings`)
     revalidatePath(`/h/${hackathon.slug}`)
     return { success: true }
+}
+
+export async function updateHackathonOrganizers(hackathonId: string, rawEmails: string) {
+    const session = await auth()
+    if (!session?.user?.id) return { error: "Unauthorized" }
+
+    const hackathon = await prisma.hackathon.findUnique({
+        where: { id: hackathonId },
+        select: { userId: true, slug: true }
+    })
+
+    if (!hackathon || !isHackathonOwner(hackathon, session.user)) {
+        return { error: "Only the event owner can edit organizer access" }
+    }
+
+    const emails = parseEmailList(rawEmails).filter((e) => e !== (session.user.email || "").toLowerCase())
+
+    await prisma.hackathon.update({
+        where: { id: hackathonId },
+        data: { organizerEmails: emails }
+    })
+
+    revalidatePath("/dashboard")
+    revalidatePath(`/h/${hackathon.slug}/manage`)
+    revalidatePath(`/h/${hackathon.slug}/manage/settings`)
+    return { success: true, count: emails.length }
 }

@@ -2,6 +2,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { notFound, redirect } from "next/navigation"
 import { ManageShell } from "@/components/manage-shell"
+import { canManageHackathon } from "@/lib/access-control"
 
 export default async function ManageLayout({
     children,
@@ -19,14 +20,14 @@ export default async function ManageLayout({
 
     const hackathon = await prisma.hackathon.findUnique({
         where: { slug },
-        select: { id: true, userId: true, name: true, slug: true }
+        select: { id: true, userId: true, organizerEmails: true, name: true, slug: true }
     })
 
     if (!hackathon) {
         notFound()
     }
 
-    if (hackathon.userId !== session.user.id) {
+    if (!canManageHackathon(hackathon, session.user)) {
         notFound() // Access denied - hide existence
     }
 

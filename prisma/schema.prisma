@@ -109,6 +109,7 @@ model Hackathon {
   // Ownership
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizerEmails String[] @default([]) // Additional organizer emails allowed to manage this event
 
   // Timestamps
   createdAt DateTime @default(now())

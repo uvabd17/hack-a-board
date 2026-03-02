@@ -4,15 +4,25 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import { emitParticipantCheckedIn } from "@/lib/socket-emit"
+async function getAccessibleHackathonBySlug(slug: string, user: { id?: string | null; email?: string | null }) {
+    if (!user?.id) return null
+    return prisma.hackathon.findFirst({
+        where: {
+            slug,
+            OR: [
+                { userId: user.id },
+                ...(user.email ? [{ organizerEmails: { has: user.email } }] : []),
+            ],
+        },
+        select: { id: true, userId: true, organizerEmails: true }
+    })
+}
 
 export async function getTeamsForHackathon(slug: string) {
     const session = await auth()
     if (!session?.user?.id) return { error: "Unauthorized", teams: [] }
 
-    const hackathon = await prisma.hackathon.findUnique({
-        where: { slug, userId: session.user.id },
-        select: { id: true }
-    })
+    const hackathon = await getAccessibleHackathonBySlug(slug, session.user)
     if (!hackathon) return { error: "Not found", teams: [] }
 
     const teams = await prisma.team.findMany({
@@ -32,10 +42,7 @@ export async function updateTeamStatus(teamId: string, status: "approved" | "rej
     const session = await auth()
     if (!session?.user?.id) return { error: "Unauthorized" }
 
-    const hackathon = await prisma.hackathon.findUnique({
-        where: { slug, userId: session.user.id },
-        select: { id: true }
-    })
+    const hackathon = await getAccessibleHackathonBySlug(slug, session.user)
     if (!hackathon) return { error: "Not found" }
 
     const team = await prisma.team.findFirst({ where: { id: teamId, hackathonId: hackathon.id } })
@@ -50,10 +57,7 @@ export async function checkInTeam(teamId: string, slug: string) {
     const session = await auth()
     if (!session?.user?.id) return { error: "Unauthorized" }
 
-    const hackathon = await prisma.hackathon.findUnique({
-        where: { slug, userId: session.user.id },
-        select: { id: true }
-    })
+    const hackathon = await getAccessibleHackathonBySlug(slug, session.user)
     if (!hackathon) return { error: "Not found" }
 
     const team = await prisma.team.findFirst({ where: { id: teamId, hackathonId: hackathon.id } })
@@ -83,10 +87,7 @@ export async function exportTeamsCSV(slug: string): Promise<{ csv: string } | { 
     const session = await auth()
     if (!session?.user?.id) return { error: "Unauthorized" }
 
-    const hackathon = await prisma.hackathon.findUnique({
-        where: { slug, userId: session.user.id },
-        select: { id: true }
-    })
+    const hackathon = await getAccessibleHackathonBySlug(slug, session.user)
     if (!hackathon) return { error: "Not found" }
 
     const teams = await prisma.team.findMany({

@@ -4,6 +4,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
+import { canManageHackathon } from "@/lib/access-control"
 
 const PhaseSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters"),
@@ -18,10 +19,10 @@ async function assertOwner(hackathonId: string) {
 
     const hackathon = await prisma.hackathon.findUnique({
         where: { id: hackathonId },
-        select: { userId: true, slug: true }
+        select: { userId: true, organizerEmails: true, slug: true }
     })
 
-    if (!hackathon || hackathon.userId !== session.user.id) return null
+    if (!hackathon || !canManageHackathon(hackathon, session.user)) return null
     return hackathon
 }
 

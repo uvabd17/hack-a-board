@@ -5,15 +5,17 @@ import { prisma } from "@/lib/prisma"
 import { revalidatePath, unstable_cache } from "next/cache"
 import { getLeaderboardData } from "@/actions/leaderboard"
 import { emitFreeze, emitDisplayConfig } from "@/lib/socket-emit"
+import { canManageHackathon } from "@/lib/access-control"
 
 async function assertDisplayOwner(hackathonId: string) {
     const session = await auth()
     if (!session?.user?.id) return null
     const hackathon = await prisma.hackathon.findUnique({
-        where: { id: hackathonId, userId: session.user.id },
-        select: { slug: true }
+        where: { id: hackathonId },
+        select: { userId: true, organizerEmails: true, slug: true }
     })
-    return hackathon || null
+    if (!hackathon || !canManageHackathon(hackathon, session.user)) return null
+    return { slug: hackathon.slug }
 }
 
 export async function toggleFreeze(hackathonId: string, isFrozen: boolean, slug: string) {

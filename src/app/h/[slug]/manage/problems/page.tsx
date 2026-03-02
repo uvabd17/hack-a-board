@@ -2,6 +2,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { notFound, redirect } from "next/navigation"
 import { ProblemForm, ProblemItem, ReleaseAllButton } from "./client-components"
+import { canManageHackathon } from "@/lib/access-control"
 
 interface ProblemStatement {
     id: string;
@@ -27,7 +28,7 @@ export default async function ProblemsPage({ params }: { params: Promise<{ slug:
         }
     })
 
-    if (!hackathon || hackathon.userId !== session.user.id) {
+    if (!hackathon || !canManageHackathon(hackathon, session.user)) {
         notFound()
     }
 
