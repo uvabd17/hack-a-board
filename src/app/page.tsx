@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Activity, QrCode, Trophy } from "lucide-react";
-import { AppLogo } from "@/components/app-logo";
 
 export default function Home() {
   return (
@@ -24,8 +23,8 @@ export default function Home() {
       {/* Header */}
       <header className="relative border-b border-white/5 backdrop-blur-sm z-10">
         <div className="container mx-auto px-6 h-16 flex justify-between items-center">
-          <div>
-            <AppLogo size="sm" priority className="opacity-95" />
+          <div className="text-lg font-bold tracking-tight lowercase">
+            hack&lt;a&gt;board
           </div>
           <Link href="/signin" className="text-xs uppercase tracking-widest text-zinc-500 hover:text-green-400 transition-colors">
             [ ORGANIZER LOGIN ]
