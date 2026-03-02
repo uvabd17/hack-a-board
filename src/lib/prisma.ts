@@ -2,7 +2,28 @@ import { Pool } from 'pg'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient } from '@prisma/client'
 
-const connectionString = `${process.env.DATABASE_URL}`
+function normalizeDatabaseUrl(rawUrl?: string): string {
+    if (!rawUrl) {
+        throw new Error("DATABASE_URL is not set")
+    }
+
+    try {
+        const parsed = new URL(rawUrl)
+        const sslmode = parsed.searchParams.get("sslmode")
+
+        // Future-proof pg v9 behavior when using sslmode=require.
+        if (sslmode === "require" && !parsed.searchParams.has("uselibpqcompat")) {
+            parsed.searchParams.set("uselibpqcompat", "true")
+        }
+
+        return parsed.toString()
+    } catch {
+        // Fall back to raw string for non-standard connection URL formats.
+        return rawUrl
+    }
+}
+
+const connectionString = normalizeDatabaseUrl(process.env.DATABASE_URL)
 const isProduction = process.env.NODE_ENV === 'production'
 
 const pool = new Pool({
