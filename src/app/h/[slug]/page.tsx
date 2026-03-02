@@ -34,7 +34,7 @@ export default async function PublicHackathonPage({ params }: { params: Promise<
         }
     })
 
-    if (!hackathon) {
+    if (!hackathon || hackathon.isArchived) {
         notFound()
     }
 

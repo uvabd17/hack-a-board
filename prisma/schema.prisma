@@ -93,6 +93,8 @@ model Hackathon {
   // Status
   status        String    @default("draft") // "draft" | "published" | "live" | "ended"
   isFrozen      Boolean   @default(false)   // Leaderboard visibility freeze flag
+  isArchived    Boolean   @default(false)   // Soft archive flag; archived events are hidden from active/public listings
+  archivedAt    DateTime?
   liveStartedAt DateTime?
   endedAt       DateTime?
 
@@ -124,6 +126,7 @@ model Hackathon {
   @@index([slug])
   @@index([userId])
   @@index([status])
+  @@index([isArchived])
 }
 
 // ============================================
