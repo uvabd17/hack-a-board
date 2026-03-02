@@ -1,7 +1,6 @@
 import { auth, signIn } from "@/auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import { AppLogo } from "@/components/app-logo"
 
 export default async function SignInPage() {
     const session = await auth()
@@ -23,9 +22,9 @@ export default async function SignInPage() {
                     <div className="text-[10px] text-zinc-700 tracking-[0.3em] uppercase mb-6">
                         organizer portal
                     </div>
-                    <div className="mx-auto mb-3 flex justify-center">
-                        <AppLogo size="md" priority />
-                    </div>
+                    <h1 className="text-4xl font-bold tracking-tighter mb-3 text-transparent bg-clip-text bg-gradient-to-b from-white to-zinc-500">
+                        hack&lt;a&gt;board
+                    </h1>
                     <p className="text-zinc-600 text-xs tracking-widest uppercase">
                         sign in to manage your hackathons
                     </p>
