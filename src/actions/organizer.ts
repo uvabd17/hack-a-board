@@ -9,15 +9,20 @@ import { z } from "zod"
 export async function getUserHackathons() {
     const session = await auth()
     if (!session?.user?.id) {
-        return { authorized: false, hackathons: [] }
+        return { authorized: false, activeHackathons: [], archivedHackathons: [] }
     }
 
-    const hackathons = await prisma.hackathon.findMany({
-        where: { userId: session.user.id },
+    const activeHackathons = await prisma.hackathon.findMany({
+        where: { userId: session.user.id, isArchived: false },
         orderBy: { createdAt: 'desc' }
     })
 
-    return { authorized: true, hackathons }
+    const archivedHackathons = await prisma.hackathon.findMany({
+        where: { userId: session.user.id, isArchived: true },
+        orderBy: { archivedAt: "desc" }
+    })
+
+    return { authorized: true, activeHackathons, archivedHackathons }
 }
 
 export async function createNewHackathon(customSlug?: string) {
@@ -193,6 +198,64 @@ export async function updateHackathonStatus(hackathonId: string, newStatus: stri
     })
 
     revalidatePath(`/h/${hackathon.slug}/manage`)
+    revalidatePath(`/h/${hackathon.slug}`)
+    return { success: true }
+}
+
+export async function archiveHackathon(hackathonId: string) {
+    const session = await auth()
+    if (!session?.user?.id) return { error: "Unauthorized" }
+
+    const hackathon = await prisma.hackathon.findUnique({
+        where: { id: hackathonId },
+        select: { userId: true, slug: true, isArchived: true }
+    })
+
+    if (!hackathon || hackathon.userId !== session.user.id) {
+        return { error: "Access Denied" }
+    }
+
+    if (hackathon.isArchived) {
+        return { error: "Event is already archived" }
+    }
+
+    await prisma.hackathon.update({
+        where: { id: hackathonId },
+        data: { isArchived: true, archivedAt: new Date() }
+    })
+
+    revalidatePath("/dashboard")
+    revalidatePath(`/h/${hackathon.slug}/manage`)
+    revalidatePath(`/h/${hackathon.slug}/manage/settings`)
+    revalidatePath(`/h/${hackathon.slug}`)
+    return { success: true }
+}
+
+export async function restoreHackathon(hackathonId: string) {
+    const session = await auth()
+    if (!session?.user?.id) return { error: "Unauthorized" }
+
+    const hackathon = await prisma.hackathon.findUnique({
+        where: { id: hackathonId },
+        select: { userId: true, slug: true, isArchived: true }
+    })
+
+    if (!hackathon || hackathon.userId !== session.user.id) {
+        return { error: "Access Denied" }
+    }
+
+    if (!hackathon.isArchived) {
+        return { error: "Event is not archived" }
+    }
+
+    await prisma.hackathon.update({
+        where: { id: hackathonId },
+        data: { isArchived: false, archivedAt: null }
+    })
+
+    revalidatePath("/dashboard")
+    revalidatePath(`/h/${hackathon.slug}/manage`)
+    revalidatePath(`/h/${hackathon.slug}/manage/settings`)
     revalidatePath(`/h/${hackathon.slug}`)
     return { success: true }
 }

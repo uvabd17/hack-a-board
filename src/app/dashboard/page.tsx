@@ -1,18 +1,18 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
-import { getUserHackathons } from "@/actions/organizer"
+import { getUserHackathons, restoreHackathon } from "@/actions/organizer"
 import { CreateHackathonButton } from "@/components/create-hackathon-button"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
-import { Calendar, Users, ArrowRight, Terminal } from "lucide-react"
+import { Calendar, ArrowRight, Terminal, ArchiveRestore } from "lucide-react"
 
 export default async function DashboardPage() {
     const session = await auth()
     if (!session) redirect("/signin")
 
-    const { hackathons } = await getUserHackathons()
+    const { activeHackathons, archivedHackathons } = await getUserHackathons()
 
     return (
         <div className="min-h-screen bg-background p-8">
@@ -38,16 +38,16 @@ export default async function DashboardPage() {
             </header>
 
             <main className="max-w-5xl mx-auto space-y-8">
-                {hackathons.length === 0 ? (
+                {activeHackathons.length === 0 ? (
                     <div className="text-center py-20 border-2 border-dashed rounded-lg bg-card/50">
                         <Terminal className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                        <h2 className="text-xl font-bold mb-2">No Hackathons Found</h2>
-                        <p className="text-muted-foreground mb-6">Create your first hackathon to get started.</p>
+                        <h2 className="text-xl font-bold mb-2">No Active Hackathons</h2>
+                        <p className="text-muted-foreground mb-6">Create a new hackathon or restore one from archives.</p>
                         <CreateHackathonButton />
                     </div>
                 ) : (
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {hackathons.map((h) => (
+                        {activeHackathons.map((h) => (
                             <Link key={h.id} href={`/h/${h.slug}/manage`} className="block group">
                                 <Card className="h-full transition-all hover:border-primary/50 hover:bg-primary/5">
                                     <CardHeader>
@@ -70,6 +70,50 @@ export default async function DashboardPage() {
                             </Link>
                         ))}
                     </div>
+                )}
+
+                {archivedHackathons.length > 0 && (
+                    <section className="space-y-4 border-t border-border pt-6">
+                        <div className="flex items-center gap-2">
+                            <ArchiveRestore className="w-4 h-4 text-muted-foreground" />
+                            <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                                Archived Events
+                            </h2>
+                        </div>
+                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {archivedHackathons.map((h) => (
+                                <Card key={h.id} className="h-full border-dashed opacity-90">
+                                    <CardHeader>
+                                        <div className="flex justify-between items-start mb-2">
+                                            <Badge variant="secondary" className="uppercase text-xs">
+                                                archived
+                                            </Badge>
+                                            <span className="text-xs text-muted-foreground">
+                                                {h.archivedAt ? new Date(h.archivedAt).toLocaleDateString() : "unknown"}
+                                            </span>
+                                        </div>
+                                        <CardTitle className="truncate">{h.name}</CardTitle>
+                                        <CardDescription className="font-mono text-xs">{h.slug}</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-3">
+                                        <form
+                                            action={async () => {
+                                                "use server"
+                                                await restoreHackathon(h.id)
+                                            }}
+                                        >
+                                            <Button type="submit" size="sm" className="w-full uppercase text-xs">
+                                                Restore
+                                            </Button>
+                                        </form>
+                                        <Button asChild size="sm" variant="outline" className="w-full uppercase text-xs">
+                                            <Link href={`/h/${h.slug}/manage`}>Manage</Link>
+                                        </Button>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    </section>
                 )}
             </main>
         </div>

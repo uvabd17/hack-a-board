@@ -53,6 +53,7 @@ export async function registerParticipant(prevState: RegisterState, formData: Fo
         })
 
         if (!hackathon) return { error: "Hackathon not found" }
+        if (hackathon.isArchived) return { error: "Registration is not available for this hackathon" }
 
         // Block registration if hackathon is not published or live
         if (hackathon.status !== "published" && hackathon.status !== "live") {

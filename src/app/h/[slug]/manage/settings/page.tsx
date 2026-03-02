@@ -40,6 +40,8 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
         timeBonusRate: hackathon.timeBonusRate,
         timePenaltyRate: hackathon.timePenaltyRate,
         status: hackathon.status,
+        isArchived: hackathon.isArchived,
+        archivedAt: hackathon.archivedAt ? hackathon.archivedAt.toISOString() : null,
     }
 
     return (

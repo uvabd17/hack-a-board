@@ -35,7 +35,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Dynamic hackathon public pages (only published/live ones)
     try {
         const hackathons = await prisma.hackathon.findMany({
-            where: { status: { in: ["published", "live"] } },
+            where: { status: { in: ["published", "live"] }, isArchived: false },
             select: { slug: true, updatedAt: true },
         })
 

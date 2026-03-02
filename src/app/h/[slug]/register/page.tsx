@@ -8,7 +8,7 @@ export default async function RegisterPage({ params }: { params: Promise<{ slug:
         where: { slug }
     })
 
-    if (!hackathon) {
+    if (!hackathon || hackathon.isArchived) {
         notFound()
     }
 

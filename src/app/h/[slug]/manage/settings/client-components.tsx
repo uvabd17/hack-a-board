@@ -2,12 +2,12 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { updateHackathon } from "@/actions/organizer"
+import { updateHackathon, archiveHackathon, restoreHackathon } from "@/actions/organizer"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { AlertCircle, CheckCircle2, Save } from "lucide-react"
+import { AlertCircle, CheckCircle2, Archive, ArchiveRestore, Save } from "lucide-react"
 
 interface HackathonData {
     id: string
@@ -29,6 +29,8 @@ interface HackathonData {
     timeBonusRate: number
     timePenaltyRate: number
     status: string
+    isArchived: boolean
+    archivedAt: string | null
 }
 
 export function HackathonSettingsForm({ hackathon }: { hackathon: HackathonData }) {
@@ -80,6 +82,46 @@ export function HackathonSettingsForm({ hackathon }: { hackathon: HackathonData 
                 setTimeout(() => { window.location.href = `/h/${res.newSlug}/manage/settings` }, 1000)
             } else {
                 setStatus({ success: "Settings saved successfully" })
+                router.refresh()
+            }
+        } catch {
+            setStatus({ error: "An unexpected error occurred" })
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    async function handleArchive() {
+        if (!confirm("Archive this event? It will be hidden from active/public listings, and you can restore it later.")) {
+            return
+        }
+        setLoading(true)
+        setStatus(null)
+        try {
+            const res = await archiveHackathon(hackathon.id)
+            if (res.error) {
+                setStatus({ error: res.error })
+            } else {
+                setStatus({ success: "Event archived successfully" })
+                router.refresh()
+            }
+        } catch {
+            setStatus({ error: "An unexpected error occurred" })
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    async function handleRestore() {
+        if (!confirm("Restore this archived event to active lists?")) return
+        setLoading(true)
+        setStatus(null)
+        try {
+            const res = await restoreHackathon(hackathon.id)
+            if (res.error) {
+                setStatus({ error: res.error })
+            } else {
+                setStatus({ success: "Event restored successfully" })
                 router.refresh()
             }
         } catch {
@@ -282,6 +324,42 @@ export function HackathonSettingsForm({ hackathon }: { hackathon: HackathonData 
                     {loading ? "SAVING..." : "SAVE SETTINGS"}
                 </Button>
             </div>
+
+            <Section title="DANGER ZONE">
+                <div className="border border-destructive/30 bg-destructive/5 p-4 space-y-4">
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                        Archiving is reversible. The event and all related data are preserved, but hidden from active dashboard lists and public pages.
+                    </p>
+                    {hackathon.archivedAt && (
+                        <p className="text-[11px] text-muted-foreground">
+                            Archived on: {new Date(hackathon.archivedAt).toLocaleString()}
+                        </p>
+                    )}
+                    {hackathon.isArchived ? (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="gap-2 uppercase text-xs"
+                            disabled={loading}
+                            onClick={handleRestore}
+                        >
+                            <ArchiveRestore size={14} />
+                            {loading ? "PROCESSING..." : "Restore Event"}
+                        </Button>
+                    ) : (
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            className="gap-2 uppercase text-xs"
+                            disabled={loading}
+                            onClick={handleArchive}
+                        >
+                            <Archive size={14} />
+                            {loading ? "PROCESSING..." : "Archive Event"}
+                        </Button>
+                    )}
+                </div>
+            </Section>
         </form>
     )
 }
