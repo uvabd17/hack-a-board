@@ -14,8 +14,14 @@ const SYMBOL_DIMENSIONS = {
   lg: { width: 56, height: 56 },
 } as const
 
+const SYMBOL_CLASS = {
+  sm: "h-7 w-7",
+  md: "h-10 w-10",
+  lg: "h-14 w-14",
+} as const
+
 const TEXT_CLASS = {
-  sm: "text-lg tracking-tight",
+  sm: "text-[30px] tracking-tight",
   md: "text-3xl tracking-tight",
   lg: "text-6xl md:text-7xl tracking-tighter",
 } as const
@@ -36,7 +42,7 @@ export function AppLogo({
         width={width}
         height={height}
         priority={priority}
-        className="h-auto w-auto shrink-0"
+        className={cn("shrink-0 object-contain", SYMBOL_CLASS[size])}
       />
       {withText && (
         <span

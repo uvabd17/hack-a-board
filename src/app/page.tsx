@@ -44,9 +44,9 @@ export default function Home() {
             LIVE AND READY
           </div>
 
-          <div className="mb-8">
-            <AppLogo size="lg" className="justify-center" />
-          </div>
+          <h1 className="text-6xl md:text-8xl font-bold tracking-tighter mb-8 leading-[0.9] text-transparent bg-clip-text bg-gradient-to-b from-white to-zinc-500">
+            hack&lt;a&gt;board
+          </h1>
 
           <p className="text-lg md:text-xl text-zinc-400 max-w-xl mx-auto mb-12 leading-relaxed font-light">
             Real-time scoring infrastructure for modern hackathons.
