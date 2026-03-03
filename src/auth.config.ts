@@ -5,7 +5,6 @@
  */
 import type { NextAuthConfig } from "next-auth"
 import Google from "next-auth/providers/google"
-import { isPrivateBetaAllowed } from "@/lib/access-control"
 
 export const authConfig: NextAuthConfig = {
     providers: [Google],
@@ -28,8 +27,9 @@ export const authConfig: NextAuthConfig = {
             return session
         },
         authorized({ auth }) {
-            if (!auth?.user) return false
-            return isPrivateBetaAllowed(auth.user.email)
+            // Route-level feature access is enforced inside pages/actions.
+            // Middleware should only require authentication.
+            return !!auth?.user
         },
     },
     pages: {

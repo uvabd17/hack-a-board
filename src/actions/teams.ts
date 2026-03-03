@@ -4,14 +4,16 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import { emitParticipantCheckedIn } from "@/lib/socket-emit"
+import { normalizeEmail } from "@/lib/access-control"
 async function getAccessibleHackathonBySlug(slug: string, user: { id?: string | null; email?: string | null }) {
     if (!user?.id) return null
+    const email = normalizeEmail(user.email)
     return prisma.hackathon.findFirst({
         where: {
             slug,
             OR: [
                 { userId: user.id },
-                ...(user.email ? [{ organizerEmails: { has: user.email } }] : []),
+                ...(email ? [{ organizerEmails: { has: email } }] : []),
             ],
         },
         select: { id: true, userId: true, organizerEmails: true }

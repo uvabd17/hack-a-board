@@ -4,6 +4,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { emitTeamSubmitted } from "@/lib/socket-emit"
 import { cookies } from "next/headers"
+import { normalizeEmail } from "@/lib/access-control"
 
 /**
  * Record when a judge scans a team's QR code (starts judging session)
@@ -269,13 +270,14 @@ export async function getTeamJudgingProgress(teamId: string, roundId: string) {
 
         let authorized = false
         if (session?.user?.id) {
+            const email = normalizeEmail(session.user.email)
             const ownsHackathon = await prisma.hackathon.findUnique({
                 where: { id: team.hackathonId },
                 select: { userId: true, organizerEmails: true },
             })
             authorized = !!ownsHackathon && (
                 ownsHackathon.userId === session.user.id ||
-                (!!session.user.email && ownsHackathon.organizerEmails.includes(session.user.email))
+                (!!email && ownsHackathon.organizerEmails.includes(email))
             )
         }
 

@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
-import { canManageHackathon, isHackathonOwner, isPrivateBetaAllowed, parseEmailList } from "@/lib/access-control"
+import { canManageHackathon, isHackathonOwner, isPrivateBetaAllowed, normalizeEmail, parseEmailList } from "@/lib/access-control"
 
 export async function getUserHackathons() {
     const session = await auth()
@@ -13,7 +13,7 @@ export async function getUserHackathons() {
         return { authorized: false, activeHackathons: [], archivedHackathons: [] }
     }
 
-    const email = session.user.email || ""
+    const email = normalizeEmail(session.user.email)
     const activeHackathons = await prisma.hackathon.findMany({
         where: {
             isArchived: false,
@@ -290,7 +290,7 @@ export async function updateHackathonOrganizers(hackathonId: string, rawEmails: 
         return { error: "Only the event owner can edit organizer access" }
     }
 
-    const emails = parseEmailList(rawEmails).filter((e) => e !== (session.user.email || "").toLowerCase())
+    const emails = parseEmailList(rawEmails).filter((e) => e !== normalizeEmail(session.user.email))
 
     await prisma.hackathon.update({
         where: { id: hackathonId },
