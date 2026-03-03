@@ -393,15 +393,19 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
     const activeRound = useMemo(() => {
         if (!data?.rounds?.length) return null
         const now = Date.now()
-        // Paused round takes priority
-        const paused = data.rounds.find((r: any) => r.checkpointPausedAt)
-        if (paused) return paused
-        // Nearest future (or most recently expired)
-        return data.rounds
+        const sortedByOrder = data.rounds
             .slice()
-            .sort((a: any, b: any) => new Date(a.checkpointTime).getTime() - new Date(b.checkpointTime).getTime())
-            .find((r: any) => new Date(r.checkpointTime).getTime() > now)
-            || data.rounds[data.rounds.length - 1]
+            .sort((a: any, b: any) => a.order - b.order)
+
+        // Current round is the first round in order that is not fully ended.
+        // A round is "not ended" if it's paused OR its checkpoint is in the future.
+        const current = sortedByOrder.find((r: any) => {
+            const checkpointMs = new Date(r.checkpointTime).getTime()
+            return !!r.checkpointPausedAt || checkpointMs > now
+        })
+
+        // If all rounds are ended, fall back to the last one for historical display.
+        return current || sortedByOrder[sortedByOrder.length - 1]
     }, [data?.rounds])
 
     // Find current active phase
