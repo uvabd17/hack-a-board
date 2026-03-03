@@ -3,16 +3,6 @@
 import { prisma } from "@/lib/prisma"
 import { calculateTeamScore, breakTie, LeaderboardEntry, TeamWithRelations, RoundWithCriteria } from "@/lib/scoring"
 import { Round } from "@prisma/client"
-import { unstable_cache } from "next/cache"
-
-// Cached leaderboard — revalidated every 5s or on-demand via tag
-const getCachedLeaderboard = unstable_cache(
-    async (hackathonId: string, problemId?: string | null) => {
-        return computeLeaderboard(hackathonId, problemId)
-    },
-    ["leaderboard"],
-    { revalidate: 2, tags: ["leaderboard"] }
-)
 
 export async function getLeaderboardData(slug: string, problemId?: string | null): Promise<{
     leaderboard: LeaderboardEntry[],
@@ -25,7 +15,8 @@ export async function getLeaderboardData(slug: string, problemId?: string | null
     })
     if (!hackathon) throw new Error("Hackathon not found")
 
-    const result = await getCachedLeaderboard(hackathon.id, problemId)
+    // Live views must always read fresh leaderboard state.
+    const result = await computeLeaderboard(hackathon.id, problemId)
     return { ...result, frozen: hackathon.isFrozen }
 }
 

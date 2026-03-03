@@ -46,3 +46,24 @@ export function isHackathonOwner(
 ): boolean {
   return !!user?.id && hackathon.userId === user.id
 }
+
+export function canCreateHackathon(user: { email?: string | null }): boolean {
+  return isPrivateBetaAllowed(user.email)
+}
+
+export type OrganizerPermissionSection =
+  | "owner_only"
+  | "schedule_manage"
+  | "scoring_manage"
+  | "participants_manage"
+  | "content_manage"
+  | "view_analytics"
+
+export function canAccessOrganizerSection(
+  hackathon: { userId: string; organizerEmails?: string[] | null },
+  user: { id?: string | null; email?: string | null },
+  section: OrganizerPermissionSection
+): boolean {
+  if (section === "owner_only") return isHackathonOwner(hackathon, user)
+  return canManageHackathon(hackathon, user)
+}

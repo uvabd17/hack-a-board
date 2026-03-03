@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { notFound, redirect } from "next/navigation"
 import { HackathonSettingsForm } from "./client-components"
 import { canManageHackathon, isHackathonOwner } from "@/lib/access-control"
+import { formatDateTimeLocal } from "@/lib/datetime"
 
 export default async function SettingsPage({ params }: { params: Promise<{ slug: string }> }) {
     const session = await auth()
@@ -25,8 +26,8 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
         slug: hackathon.slug,
         tagline: hackathon.tagline,
         description: hackathon.description,
-        startDate: hackathon.startDate.toISOString().slice(0, 16),
-        endDate: hackathon.endDate.toISOString().slice(0, 16),
+        startDate: formatDateTimeLocal(hackathon.startDate),
+        endDate: formatDateTimeLocal(hackathon.endDate),
         timezone: hackathon.timezone,
         mode: hackathon.mode as "in-person" | "online" | "hybrid",
         venue: hackathon.venue,
@@ -36,7 +37,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
         maxTeams: hackathon.maxTeams,
         requireApproval: hackathon.requireApproval,
         registrationDeadline: hackathon.registrationDeadline
-            ? hackathon.registrationDeadline.toISOString().slice(0, 16)
+            ? formatDateTimeLocal(hackathon.registrationDeadline)
             : null,
         timeBonusRate: hackathon.timeBonusRate,
         timePenaltyRate: hackathon.timePenaltyRate,

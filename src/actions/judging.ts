@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { emitTeamSubmitted } from "@/lib/socket-emit"
 import { cookies } from "next/headers"
 import { normalizeEmail } from "@/lib/access-control"
+import { PARTICIPANT_COOKIE_NAME } from "@/lib/participant-session"
 
 /**
  * Record when a judge scans a team's QR code (starts judging session)
@@ -250,7 +251,7 @@ function calculateTimeBonus(
 export async function getTeamJudgingProgress(teamId: string, roundId: string) {
     try {
         const [cookieStore, session] = await Promise.all([cookies(), auth()])
-        const participantToken = cookieStore.get("hackaboard_participant_token")?.value ?? null
+        const participantToken = cookieStore.get(PARTICIPANT_COOKIE_NAME)?.value ?? null
         const judgeToken = cookieStore.get("hackaboard_judge_token")?.value ?? null
 
         // Authorization: organizer owner, same-team participant, or judge in same hackathon only.

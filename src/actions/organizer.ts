@@ -5,7 +5,8 @@ import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
-import { canManageHackathon, isHackathonOwner, isPrivateBetaAllowed, normalizeEmail, parseEmailList } from "@/lib/access-control"
+import { canCreateHackathon, canManageHackathon, isHackathonOwner, normalizeEmail, parseEmailList } from "@/lib/access-control"
+import { parseDateTimeLocalWithOffset } from "@/lib/datetime"
 
 export async function getUserHackathons() {
     const session = await auth()
@@ -42,7 +43,7 @@ export async function getUserHackathons() {
 export async function createNewHackathon(customSlug?: string) {
     const session = await auth()
     if (!session?.user?.id) redirect("/signin")
-    if (!isPrivateBetaAllowed(session.user.email)) {
+    if (!canCreateHackathon(session.user)) {
         return { success: false, error: "Private beta access is required" }
     }
 
@@ -108,6 +109,7 @@ const UpdateHackathonSchema = z.object({
     maxTeams: z.coerce.number().int().min(0),
     requireApproval: z.boolean(),
     registrationDeadline: z.string().optional().nullable(),
+    clientTimezoneOffsetMinutes: z.coerce.number().optional(),
     timeBonusRate: z.coerce.number().min(0),
     timePenaltyRate: z.coerce.number().min(0),
 })
@@ -130,6 +132,31 @@ export async function updateHackathon(hackathonId: string, data: z.infer<typeof 
         return { error: "Invalid data: " + validated.error.issues.map(e => e.message).join(", ") }
     }
 
+    const startDate = parseDateTimeLocalWithOffset(
+        validated.data.startDate,
+        validated.data.clientTimezoneOffsetMinutes
+    )
+    const endDate = parseDateTimeLocalWithOffset(
+        validated.data.endDate,
+        validated.data.clientTimezoneOffsetMinutes
+    )
+    const registrationDeadline = validated.data.registrationDeadline
+        ? parseDateTimeLocalWithOffset(
+            validated.data.registrationDeadline,
+            validated.data.clientTimezoneOffsetMinutes
+        )
+        : null
+
+    if (!startDate || !endDate) {
+        return { error: "Invalid start/end datetime format" }
+    }
+    if (startDate >= endDate) {
+        return { error: "Start date/time must be before end date/time" }
+    }
+    if (registrationDeadline && (registrationDeadline < startDate || registrationDeadline > endDate)) {
+        return { error: "Registration deadline must be within the event start/end window" }
+    }
+
     try {
         const updated = await prisma.hackathon.update({
             where: { id: hackathonId },
@@ -138,8 +165,8 @@ export async function updateHackathon(hackathonId: string, data: z.infer<typeof 
                 slug: validated.data.slug,
                 tagline: validated.data.tagline || null,
                 description: validated.data.description || null,
-                startDate: new Date(validated.data.startDate),
-                endDate: new Date(validated.data.endDate),
+                startDate,
+                endDate,
                 timezone: validated.data.timezone,
                 mode: validated.data.mode,
                 venue: validated.data.venue || null,
@@ -148,7 +175,7 @@ export async function updateHackathon(hackathonId: string, data: z.infer<typeof 
                 maxTeamSize: validated.data.maxTeamSize,
                 maxTeams: validated.data.maxTeams,
                 requireApproval: validated.data.requireApproval,
-                registrationDeadline: validated.data.registrationDeadline ? new Date(validated.data.registrationDeadline) : null,
+                registrationDeadline,
                 timeBonusRate: validated.data.timeBonusRate,
                 timePenaltyRate: validated.data.timePenaltyRate,
             }

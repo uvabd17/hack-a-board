@@ -2,7 +2,6 @@
 
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { revalidatePath, unstable_cache } from "next/cache"
 import { getLeaderboardData } from "@/actions/leaderboard"
 import { emitFreeze, emitDisplayConfig } from "@/lib/socket-emit"
 import { canManageHackathon } from "@/lib/access-control"
@@ -61,119 +60,99 @@ export async function updateDisplayConfig(
     }
 }
 
-// Cache display state for 3 seconds - reduces DB load during rapid updates
-const getCachedDisplayState = unstable_cache(
-    async (slug: string) => {
-        const hackathon = await prisma.hackathon.findUnique({
-            where: { slug },
-            select: {
-                id: true, isFrozen: true, name: true, displayMode: true, displayProblemId: true,
-                status: true, liveStartedAt: true, endDate: true, startDate: true,
-            }
+export async function getDisplayState(slug: string) {
+    const hackathon = await prisma.hackathon.findUnique({
+        where: { slug },
+        select: {
+            id: true, isFrozen: true, name: true, displayMode: true, displayProblemId: true,
+            status: true, liveStartedAt: true, endDate: true, startDate: true,
+        }
+    })
+
+    if (!hackathon) return null
+
+    try {
+        const rounds = await prisma.round.findMany({
+            where: { hackathonId: hackathon.id },
+            select: { id: true, name: true, order: true, checkpointTime: true, checkpointPausedAt: true },
+            orderBy: { order: "asc" }
         })
 
-        if (!hackathon) return null
-
-        try {
-            // Fetch rounds OUTSIDE cache for instant timer updates
-            const rounds = await prisma.round.findMany({
+        const [problems, { leaderboard, frozen }, phases] = await Promise.all([
+            prisma.problemStatement.findMany({
                 where: { hackathonId: hackathon.id },
-                select: { id: true, name: true, order: true, checkpointTime: true, checkpointPausedAt: true },
-                orderBy: { order: "asc" }
+                orderBy: { order: 'asc' },
+                select: { id: true, title: true, description: true, order: true, isReleased: true }
+            }),
+            getLeaderboardData(
+                slug,
+                hackathon.displayMode === "problem" ? hackathon.displayProblemId : null
+            ),
+            prisma.phase.findMany({
+                where: { hackathonId: hackathon.id },
+                orderBy: { order: 'asc' },
+                select: { id: true, name: true, startTime: true, endTime: true, order: true }
             })
+        ])
 
-            const [problems, { leaderboard, frozen }, phases] = await Promise.all([
-                prisma.problemStatement.findMany({ 
-                    where: { hackathonId: hackathon.id },
-                    orderBy: { order: 'asc' },
-                    select: { id: true, title: true, description: true, order: true, isReleased: true }
-                }),
-                getLeaderboardData(
-                    slug,
-                    hackathon.displayMode === "problem" ? hackathon.displayProblemId : null
-                ),
-                prisma.phase.findMany({
-                    where: { hackathonId: hackathon.id },
-                    orderBy: { order: 'asc' },
-                    select: { id: true, name: true, startTime: true, endTime: true, order: true }
-                })
-            ])
-
-            return {
-                hackathon: { ...hackathon, isFrozen: frozen },
-                leaderboard,
-                problems,
-                rounds,
-                phases,
-                displayConfig: {
-                    mode: hackathon.displayMode,
-                    problemId: hackathon.displayProblemId
-                }
+        return {
+            hackathon: { ...hackathon, isFrozen: frozen },
+            leaderboard,
+            problems,
+            rounds,
+            phases,
+            displayConfig: {
+                mode: hackathon.displayMode,
+                problemId: hackathon.displayProblemId
             }
-        } catch (error) {
-            console.error("Failed to load display state:", error)
-            return null
         }
-    },
-    ["display-state"],
-    { revalidate: 1, tags: ["display"] }
-)
-
-export async function getDisplayState(slug: string) {
-    return getCachedDisplayState(slug)
+    } catch (error) {
+        console.error("Failed to load display state:", error)
+        return null
+    }
 }
 
-// Cache track standing for 5 seconds
-const getCachedTrackStanding = unstable_cache(
-    async (slug: string, problemId: string) => {
-        const hackathon = await prisma.hackathon.findUnique({
-            where: { slug },
-            select: { id: true, isFrozen: true, name: true, displayMode: true, displayProblemId: true, status: true, liveStartedAt: true, endDate: true, startDate: true }
+export async function getTrackStanding(slug: string, problemId: string) {
+    const hackathon = await prisma.hackathon.findUnique({
+        where: { slug },
+        select: { id: true, isFrozen: true, name: true, displayMode: true, displayProblemId: true, status: true, liveStartedAt: true, endDate: true, startDate: true }
+    })
+
+    if (!hackathon) return null
+
+    try {
+        const rounds = await prisma.round.findMany({
+            where: { hackathonId: hackathon.id },
+            select: { id: true, name: true, order: true, checkpointTime: true, checkpointPausedAt: true },
+            orderBy: { order: "asc" }
         })
 
-        if (!hackathon) return null
-
-        try {
-            // Fetch rounds OUTSIDE cache for instant timer updates
-            const rounds = await prisma.round.findMany({
+        const [problems, { leaderboard, frozen }, phases] = await Promise.all([
+            prisma.problemStatement.findMany({
                 where: { hackathonId: hackathon.id },
-                select: { id: true, name: true, order: true, checkpointTime: true, checkpointPausedAt: true },
-                orderBy: { order: "asc" }
+                select: { id: true, title: true, description: true, order: true, isReleased: true }
+            }),
+            getLeaderboardData(slug, problemId),
+            prisma.phase.findMany({
+                where: { hackathonId: hackathon.id },
+                orderBy: { order: 'asc' },
+                select: { id: true, name: true, startTime: true, endTime: true, order: true }
             })
+        ])
 
-            const [problems, { leaderboard, frozen }, phases] = await Promise.all([
-                prisma.problemStatement.findMany({ 
-                    where: { hackathonId: hackathon.id },
-                    select: { id: true, title: true, description: true, order: true, isReleased: true }
-                }),
-                getLeaderboardData(slug, problemId),
-                prisma.phase.findMany({
-                    where: { hackathonId: hackathon.id },
-                    orderBy: { order: 'asc' },
-                    select: { id: true, name: true, startTime: true, endTime: true, order: true }
-                })
-            ])
-
-            return {
-                hackathon: { ...hackathon, isFrozen: frozen },
-                leaderboard,
-                problems,
-                rounds,
-                phases,
-                displayConfig: {
-                    mode: hackathon.displayMode, // Use actual mode from DB (could be "auto")
-                    problemId
-                }
+        return {
+            hackathon: { ...hackathon, isFrozen: frozen },
+            leaderboard,
+            problems,
+            rounds,
+            phases,
+            displayConfig: {
+                mode: hackathon.displayMode,
+                problemId
             }
-        } catch (error) {
-            console.error("Failed to get track standing:", error)
-            return null
         }
-    },
-    ["track-standing"],
-    { revalidate: 2, tags: ["display", "leaderboard"] }
-)
-
-export async function getTrackStanding(slug: string, problemId: string) {
-    return getCachedTrackStanding(slug, problemId)
+    } catch (error) {
+        console.error("Failed to get track standing:", error)
+        return null
+    }
 }

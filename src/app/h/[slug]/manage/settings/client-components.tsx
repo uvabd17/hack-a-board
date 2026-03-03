@@ -77,6 +77,7 @@ export function HackathonSettingsForm({ hackathon }: { hackathon: HackathonData 
                 venue: form.venue || null,
                 onlineLink: form.onlineLink || null,
                 registrationDeadline: form.registrationDeadline || null,
+                clientTimezoneOffsetMinutes: new Date().getTimezoneOffset(),
             })
             if (res.error) {
                 setStatus({ error: res.error })

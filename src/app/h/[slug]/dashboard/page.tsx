@@ -16,6 +16,7 @@ import { getTeamJudgingProgress } from "@/actions/judging"
 import { CheckCircle2 } from "lucide-react"
 import { CountdownTimer } from "@/components/countdown-timer"
 import { LiveRefresher } from "@/components/live-refresher"
+import { PARTICIPANT_COOKIE_NAME } from "@/lib/participant-session"
 
 // Revalidate this page every 5 seconds for ISR performance
 export const revalidate = 5
@@ -53,10 +54,10 @@ export default async function DashboardPage({
     params: Promise<{ slug: string }>
 }) {
     const { slug } = await params
-    const token = (await cookies()).get("hackaboard_participant_token")?.value
+    const token = (await cookies()).get(PARTICIPANT_COOKIE_NAME)?.value
 
     if (!token) {
-        redirect(`/h/${slug}/register`)
+        redirect(`/h/${slug}/participant-login`)
     }
 
     const participant = await prisma.participant.findUnique({
@@ -69,11 +70,7 @@ export default async function DashboardPage({
 
     // Security check: Match slug
     if (!participant || participant.hackathon.slug !== slug) {
-        return (
-            <div className="flex items-center justify-center min-h-screen text-destructive">
-                INVALID ACCESS — Please register again.
-            </div>
-        )
+        redirect(`/h/${slug}/participant-login`)
     }
 
     const qrCodeDataUrl = await getCachedQRCode(participant.qrToken, slug)

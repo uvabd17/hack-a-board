@@ -7,12 +7,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Trash2, Plus, Scale, Pause, Play, Clock, Users, Link2 } from "lucide-react"
+import { formatDateTimeLocal } from "@/lib/datetime"
 
 export function RoundForm({ hackathonId }: { hackathonId: string }) {
     const [loading, setLoading] = useState(false)
 
     async function handleSubmit(formData: FormData) {
         setLoading(true)
+        formData.set("clientTimezoneOffsetMinutes", String(new Date().getTimezoneOffset()))
         await createRound(hackathonId, formData)
         setLoading(false)
         const form = document.getElementById("create-round-form") as HTMLFormElement
@@ -123,11 +125,18 @@ interface Round {
 function CheckpointControls({ round, hackathonId }: { round: Round, hackathonId: string }) {
     const [editing, setEditing] = useState(false)
     const [newTime, setNewTime] = useState(
-        round.checkpointTime ? new Date(round.checkpointTime).toISOString().slice(0, 16) : ""
+        round.checkpointTime ? formatDateTimeLocal(round.checkpointTime) : ""
     )
     const [busy, setBusy] = useState(false)
 
     const isPaused = !!round.checkpointPausedAt
+    const nowMs = Date.now()
+    const checkpointMs = new Date(round.checkpointTime).getTime()
+    const timerState: "paused" | "running" | "ended" = isPaused
+        ? "paused"
+        : checkpointMs <= nowMs
+            ? "ended"
+            : "running"
 
     // Remaining ms when paused
     const pausedRemainingMs = isPaused
@@ -148,7 +157,7 @@ function CheckpointControls({ round, hackathonId }: { round: Round, hackathonId:
     async function handleSaveTime() {
         if (!newTime) return
         setBusy(true)
-        await updateCheckpointTime(hackathonId, round.id, newTime)
+        await updateCheckpointTime(hackathonId, round.id, newTime, new Date().getTimezoneOffset())
         setBusy(false)
         setEditing(false)
     }
@@ -210,7 +219,7 @@ function CheckpointControls({ round, hackathonId }: { round: Round, hackathonId:
                     variant="secondary"
                     className="h-7 text-xs px-2"
                     onClick={() => handleExtend(5)}
-                    disabled={busy}
+                    disabled={busy || timerState === "ended"}
                 >
                     +5 min
                 </Button>
@@ -219,19 +228,25 @@ function CheckpointControls({ round, hackathonId }: { round: Round, hackathonId:
                     variant="secondary"
                     className="h-7 text-xs px-2"
                     onClick={() => handleExtend(10)}
-                    disabled={busy}
+                    disabled={busy || timerState === "ended"}
                 >
                     +10 min
                 </Button>
-                <Button
-                    size="sm"
-                    variant={isPaused ? "default" : "outline"}
-                    className={`h-7 text-xs px-2 ml-auto ${isPaused ? "bg-cyan-600 hover:bg-cyan-700" : "border-amber-500/50 text-amber-400 hover:bg-amber-500/10"}`}
-                    onClick={handlePauseResume}
-                    disabled={busy}
-                >
-                    {isPaused ? <><Play size={10} className="mr-1" /> Resume</> : <><Pause size={10} className="mr-1" /> Pause</>}
-                </Button>
+                {timerState !== "ended" ? (
+                    <Button
+                        size="sm"
+                        variant={isPaused ? "default" : "outline"}
+                        className={`h-7 text-xs px-2 ml-auto ${isPaused ? "bg-cyan-600 hover:bg-cyan-700" : "border-amber-500/50 text-amber-400 hover:bg-amber-500/10"}`}
+                        onClick={handlePauseResume}
+                        disabled={busy}
+                    >
+                        {isPaused ? <><Play size={10} className="mr-1" /> Resume</> : <><Pause size={10} className="mr-1" /> Pause</>}
+                    </Button>
+                ) : (
+                    <span className="ml-auto text-[10px] uppercase tracking-wider text-red-400/80">
+                        Checkpoint ended
+                    </span>
+                )}
             </div>
         </div>
     )
