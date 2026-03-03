@@ -1,10 +1,12 @@
 import { auth, signIn } from "@/auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
+import { isPrivateBetaAllowed, isPrivateBetaEnabled } from "@/lib/access-control"
 
 export default async function SignInPage() {
     const session = await auth()
-    if (session) redirect("/dashboard")
+    const hasBetaAccess = isPrivateBetaAllowed(session?.user?.email)
+    if (session && hasBetaAccess) redirect("/dashboard")
 
     return (
         <div className="min-h-screen bg-[#050505] text-white font-mono flex flex-col items-center justify-center selection:bg-green-500/30 relative overflow-hidden">
@@ -28,6 +30,11 @@ export default async function SignInPage() {
                     <p className="text-zinc-600 text-xs tracking-widest uppercase">
                         sign in to manage your hackathons
                     </p>
+                    {session && !hasBetaAccess && isPrivateBetaEnabled() && (
+                        <p className="text-red-400 text-[11px] mt-4 uppercase tracking-wider">
+                            Access is restricted. Ask admin to allow your email.
+                        </p>
+                    )}
                 </div>
 
                 {/* Sign-in Card */}

@@ -4,15 +4,28 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import { emitParticipantCheckedIn } from "@/lib/socket-emit"
+import { normalizeEmail } from "@/lib/access-control"
+import crypto from "crypto"
+async function getAccessibleHackathonBySlug(slug: string, user: { id?: string | null; email?: string | null }) {
+    if (!user?.id) return null
+    const email = normalizeEmail(user.email)
+    return prisma.hackathon.findFirst({
+        where: {
+            slug,
+            OR: [
+                { userId: user.id },
+                ...(email ? [{ organizerEmails: { has: email } }] : []),
+            ],
+        },
+        select: { id: true, userId: true, organizerEmails: true }
+    })
+}
 
 export async function getTeamsForHackathon(slug: string) {
     const session = await auth()
     if (!session?.user?.id) return { error: "Unauthorized", teams: [] }
 
-    const hackathon = await prisma.hackathon.findUnique({
-        where: { slug, userId: session.user.id },
-        select: { id: true }
-    })
+    const hackathon = await getAccessibleHackathonBySlug(slug, session.user)
     if (!hackathon) return { error: "Not found", teams: [] }
 
     const teams = await prisma.team.findMany({
@@ -32,10 +45,7 @@ export async function updateTeamStatus(teamId: string, status: "approved" | "rej
     const session = await auth()
     if (!session?.user?.id) return { error: "Unauthorized" }
 
-    const hackathon = await prisma.hackathon.findUnique({
-        where: { slug, userId: session.user.id },
-        select: { id: true }
-    })
+    const hackathon = await getAccessibleHackathonBySlug(slug, session.user)
     if (!hackathon) return { error: "Not found" }
 
     const team = await prisma.team.findFirst({ where: { id: teamId, hackathonId: hackathon.id } })
@@ -50,10 +60,7 @@ export async function checkInTeam(teamId: string, slug: string) {
     const session = await auth()
     if (!session?.user?.id) return { error: "Unauthorized" }
 
-    const hackathon = await prisma.hackathon.findUnique({
-        where: { slug, userId: session.user.id },
-        select: { id: true }
-    })
+    const hackathon = await getAccessibleHackathonBySlug(slug, session.user)
     if (!hackathon) return { error: "Not found" }
 
     const team = await prisma.team.findFirst({ where: { id: teamId, hackathonId: hackathon.id } })
@@ -83,10 +90,7 @@ export async function exportTeamsCSV(slug: string): Promise<{ csv: string } | { 
     const session = await auth()
     if (!session?.user?.id) return { error: "Unauthorized" }
 
-    const hackathon = await prisma.hackathon.findUnique({
-        where: { slug, userId: session.user.id },
-        select: { id: true }
-    })
+    const hackathon = await getAccessibleHackathonBySlug(slug, session.user)
     if (!hackathon) return { error: "Not found" }
 
     const teams = await prisma.team.findMany({
@@ -122,4 +126,33 @@ export async function exportTeamsCSV(slug: string): Promise<{ csv: string } | { 
     }
 
     return { csv: rows.join("\n") }
+}
+
+export async function regenerateTeamCode(teamId: string, slug: string) {
+    const session = await auth()
+    if (!session?.user?.id) return { error: "Unauthorized" }
+
+    const hackathon = await getAccessibleHackathonBySlug(slug, session.user)
+    if (!hackathon) return { error: "Not found" }
+
+    const team = await prisma.team.findFirst({ where: { id: teamId, hackathonId: hackathon.id } })
+    if (!team) return { error: "Team not found" }
+
+    let inviteCode = crypto.randomBytes(3).toString("hex").toUpperCase()
+    // Retry on rare collisions against unique constraint
+    for (let i = 0; i < 5; i++) {
+        try {
+            const updated = await prisma.team.update({
+                where: { id: team.id },
+                data: { inviteCode },
+                select: { inviteCode: true }
+            })
+            revalidatePath(`/h/${slug}/manage/teams`)
+            return { success: true, inviteCode: updated.inviteCode }
+        } catch {
+            inviteCode = crypto.randomBytes(3).toString("hex").toUpperCase()
+        }
+    }
+
+    return { error: "Could not regenerate invite code. Please retry." }
 }

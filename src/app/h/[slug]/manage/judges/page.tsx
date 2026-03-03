@@ -2,6 +2,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { notFound, redirect } from "next/navigation"
 import { JudgeForm, JudgeItem } from "./client-components"
+import { canManageHackathon } from "@/lib/access-control"
 
 interface Judge {
     id: string;
@@ -26,7 +27,7 @@ export default async function JudgesPage({ params }: { params: Promise<{ slug: s
         }
     })
 
-    if (!hackathon || hackathon.userId !== session.user.id) {
+    if (!hackathon || !canManageHackathon(hackathon, session.user)) {
         notFound()
     }
 

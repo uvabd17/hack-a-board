@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { notFound, redirect } from "next/navigation"
 import { RoundForm, RoundItem } from "./client-components"
 import { LiveRefresher } from "@/components/live-refresher"
+import { canManageHackathon } from "@/lib/access-control"
 
 interface Criterion {
     id: string;
@@ -39,7 +40,7 @@ export default async function RoundsPage({ params }: { params: Promise<{ slug: s
         }
     })
 
-    if (!hackathon || hackathon.userId !== session.user.id) {
+    if (!hackathon || !canManageHackathon(hackathon, session.user)) {
         notFound()
     }
 

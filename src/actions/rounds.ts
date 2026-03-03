@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import { emitCheckpointUpdated } from "@/lib/socket-emit"
 import { z } from "zod"
+import { canManageHackathon } from "@/lib/access-control"
+import { parseDateTimeLocalWithOffset } from "@/lib/datetime"
 
 const RoundSchema = z.object({
     name: z.string().min(3),
@@ -18,10 +20,10 @@ export async function createRound(hackathonId: string, formData: FormData) {
 
     const hackathon = await prisma.hackathon.findUnique({
         where: { id: hackathonId },
-        select: { userId: true, slug: true }
+        select: { userId: true, organizerEmails: true, slug: true, startDate: true, endDate: true }
     })
 
-    if (!hackathon || hackathon.userId !== session.user.id) {
+    if (!hackathon || !canManageHackathon(hackathon, session.user)) {
         return { error: "Access Denied" }
     }
 
@@ -37,10 +39,18 @@ export async function createRound(hackathonId: string, formData: FormData) {
         return { error: "Invalid data" }
     }
 
-    const checkpointRaw = formData.get("checkpointTime") as string
+    const checkpointRaw = String(formData.get("checkpointTime") || "")
+    const offsetMinutesRaw = formData.get("clientTimezoneOffsetMinutes")
+    const offsetMinutes = typeof offsetMinutesRaw === "string" ? Number(offsetMinutesRaw) : undefined
     const checkpointTime = checkpointRaw
-        ? new Date(checkpointRaw)
+        ? parseDateTimeLocalWithOffset(checkpointRaw, offsetMinutes)
         : new Date(Date.now() + 86400000) // Default 24h from now
+    if (!checkpointTime) {
+        return { error: "Invalid checkpoint time" }
+    }
+    if (checkpointTime < hackathon.startDate || checkpointTime > hackathon.endDate) {
+        return { error: "Checkpoint time must be within the event window" }
+    }
 
     const requiredJudges = parseInt(formData.get("requiredJudges") as string) || 1
     const requiresLinkSubmission = formData.get("requiresLinkSubmission") === "on"
@@ -71,10 +81,10 @@ export async function deleteRound(hackathonId: string, roundId: string) {
 
     const hackathon = await prisma.hackathon.findUnique({
         where: { id: hackathonId },
-        select: { userId: true, slug: true }
+        select: { userId: true, organizerEmails: true, slug: true }
     })
 
-    if (!hackathon || hackathon.userId !== session.user.id) {
+    if (!hackathon || !canManageHackathon(hackathon, session.user)) {
         return { error: "Access Denied" }
     }
 
@@ -90,10 +100,10 @@ export async function createCriterion(hackathonId: string, roundId: string, form
 
     const hackathon = await prisma.hackathon.findUnique({
         where: { id: hackathonId },
-        select: { userId: true, slug: true }
+        select: { userId: true, organizerEmails: true, slug: true }
     })
 
-    if (!hackathon || hackathon.userId !== session.user.id) {
+    if (!hackathon || !canManageHackathon(hackathon, session.user)) {
         return { error: "Access Denied" }
     }
 
@@ -124,10 +134,10 @@ export async function deleteCriterion(hackathonId: string, criterionId: string) 
 
     const hackathon = await prisma.hackathon.findUnique({
         where: { id: hackathonId },
-        select: { userId: true, slug: true }
+        select: { userId: true, organizerEmails: true, slug: true }
     })
 
-    if (!hackathon || hackathon.userId !== session.user.id) {
+    if (!hackathon || !canManageHackathon(hackathon, session.user)) {
         return { error: "Access Denied" }
     }
 
@@ -147,26 +157,37 @@ export async function deleteCriterion(hackathonId: string, criterionId: string) 
 // CHECKPOINT MANAGEMENT
 // ─────────────────────────────────────────────
 
-async function getRoundAndHackathon(hackathonId: string, roundId: string, userId: string) {
+async function getRoundAndHackathon(hackathonId: string, roundId: string, user: { id?: string | null; email?: string | null }) {
     const hackathon = await prisma.hackathon.findUnique({
         where: { id: hackathonId },
-        select: { userId: true, slug: true }
+        select: { userId: true, organizerEmails: true, slug: true, startDate: true, endDate: true }
     })
-    if (!hackathon || hackathon.userId !== userId) return null
+    if (!hackathon || !canManageHackathon(hackathon, user)) return null
     const round = await prisma.round.findUnique({ where: { id: roundId } })
     if (!round || round.hackathonId !== hackathonId) return null
     return { hackathon, round }
 }
 
-export async function updateCheckpointTime(hackathonId: string, roundId: string, checkpointTime: string) {
+export async function updateCheckpointTime(
+    hackathonId: string,
+    roundId: string,
+    checkpointTime: string,
+    clientTimezoneOffsetMinutes?: number
+) {
     const session = await auth()
     if (!session?.user?.id) return { error: "Unauthorized" }
-    const ctx = await getRoundAndHackathon(hackathonId, roundId, session.user.id)
+    const ctx = await getRoundAndHackathon(hackathonId, roundId, session.user)
     if (!ctx) return { error: "Access Denied" }
+
+    const parsedCheckpoint = parseDateTimeLocalWithOffset(checkpointTime, clientTimezoneOffsetMinutes)
+    if (!parsedCheckpoint) return { error: "Invalid checkpoint time" }
+    if (parsedCheckpoint < ctx.hackathon.startDate || parsedCheckpoint > ctx.hackathon.endDate) {
+        return { error: "Checkpoint must be within event start/end time" }
+    }
 
     await prisma.round.update({
         where: { id: roundId },
-        data: { checkpointTime: new Date(checkpointTime), checkpointPausedAt: null }
+        data: { checkpointTime: parsedCheckpoint, checkpointPausedAt: null }
     })
     revalidatePath(`/h/${ctx.hackathon.slug}/manage/rounds`)
     await emitCheckpointUpdated(hackathonId)
@@ -176,7 +197,7 @@ export async function updateCheckpointTime(hackathonId: string, roundId: string,
 export async function extendCheckpoint(hackathonId: string, roundId: string, minutes: number) {
     const session = await auth()
     if (!session?.user?.id) return { error: "Unauthorized" }
-    const ctx = await getRoundAndHackathon(hackathonId, roundId, session.user.id)
+    const ctx = await getRoundAndHackathon(hackathonId, roundId, session.user)
     if (!ctx) return { error: "Access Denied" }
 
     const { round } = ctx
@@ -184,9 +205,17 @@ export async function extendCheckpoint(hackathonId: string, roundId: string, min
 
     // If paused: extend the checkpoint time (pushes the freeze point forward)
     // If running: extend the deadline normally
+    const updatedCheckpoint = new Date(round.checkpointTime.getTime() + addMs)
+    if (updatedCheckpoint > ctx.hackathon.endDate) {
+        return { error: "Checkpoint cannot exceed event end time" }
+    }
+    if (updatedCheckpoint < ctx.hackathon.startDate) {
+        return { error: "Checkpoint cannot be before event start time" }
+    }
+
     await prisma.round.update({
         where: { id: roundId },
-        data: { checkpointTime: new Date(round.checkpointTime.getTime() + addMs) }
+        data: { checkpointTime: updatedCheckpoint }
     })
     await emitCheckpointUpdated(hackathonId)
     return { success: true }
@@ -195,9 +224,10 @@ export async function extendCheckpoint(hackathonId: string, roundId: string, min
 export async function pauseCheckpoint(hackathonId: string, roundId: string) {
     const session = await auth()
     if (!session?.user?.id) return { error: "Unauthorized" }
-    const ctx = await getRoundAndHackathon(hackathonId, roundId, session.user.id)
+    const ctx = await getRoundAndHackathon(hackathonId, roundId, session.user)
     if (!ctx) return { error: "Access Denied" }
     if (ctx.round.checkpointPausedAt) return { error: "Already paused" }
+    if (ctx.round.checkpointTime.getTime() <= Date.now()) return { error: "Checkpoint already ended" }
 
     await prisma.round.update({
         where: { id: roundId },
@@ -210,7 +240,7 @@ export async function pauseCheckpoint(hackathonId: string, roundId: string) {
 export async function resumeCheckpoint(hackathonId: string, roundId: string) {
     const session = await auth()
     if (!session?.user?.id) return { error: "Unauthorized" }
-    const ctx = await getRoundAndHackathon(hackathonId, roundId, session.user.id)
+    const ctx = await getRoundAndHackathon(hackathonId, roundId, session.user)
     if (!ctx) return { error: "Access Denied" }
 
     const { round } = ctx
@@ -218,8 +248,12 @@ export async function resumeCheckpoint(hackathonId: string, roundId: string) {
 
     // Calculate remaining time when it was paused
     const remainingMsWhenPaused = round.checkpointTime.getTime() - round.checkpointPausedAt.getTime()
+    if (remainingMsWhenPaused <= 0) return { error: "Checkpoint already ended" }
     // Set new checkpoint to now + remaining time
     const newCheckpointTime = new Date(Date.now() + remainingMsWhenPaused)
+    if (newCheckpointTime > ctx.hackathon.endDate) {
+        return { error: "Resumed checkpoint exceeds event end time" }
+    }
 
     await prisma.round.update({
         where: { id: roundId },
@@ -232,7 +266,7 @@ export async function resumeCheckpoint(hackathonId: string, roundId: string) {
 export async function updateRoundSettings(hackathonId: string, roundId: string, settings: { requiredJudges?: number; requiresLinkSubmission?: boolean }) {
     const session = await auth()
     if (!session?.user?.id) return { error: "Unauthorized" }
-    const ctx = await getRoundAndHackathon(hackathonId, roundId, session.user.id)
+    const ctx = await getRoundAndHackathon(hackathonId, roundId, session.user)
     if (!ctx) return { error: "Access Denied" }
 
     const updateData: { requiredJudges?: number; requiresLinkSubmission?: boolean } = {}

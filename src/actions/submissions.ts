@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
 import { z } from "zod"
+import { PARTICIPANT_COOKIE_NAME } from "@/lib/participant-session"
 
 const LinkSubmissionSchema = z.object({
     teamId: z.string(),
@@ -23,7 +24,7 @@ export async function submitProjectLinks(data: z.infer<typeof LinkSubmissionSche
     const validated = LinkSubmissionSchema.safeParse(data)
     if (!validated.success) return { error: "Invalid submission links" }
 
-    const participantToken = (await cookies()).get("hackaboard_participant_token")?.value
+    const participantToken = (await cookies()).get(PARTICIPANT_COOKIE_NAME)?.value
     if (!participantToken) return { error: "Unauthorized" }
 
     const participant = await prisma.participant.findUnique({
@@ -115,7 +116,7 @@ export async function submitProject(data: z.infer<typeof SubmissionSchema>, slug
     const validated = SubmissionSchema.safeParse(data)
     if (!validated.success) return { error: "Invalid submission links" }
 
-    const participantToken = (await cookies()).get("hackaboard_participant_token")?.value
+    const participantToken = (await cookies()).get(PARTICIPANT_COOKIE_NAME)?.value
     if (!participantToken) return { error: "Unauthorized" }
 
     // Verify the submitter is actually a participant on this team and slug

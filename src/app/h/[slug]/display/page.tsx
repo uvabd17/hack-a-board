@@ -5,10 +5,11 @@ import { getDisplayState, getTrackStanding } from "@/actions/display"
 import { Badge } from "@/components/ui/badge"
 import { ArrowUp, ArrowDown, Minus, Trophy, Terminal, Lock } from "lucide-react"
 import { CeremonyDisplay } from "@/components/ceremony-display"
-import { connectSocket, disconnectSocket } from "@/lib/socket-client"
+import { connectSocket, disconnectSocket, subscribeSocketStatus } from "@/lib/socket-client"
+import type { SocketConnectionState } from "@/lib/socket-client"
 import { CountdownTimer } from "@/components/countdown-timer"
 
-const WATCHDOG_POLL_MS = 15000
+const WATCHDOG_POLL_MS = 5000
 
 // ── Leaderboard Row (extracted for reuse in both columns) ──────────
 function TeamRow({ team, isFrozen, isRecentlySubmitted }: { 
@@ -94,6 +95,8 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
     const [isTransitioning, setIsTransitioning] = useState(false)
     const [lastAutoTrackIndex, setLastAutoTrackIndex] = useState(-1)
     const [recentlySubmittedTeams, setRecentlySubmittedTeams] = useState<Set<string>>(new Set())
+    const [socketStatus, setSocketStatus] = useState<SocketConnectionState>("connecting")
+    const [lastSocketEventAt, setLastSocketEventAt] = useState<Date | null>(null)
     const [submissionNotification, setSubmissionNotification] = useState<{
         teamName: string
         roundName: string
@@ -218,17 +221,21 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
         const hackathonId = data?.hackathon?.id
         if (!hackathonId) return
 
+        const unsubscribeStatus = subscribeSocketStatus(setSocketStatus)
         const socket = connectSocket(hackathonId, ["display", "hackathon"])
+        const markLiveUpdate = () => setLastSocketEventAt(new Date())
 
         const debouncedFetch = () => {
             if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
             debounceTimerRef.current = setTimeout(() => {
+                markLiveUpdate()
                 fetchRef.current?.()
             }, 100)
         }
 
         const instantFetch = () => {
             if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+            markLiveUpdate()
             fetchRef.current?.()
         }
 
@@ -284,6 +291,7 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
             socket.off("display:unfreeze")
             socket.off("display:set-scene")
             socket.off("problem-statements-released")
+            unsubscribeStatus()
             disconnectSocket()
         }
     }, [data?.hackathon?.id])
@@ -416,8 +424,18 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
     )
 
     // ── Render ────────────────────────────────────────────────────
+    const secondsSinceLiveUpdate = lastSocketEventAt
+        ? Math.max(0, Math.floor((Date.now() - lastSocketEventAt.getTime()) / 1000))
+        : null
+    const showOfflineWarning = socketStatus === "offline" && (secondsSinceLiveUpdate === null || secondsSinceLiveUpdate >= 10)
+
     return (
         <div className="min-h-screen bg-black text-cyan-500 font-mono p-6 overflow-hidden flex flex-col">
+            {showOfflineWarning && (
+                <div className="mb-3 border border-amber-400/40 bg-amber-500/10 text-amber-200 px-3 py-2 text-xs uppercase tracking-wider">
+                    Live sync delayed. Reconnecting to socket...
+                </div>
+            )}
             {/* Submission Notification Toast */}
             {submissionNotification && (
                 <div className="fixed top-6 right-6 z-50 animate-in fade-in slide-in-from-right-5 duration-500">
@@ -484,7 +502,8 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
                         )}
                         <p className="text-cyan-500/40 text-xs">
                             {data.leaderboard.length > TEAMS_PER_PAGE && `PAGE ${currentPage + 1} · `}
-                            {lastUpdated.toLocaleTimeString()}
+                            {lastUpdated.toLocaleTimeString()} ·{" "}
+                            {secondsSinceLiveUpdate === null ? "NO LIVE EVENTS YET" : `LAST LIVE ${secondsSinceLiveUpdate}s AGO`}
                         </p>
                     </div>
                 </div>
@@ -495,9 +514,13 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
                             <span className="text-2xl font-bold uppercase tracking-tighter">BOARD FROZEN</span>
                         </div>
                     ) : (
-                        <div className="flex items-center gap-2 text-cyan-500">
-                            <span className="w-2 h-2 bg-cyan-500 rounded-full animate-ping" />
-                            <span className="text-sm font-bold tracking-widest uppercase">LIVE</span>
+                        <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 text-cyan-500">
+                                <span className={`w-2 h-2 rounded-full ${socketStatus === "live" ? "bg-cyan-500 animate-ping" : socketStatus === "reconnecting" ? "bg-amber-400 animate-pulse" : socketStatus === "connecting" ? "bg-sky-400 animate-pulse" : "bg-red-500"}`} />
+                                <span className="text-sm font-bold tracking-widest uppercase">
+                                    {socketStatus === "live" ? "LIVE" : socketStatus === "reconnecting" ? "RECONNECTING" : socketStatus === "connecting" ? "CONNECTING" : "OFFLINE"}
+                                </span>
+                            </div>
                         </div>
                     )}
                 </div>

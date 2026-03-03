@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { updateHackathon, archiveHackathon, restoreHackathon } from "@/actions/organizer"
+import { updateHackathon, archiveHackathon, restoreHackathon, updateHackathonOrganizers } from "@/actions/organizer"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -31,12 +31,15 @@ interface HackathonData {
     status: string
     isArchived: boolean
     archivedAt: string | null
+    organizerEmails: string[]
+    isOwner: boolean
 }
 
 export function HackathonSettingsForm({ hackathon }: { hackathon: HackathonData }) {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
     const [status, setStatus] = useState<{ error?: string; success?: string } | null>(null)
+    const [organizerEmails, setOrganizerEmails] = useState(hackathon.organizerEmails.join(", "))
     const [form, setForm] = useState({
         name: hackathon.name,
         slug: hackathon.slug,
@@ -74,6 +77,7 @@ export function HackathonSettingsForm({ hackathon }: { hackathon: HackathonData 
                 venue: form.venue || null,
                 onlineLink: form.onlineLink || null,
                 registrationDeadline: form.registrationDeadline || null,
+                clientTimezoneOffsetMinutes: new Date().getTimezoneOffset(),
             })
             if (res.error) {
                 setStatus({ error: res.error })
@@ -122,6 +126,24 @@ export function HackathonSettingsForm({ hackathon }: { hackathon: HackathonData 
                 setStatus({ error: res.error })
             } else {
                 setStatus({ success: "Event restored successfully" })
+                router.refresh()
+            }
+        } catch {
+            setStatus({ error: "An unexpected error occurred" })
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    async function handleOrganizerSave() {
+        setLoading(true)
+        setStatus(null)
+        try {
+            const res = await updateHackathonOrganizers(hackathon.id, organizerEmails)
+            if (res.error) {
+                setStatus({ error: res.error })
+            } else {
+                setStatus({ success: `Organizer access updated (${res.count ?? 0} emails)` })
                 router.refresh()
             }
         } catch {
@@ -357,6 +379,28 @@ export function HackathonSettingsForm({ hackathon }: { hackathon: HackathonData 
                             <Archive size={14} />
                             {loading ? "PROCESSING..." : "Archive Event"}
                         </Button>
+                    )}
+                </div>
+            </Section>
+
+            <Section title="ORGANIZER ACCESS">
+                <div className="space-y-3">
+                    <p className="text-xs text-muted-foreground">
+                        Add additional organizer emails (comma-separated). They can sign in with their own Google accounts and manage this event.
+                    </p>
+                    <Textarea
+                        value={organizerEmails}
+                        onChange={(e) => setOrganizerEmails(e.target.value)}
+                        placeholder="cofounder@example.com, ops@example.com"
+                        className="h-24"
+                        disabled={!hackathon.isOwner}
+                    />
+                    {hackathon.isOwner ? (
+                        <Button type="button" variant="outline" onClick={handleOrganizerSave} disabled={loading}>
+                            {loading ? "SAVING..." : "SAVE ORGANIZER ACCESS"}
+                        </Button>
+                    ) : (
+                        <p className="text-xs text-muted-foreground">Only the event owner can update organizer access.</p>
                     )}
                 </div>
             </Section>

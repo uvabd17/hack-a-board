@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { Calendar, ArrowRight, Terminal, ArchiveRestore } from "lucide-react"
+import { canCreateHackathon, isPrivateBetaEnabled } from "@/lib/access-control"
 
 export default async function DashboardPage() {
     const session = await auth()
     if (!session) redirect("/signin")
+    const canCreate = canCreateHackathon(session.user)
 
     const { activeHackathons, archivedHackathons } = await getUserHackathons()
 
@@ -27,7 +29,7 @@ export default async function DashboardPage() {
                     </div>
                 </div>
                 <div className="flex gap-4">
-                    <CreateHackathonButton />
+                    {canCreate && <CreateHackathonButton />}
                     <form action={async () => {
                         "use server"
                         await import("@/auth").then(m => m.signOut({ redirectTo: "/" }))
@@ -38,12 +40,21 @@ export default async function DashboardPage() {
             </header>
 
             <main className="max-w-5xl mx-auto space-y-8">
+                {!canCreate && isPrivateBetaEnabled() && (
+                    <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 p-3 text-xs text-yellow-200">
+                        Limited collaborator access enabled. Ask an owner to create events, or request allowlist access.
+                    </div>
+                )}
                 {activeHackathons.length === 0 ? (
                     <div className="text-center py-20 border-2 border-dashed rounded-lg bg-card/50">
                         <Terminal className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
                         <h2 className="text-xl font-bold mb-2">No Active Hackathons</h2>
-                        <p className="text-muted-foreground mb-6">Create a new hackathon or restore one from archives.</p>
-                        <CreateHackathonButton />
+                        <p className="text-muted-foreground mb-6">
+                            {canCreate
+                                ? "Create a new hackathon or restore one from archives."
+                                : "Ask an owner to add you as an organizer for an event."}
+                        </p>
+                        {canCreate && <CreateHackathonButton />}
                     </div>
                 ) : (
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">

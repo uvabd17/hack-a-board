@@ -2,6 +2,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { notFound, redirect } from "next/navigation"
 import { CheckInList } from "./client-components"
+import { canManageHackathon } from "@/lib/access-control"
 
 export default async function CheckInPage({ params }: { params: Promise<{ slug: string }> }) {
     const session = await auth()
@@ -11,10 +12,10 @@ export default async function CheckInPage({ params }: { params: Promise<{ slug: 
 
     const hackathon = await prisma.hackathon.findUnique({
         where: { slug },
-        select: { id: true, userId: true }
+        select: { id: true, userId: true, organizerEmails: true }
     })
 
-    if (!hackathon || hackathon.userId !== session.user.id) notFound()
+    if (!hackathon || !canManageHackathon(hackathon, session.user)) notFound()
 
     const teams = await prisma.team.findMany({
         where: { hackathonId: hackathon.id },

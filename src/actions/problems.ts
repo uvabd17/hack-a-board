@@ -6,6 +6,8 @@ import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
 import { z } from "zod"
 import { emitProblemsReleased } from "@/lib/socket-emit"
+import { canManageHackathon } from "@/lib/access-control"
+import { PARTICIPANT_COOKIE_NAME } from "@/lib/participant-session"
 
 const ProblemSchema = z.object({
     title: z.string().min(3),
@@ -21,10 +23,10 @@ export async function createProblemStatement(hackathonId: string, formData: Form
     // Verify ownership
     const hackathon = await prisma.hackathon.findUnique({
         where: { id: hackathonId },
-        select: { userId: true, slug: true }
+        select: { userId: true, organizerEmails: true, slug: true }
     })
 
-    if (!hackathon || hackathon.userId !== session.user.id) {
+    if (!hackathon || !canManageHackathon(hackathon, session.user)) {
         return { error: "Access Denied" }
     }
 
@@ -68,10 +70,10 @@ export async function toggleProblemRelease(hackathonId: string, problemId: strin
 
     const hackathon = await prisma.hackathon.findUnique({
         where: { id: hackathonId },
-        select: { userId: true, slug: true }
+        select: { userId: true, organizerEmails: true, slug: true }
     })
 
-    if (!hackathon || hackathon.userId !== session.user.id) {
+    if (!hackathon || !canManageHackathon(hackathon, session.user)) {
         return { error: "Access Denied" }
     }
 
@@ -101,10 +103,10 @@ export async function deleteProblemStatement(hackathonId: string, problemId: str
 
     const hackathon = await prisma.hackathon.findUnique({
         where: { id: hackathonId },
-        select: { userId: true, slug: true }
+        select: { userId: true, organizerEmails: true, slug: true }
     })
 
-    if (!hackathon || hackathon.userId !== session.user.id) {
+    if (!hackathon || !canManageHackathon(hackathon, session.user)) {
         return { error: "Access Denied" }
     }
 
@@ -118,7 +120,7 @@ export async function deleteProblemStatement(hackathonId: string, problemId: str
 }
 export async function selectTeamProblem(teamId: string, problemId: string, slug: string) {
     try {
-        const participantToken = (await cookies()).get("hackaboard_participant_token")?.value
+        const participantToken = (await cookies()).get(PARTICIPANT_COOKIE_NAME)?.value
         if (!participantToken) return { error: "Unauthorized" }
 
         // Verify participant belongs to this team and hackathon slug
@@ -169,10 +171,10 @@ export async function releaseAllProblems(hackathonId: string) {
 
     const hackathon = await prisma.hackathon.findUnique({
         where: { id: hackathonId },
-        select: { userId: true, slug: true }
+        select: { userId: true, organizerEmails: true, slug: true }
     })
 
-    if (!hackathon || hackathon.userId !== session.user.id) {
+    if (!hackathon || !canManageHackathon(hackathon, session.user)) {
         return { error: "Access Denied" }
     }
 

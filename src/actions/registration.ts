@@ -4,6 +4,7 @@ import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import crypto from "crypto"
 import { getRequestIp, checkRateLimit } from "@/lib/rate-limit"
+import { setParticipantSessionCookie } from "@/lib/participant-session"
 
 // Zod Schemas
 const registerSchema = z.object({
@@ -22,6 +23,7 @@ export type RegisterState = {
     error?: string
     success?: boolean
     qrToken?: string
+    loginPath?: string
 }
 
 export async function registerParticipant(prevState: RegisterState, formData: FormData): Promise<RegisterState> {
@@ -35,6 +37,7 @@ export async function registerParticipant(prevState: RegisterState, formData: Fo
     }
 
     const { hackathonSlug, name, email, phone, college, mode, teamName, inviteCode } = parsed.data
+    const normalizedEmail = email.toLowerCase().trim()
 
     try {
         const ip = await getRequestIp()
@@ -80,13 +83,16 @@ export async function registerParticipant(prevState: RegisterState, formData: Fo
             where: {
                 hackathonId_email: {
                     hackathonId: hackathon.id,
-                    email
+                    email: normalizedEmail
                 }
             }
         })
 
         if (existingParticipant) {
-            return { error: "Email already registered for this hackathon" }
+            return {
+                error: "Email already registered for this hackathon. Please sign in with your team code.",
+                loginPath: `/h/${hackathonSlug}/participant-login`
+            }
         }
 
         // Handle Team Logic
@@ -155,7 +161,7 @@ export async function registerParticipant(prevState: RegisterState, formData: Fo
                 hackathonId: hackathon.id,
                 teamId,
                 name,
-                email,
+                email: normalizedEmail,
                 phone,
                 college,
                 role: mode === "create" || mode === "solo" ? "leader" : "member",
@@ -170,5 +176,73 @@ export async function registerParticipant(prevState: RegisterState, formData: Fo
     } catch (e) {
         console.error("Registration error:", e)
         return { error: "Something went wrong. Please try again." }
+    }
+}
+
+const participantLoginSchema = z.object({
+    hackathonSlug: z.string().min(1),
+    email: z.string().email("Invalid email address"),
+    teamCode: z.string().length(6, "Team code must be 6 characters"),
+})
+
+export type ParticipantLoginState = {
+    error?: string
+    success?: boolean
+    redirectTo?: string
+}
+
+export async function participantFallbackLogin(
+    prevState: ParticipantLoginState,
+    formData: FormData
+): Promise<ParticipantLoginState> {
+    const parsed = participantLoginSchema.safeParse({
+        hackathonSlug: formData.get("hackathonSlug"),
+        email: formData.get("email"),
+        teamCode: String(formData.get("teamCode") || "").toUpperCase().trim(),
+    })
+
+    if (!parsed.success) {
+        return { error: parsed.error.issues[0].message }
+    }
+
+    const { hackathonSlug, email, teamCode } = parsed.data
+
+    try {
+        const hackathon = await prisma.hackathon.findUnique({
+            where: { slug: hackathonSlug },
+            select: { id: true, isArchived: true }
+        })
+        if (!hackathon) {
+            return { error: "Hackathon not found" }
+        }
+        if (hackathon.isArchived) {
+            return { error: "This event is archived" }
+        }
+
+        const participant = await prisma.participant.findUnique({
+            where: {
+                hackathonId_email: {
+                    hackathonId: hackathon.id,
+                    email: email.toLowerCase().trim()
+                }
+            },
+            include: {
+                team: { select: { inviteCode: true } }
+            }
+        })
+
+        if (!participant) {
+            return { error: "Participant not found for this event" }
+        }
+
+        if (participant.team.inviteCode !== teamCode) {
+            return { error: "Invalid team code" }
+        }
+
+        await setParticipantSessionCookie(hackathonSlug, participant.qrToken)
+        return { success: true, redirectTo: `/h/${hackathonSlug}/dashboard` }
+    } catch (error) {
+        console.error("Participant fallback login failed:", error)
+        return { error: "Unable to sign in right now. Please try again." }
     }
 }

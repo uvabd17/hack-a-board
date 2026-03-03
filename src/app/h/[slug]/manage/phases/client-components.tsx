@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Trash2, Pencil, Check, X, AlertCircle, CheckCircle2, Clock } from "lucide-react"
+import { formatDateTimeLocal } from "@/lib/datetime"
 
 // ─────────────────────────────────────────────
 // CREATE FORM
@@ -18,6 +19,7 @@ export function PhaseForm({ hackathonId }: { hackathonId: string }) {
     async function handleSubmit(formData: FormData) {
         setLoading(true)
         setStatus(null)
+        formData.set("clientTimezoneOffsetMinutes", String(new Date().getTimezoneOffset()))
         const res = await createPhase(hackathonId, formData)
         if (res.error) setStatus({ error: res.error })
         else {
@@ -186,6 +188,7 @@ export function PhaseItem({
     async function handleUpdate(formData: FormData) {
         setLoading(true)
         setError(null)
+        formData.set("clientTimezoneOffsetMinutes", String(new Date().getTimezoneOffset()))
         const res = await updatePhase(hackathonId, phase.id, formData)
         if (res.error) setError(res.error)
         else setEditing(false)
@@ -215,12 +218,12 @@ export function PhaseItem({
                         <div className="space-y-1">
                             <Label className="text-xs uppercase tracking-wider">Start</Label>
                             <Input name="startTime" type="datetime-local"
-                                defaultValue={phase.startTime.slice(0, 16)} required />
+                                defaultValue={formatDateTimeLocal(phase.startTime)} required />
                         </div>
                         <div className="space-y-1">
                             <Label className="text-xs uppercase tracking-wider">End</Label>
                             <Input name="endTime" type="datetime-local"
-                                defaultValue={phase.endTime.slice(0, 16)} required />
+                                defaultValue={formatDateTimeLocal(phase.endTime)} required />
                         </div>
                     </div>
                     {error && <p className="text-xs text-destructive">{error}</p>}

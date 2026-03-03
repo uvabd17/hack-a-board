@@ -4,6 +4,8 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { emitTeamSubmitted } from "@/lib/socket-emit"
 import { cookies } from "next/headers"
+import { normalizeEmail } from "@/lib/access-control"
+import { PARTICIPANT_COOKIE_NAME } from "@/lib/participant-session"
 
 /**
  * Record when a judge scans a team's QR code (starts judging session)
@@ -249,7 +251,7 @@ function calculateTimeBonus(
 export async function getTeamJudgingProgress(teamId: string, roundId: string) {
     try {
         const [cookieStore, session] = await Promise.all([cookies(), auth()])
-        const participantToken = cookieStore.get("hackaboard_participant_token")?.value ?? null
+        const participantToken = cookieStore.get(PARTICIPANT_COOKIE_NAME)?.value ?? null
         const judgeToken = cookieStore.get("hackaboard_judge_token")?.value ?? null
 
         // Authorization: organizer owner, same-team participant, or judge in same hackathon only.
@@ -269,11 +271,15 @@ export async function getTeamJudgingProgress(teamId: string, roundId: string) {
 
         let authorized = false
         if (session?.user?.id) {
+            const email = normalizeEmail(session.user.email)
             const ownsHackathon = await prisma.hackathon.findUnique({
-                where: { id: team.hackathonId, userId: session.user.id },
-                select: { id: true },
+                where: { id: team.hackathonId },
+                select: { userId: true, organizerEmails: true },
             })
-            authorized = !!ownsHackathon
+            authorized = !!ownsHackathon && (
+                ownsHackathon.userId === session.user.id ||
+                (!!email && ownsHackathon.organizerEmails.includes(email))
+            )
         }
 
         if (!authorized && participantToken) {

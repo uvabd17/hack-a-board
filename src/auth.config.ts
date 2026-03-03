@@ -27,6 +27,8 @@ export const authConfig: NextAuthConfig = {
             return session
         },
         authorized({ auth }) {
+            // Route-level feature access is enforced inside pages/actions.
+            // Middleware should only require authentication.
             return !!auth?.user
         },
     },

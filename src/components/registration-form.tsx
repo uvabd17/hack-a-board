@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useFormStatus } from "react-dom"
-import { registerParticipant, RegisterState } from "@/actions/registration"
+import { registerParticipant } from "@/actions/registration"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -26,9 +26,11 @@ export default function RegistrationForm({ hackathonSlug }: { hackathonSlug: str
 
     const [mode, setMode] = useState<"create" | "join" | "solo">("create")
     const [error, setError] = useState<string | null>(null)
+    const [loginPath, setLoginPath] = useState<string | null>(null)
 
     async function clientAction(formData: FormData) {
         setError(null)
+        setLoginPath(null)
         formData.append("hackathonSlug", hackathonSlug)
         formData.append("mode", mode)
 
@@ -36,6 +38,7 @@ export default function RegistrationForm({ hackathonSlug }: { hackathonSlug: str
 
         if (result.error) {
             setError(result.error)
+            if (result.loginPath) setLoginPath(result.loginPath)
         } else if (result.success && result.qrToken) {
             router.push(`/h/${hackathonSlug}/qr/${result.qrToken}`)
         }
@@ -101,6 +104,18 @@ export default function RegistrationForm({ hackathonSlug }: { hackathonSlug: str
                         {error && (
                             <div className="p-3 bg-destructive/10 border border-destructive/50 text-destructive text-sm text-center">
                                 ERROR: {error}
+                                {loginPath && (
+                                    <div className="mt-2">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            className="text-xs uppercase"
+                                            onClick={() => router.push(loginPath)}
+                                        >
+                                            Open Participant Login
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
                         )}
 

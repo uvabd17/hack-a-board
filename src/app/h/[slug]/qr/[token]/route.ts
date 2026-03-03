@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { NextRequest, NextResponse } from "next/server"
 import { checkRateLimit } from "@/lib/rate-limit"
+import { PARTICIPANT_COOKIE_NAME } from "@/lib/participant-session"
 
 export async function GET(
     request: NextRequest,
@@ -83,7 +84,7 @@ export async function GET(
             const response = NextResponse.redirect(url)
 
             // Set Participant Cookie (Placeholder)
-            response.cookies.set("hackaboard_participant_token", token, {
+            response.cookies.set(PARTICIPANT_COOKIE_NAME, token, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === "production",
                 sameSite: "strict",

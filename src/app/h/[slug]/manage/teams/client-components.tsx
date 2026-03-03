@@ -4,7 +4,7 @@ import { useState, useTransition, useMemo } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { updateTeamStatus, checkInTeam, exportTeamsCSV } from "@/actions/teams"
+import { updateTeamStatus, checkInTeam, exportTeamsCSV, regenerateTeamCode } from "@/actions/teams"
 import { CheckSquare, Square, UserCheck, UserX, Download, ChevronDown, ChevronUp, Search } from "lucide-react"
 
 type Participant = {
@@ -33,6 +33,7 @@ export function TeamsTable({ teams, slug }: { teams: Team[], slug: string }) {
     const [expandedId, setExpandedId] = useState<string | null>(null)
     const [isPending, startTransition] = useTransition()
     const [loadingId, setLoadingId] = useState<string | null>(null)
+    const [revealedCodeByTeam, setRevealedCodeByTeam] = useState<Record<string, string>>({})
 
     const filtered = useMemo(() => {
         return teams.filter(team => {
@@ -64,6 +65,18 @@ export function TeamsTable({ teams, slug }: { teams: Team[], slug: string }) {
             a.click()
             URL.revokeObjectURL(url)
         }
+    }
+
+    const handleRegenerateCode = (team: Team) => {
+        if (!confirm(`Regenerate team code for ${team.name}? Old code will stop working immediately.`)) return
+        setLoadingId(team.id)
+        startTransition(async () => {
+            const result = await regenerateTeamCode(team.id, slug)
+            if ("inviteCode" in result && result.inviteCode) {
+                setRevealedCodeByTeam((prev) => ({ ...prev, [team.id]: result.inviteCode }))
+            }
+            setLoadingId(null)
+        })
     }
 
     return (
@@ -193,6 +206,26 @@ export function TeamsTable({ teams, slug }: { teams: Team[], slug: string }) {
                                                 </Badge>
                                             </div>
                                         ))}
+                                    </div>
+                                    <div className="mt-3 border-t border-border pt-3 flex items-center justify-between">
+                                        <div className="text-xs text-muted-foreground">
+                                            Team code:{" "}
+                                            <span className="font-mono tracking-widest text-primary">
+                                                {revealedCodeByTeam[team.id] || team.inviteCode}
+                                            </span>
+                                            <p className="text-[10px] mt-1">
+                                                Share only after verifying participant identity.
+                                            </p>
+                                        </div>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="text-[10px] uppercase"
+                                            onClick={() => handleRegenerateCode(team)}
+                                            disabled={isPending && loadingId === team.id}
+                                        >
+                                            Regenerate Code
+                                        </Button>
                                     </div>
                                 </div>
                             )}

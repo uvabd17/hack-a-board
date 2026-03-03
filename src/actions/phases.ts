@@ -4,6 +4,8 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
+import { canManageHackathon } from "@/lib/access-control"
+import { parseDateTimeLocalWithOffset } from "@/lib/datetime"
 
 const PhaseSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters"),
@@ -18,10 +20,10 @@ async function assertOwner(hackathonId: string) {
 
     const hackathon = await prisma.hackathon.findUnique({
         where: { id: hackathonId },
-        select: { userId: true, slug: true }
+        select: { userId: true, organizerEmails: true, slug: true, startDate: true, endDate: true }
     })
 
-    if (!hackathon || hackathon.userId !== session.user.id) return null
+    if (!hackathon || !canManageHackathon(hackathon, session.user)) return null
     return hackathon
 }
 
@@ -42,9 +44,30 @@ export async function createPhase(hackathonId: string, formData: FormData) {
     }
 
     const { name, startTime, endTime, order } = validated.data
-
-    if (new Date(startTime) >= new Date(endTime)) {
+    const offsetMinutesRaw = formData.get("clientTimezoneOffsetMinutes")
+    const offsetMinutes = typeof offsetMinutesRaw === "string" ? Number(offsetMinutesRaw) : undefined
+    const parsedStart = parseDateTimeLocalWithOffset(startTime, offsetMinutes)
+    const parsedEnd = parseDateTimeLocalWithOffset(endTime, offsetMinutes)
+    if (!parsedStart || !parsedEnd) {
+        return { error: "Invalid phase datetime format" }
+    }
+    if (parsedStart >= parsedEnd) {
         return { error: "Start time must be before end time" }
+    }
+    if (parsedStart < hackathon.startDate || parsedEnd > hackathon.endDate) {
+        return { error: "Phase must be within event start/end time" }
+    }
+
+    const overlapping = await prisma.phase.findFirst({
+        where: {
+            hackathonId,
+            startTime: { lt: parsedEnd },
+            endTime: { gt: parsedStart },
+        },
+        select: { id: true }
+    })
+    if (overlapping) {
+        return { error: "Phase overlaps with an existing phase" }
     }
 
     try {
@@ -52,8 +75,8 @@ export async function createPhase(hackathonId: string, formData: FormData) {
             data: {
                 hackathonId,
                 name,
-                startTime: new Date(startTime),
-                endTime: new Date(endTime),
+                startTime: parsedStart,
+                endTime: parsedEnd,
                 order,
             }
         })
@@ -85,9 +108,31 @@ export async function updatePhase(hackathonId: string, phaseId: string, formData
     }
 
     const { name, startTime, endTime, order } = validated.data
-
-    if (new Date(startTime) >= new Date(endTime)) {
+    const offsetMinutesRaw = formData.get("clientTimezoneOffsetMinutes")
+    const offsetMinutes = typeof offsetMinutesRaw === "string" ? Number(offsetMinutesRaw) : undefined
+    const parsedStart = parseDateTimeLocalWithOffset(startTime, offsetMinutes)
+    const parsedEnd = parseDateTimeLocalWithOffset(endTime, offsetMinutes)
+    if (!parsedStart || !parsedEnd) {
+        return { error: "Invalid phase datetime format" }
+    }
+    if (parsedStart >= parsedEnd) {
         return { error: "Start time must be before end time" }
+    }
+    if (parsedStart < hackathon.startDate || parsedEnd > hackathon.endDate) {
+        return { error: "Phase must be within event start/end time" }
+    }
+
+    const overlapping = await prisma.phase.findFirst({
+        where: {
+            hackathonId,
+            id: { not: phaseId },
+            startTime: { lt: parsedEnd },
+            endTime: { gt: parsedStart },
+        },
+        select: { id: true }
+    })
+    if (overlapping) {
+        return { error: "Phase overlaps with an existing phase" }
     }
 
     try {
@@ -95,8 +140,8 @@ export async function updatePhase(hackathonId: string, phaseId: string, formData
             where: { id: phaseId, hackathonId },
             data: {
                 name,
-                startTime: new Date(startTime),
-                endTime: new Date(endTime),
+                startTime: parsedStart,
+                endTime: parsedEnd,
                 order,
             }
         })
@@ -148,14 +193,23 @@ export async function shiftAllPhases(hackathonId: string, shiftMinutes: number) 
         if (phases.length === 0) return { error: "No phases to shift" }
 
         const shiftMs = shiftMinutes * 60 * 1000
+        const shifted = phases.map((phase) => ({
+            id: phase.id,
+            startTime: new Date(phase.startTime.getTime() + shiftMs),
+            endTime: new Date(phase.endTime.getTime() + shiftMs),
+        }))
+
+        if (shifted.some((phase) => phase.startTime < hackathon.startDate || phase.endTime > hackathon.endDate)) {
+            return { error: "Shift would push one or more phases outside event window" }
+        }
 
         // Update all phases in parallel
-        await Promise.all(phases.map(phase => 
+        await Promise.all(shifted.map(phase =>
             prisma.phase.update({
                 where: { id: phase.id },
                 data: {
-                    startTime: new Date(phase.startTime.getTime() + shiftMs),
-                    endTime: new Date(phase.endTime.getTime() + shiftMs)
+                    startTime: phase.startTime,
+                    endTime: phase.endTime
                 }
             })
         ))
