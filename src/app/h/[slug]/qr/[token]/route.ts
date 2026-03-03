@@ -40,6 +40,8 @@ export async function GET(
             // Create redirect response
             const url = request.nextUrl.clone()
             url.pathname = `/h/${slug}/judge`
+            // Bust any stale prefetch/render race on first load after cookie set.
+            url.searchParams.set("session", "1")
             url.searchParams.delete("token") // Clean URL
 
             const response = NextResponse.redirect(url)

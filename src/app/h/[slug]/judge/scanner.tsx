@@ -1,64 +1,115 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Html5QrcodeScanner } from "html5-qrcode"
+import { Html5Qrcode } from "html5-qrcode"
 import { Button } from "@/components/ui/button"
 import { Scan, X } from "lucide-react"
 
 export function Scanner({ slug }: { slug: string }) {
     const [isScanning, setIsScanning] = useState(false)
-    const scannerRef = useRef<Html5QrcodeScanner | null>(null)
+    const [error, setError] = useState<string | null>(null)
+    const scannerRef = useRef<Html5Qrcode | null>(null)
+
+    function getJudgeRoutingTarget(decodedText: string): string | null {
+        const trimmed = decodedText.trim()
+        if (!trimmed) return null
+
+        // 1) Token-only QR
+        if (!trimmed.includes("/") && !trimmed.includes(":")) {
+            return `/h/${slug}/qr/${trimmed}`
+        }
+
+        // 2) URL QR: normalize to current origin to preserve current judge cookie domain.
+        try {
+            const parsed = new URL(trimmed)
+            const m = parsed.pathname.match(/^\/h\/([^/]+)\/qr\/([^/?#]+)/i)
+            if (!m) return null
+            const token = m[2]
+            return `/h/${slug}/qr/${token}`
+        } catch {
+            // 3) Raw path fallback
+            const m = trimmed.match(/\/h\/([^/]+)\/qr\/([^/?#]+)/i)
+            if (!m) return null
+            const token = m[2]
+            return `/h/${slug}/qr/${token}`
+        }
+    }
 
     useEffect(() => {
-        if (isScanning && !scannerRef.current) {
-            const scanner = new Html5QrcodeScanner(
-                "reader",
-                { fps: 10, qrbox: { width: 250, height: 250 } },
-                /* verbose= */ false
-            )
+        if (!isScanning) return
+        let cancelled = false
 
-            scanner.render((decodedText) => {
-                // Handle Success
-                // decodedText is likely the full URL like https://.../h/slug/qr/token
-                // or just the token if we generated plain tokens.
-                // Assuming URL based on our QR generation in Phase 3.
-
-                // We just redirect the browser to that URL. 
-                // The QR Router will handle the rest (Smart Routing).
-                window.location.href = decodedText
-
-                scanner.clear()
+        const startScanner = async () => {
+            try {
+                setError(null)
+                await navigator.mediaDevices.getUserMedia({ video: true })
+            } catch {
+                setError("Camera access denied. Allow camera permission in browser site settings and retry.")
                 setIsScanning(false)
-            }, (error) => {
-                // Ignore errors (scanning in progress)
-            })
+                return
+            }
 
+            const scanner = new Html5Qrcode("reader", { verbose: false })
             scannerRef.current = scanner
-        }
 
-        return () => {
-            if (scannerRef.current) {
-                try {
-                    scannerRef.current.clear()
-                } catch (e) {
-                    // ignore cleanup errors
-                }
-                scannerRef.current = null
+            try {
+                await scanner.start(
+                    { facingMode: "environment" },
+                    { fps: 10, qrbox: { width: 250, height: 250 } },
+                    async (decodedText) => {
+                        if (cancelled) return
+                        const nextPath = getJudgeRoutingTarget(decodedText)
+                        if (!nextPath) {
+                            setError("Scanned QR is not a valid participant/judge pass.")
+                            return
+                        }
+                        await scanner.stop().catch(() => {})
+                        setIsScanning(false)
+                        window.location.assign(nextPath)
+                    },
+                    () => {
+                        // Ignore per-frame decode errors.
+                    }
+                )
+            } catch {
+                setError("Scanner could not start. Close other camera apps/tabs and retry.")
+                setIsScanning(false)
             }
         }
-    }, [isScanning])
+
+        startScanner()
+
+        return () => {
+            cancelled = true
+            const scanner = scannerRef.current
+            if (scanner) {
+                scanner.stop().catch(() => {})
+            }
+            scannerRef.current = null
+        }
+    }, [isScanning, slug])
 
     return (
         <div className="w-full max-w-sm mx-auto mb-8">
             {!isScanning ? (
-                <Button
-                    size="lg"
-                    className="w-full h-32 text-2xl font-bold bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-900/20 border-2 border-green-500 rounded-xl"
-                    onClick={() => setIsScanning(true)}
-                >
-                    <Scan size={48} className="mr-4" />
-                    SCAN_TEAM
-                </Button>
+                <div className="space-y-2">
+                    <Button
+                        size="lg"
+                        className="w-full h-32 text-2xl font-bold bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-900/20 border-2 border-green-500 rounded-xl"
+                        onClick={() => {
+                            setError(null)
+                            setIsScanning(true)
+                        }}
+                    >
+                        <Scan size={48} className="mr-4" />
+                        SCAN_TEAM
+                    </Button>
+                    {error && (
+                        <p className="text-xs text-red-400 border border-red-500/30 bg-red-500/10 p-2 rounded">
+                            {error}
+                        </p>
+                    )}
+                </div>
             ) : (
                 <div className="bg-black border border-green-500 rounded-xl overflow-hidden relative">
                     <div id="reader" className="w-full"></div>
