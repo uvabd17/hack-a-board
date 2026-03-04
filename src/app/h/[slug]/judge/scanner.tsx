@@ -41,11 +41,26 @@ export function Scanner({ slug }: { slug: string }) {
 
         const startScanner = async () => {
             setError(null)
-
-            const scanner = new Html5Qrcode("reader", { verbose: false })
-            scannerRef.current = scanner
-
             try {
+                if (typeof window === "undefined") {
+                    setError("Scanner is only available in browser context.")
+                    setIsScanning(false)
+                    return
+                }
+                if (!window.isSecureContext) {
+                    setError("Camera requires a secure context (HTTPS).")
+                    setIsScanning(false)
+                    return
+                }
+                if (!navigator.mediaDevices?.getUserMedia) {
+                    setError("This browser does not support camera access APIs.")
+                    setIsScanning(false)
+                    return
+                }
+
+                const scanner = new Html5Qrcode("reader")
+                scannerRef.current = scanner
+
                 let cameraConfig: string | { facingMode: string } | { deviceId: { exact: string } } = { facingMode: "environment" }
                 const cameras = await Html5Qrcode.getCameras()
                 if (cameras.length > 0 && cameras[0].id) {
