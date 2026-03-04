@@ -24,35 +24,34 @@ export default async function ScoringPage({
 
     if (!judge || !judge.isActive) redirect("/")
 
-    // Fetch Team to verify context
-    const team = await prisma.team.findUnique({
-        where: { id: teamId },
-        include: { problemStatement: true }
-    })
+    // Fetch core data in parallel for lower latency on weak networks.
+    const [team, rounds, existingScores] = await Promise.all([
+        prisma.team.findUnique({
+            where: { id: teamId },
+            include: { problemStatement: true }
+        }),
+        prisma.round.findMany({
+            where: { hackathonId: judge.hackathonId },
+            include: { criteria: true },
+            orderBy: { order: 'asc' }
+        }),
+        prisma.score.findMany({
+            where: {
+                judgeId: judge.id,
+                teamId
+            },
+            select: { criterionId: true, value: true }
+        }),
+    ])
 
     if (!team || team.hackathonId !== judge.hackathonId) redirect(`/h/${slug}/judge`)
 
-    // Fetch Rounds & Criteria
-    const rounds = await prisma.round.findMany({
-        where: { hackathonId: judge.hackathonId },
-        include: { criteria: true },
-        orderBy: { order: 'asc' }
-    })
-
-    // Record judging attempts for all rounds (for grace period tracking)
-    // This marks when the judge started the scoring session
-    for (const round of rounds) {
-        await recordJudgingAttempt(token, teamId, round.id)
-    }
-
-    // Fetch Existing Scores
-    const existingScores = await prisma.score.findMany({
-        where: {
-            judgeId: judge.id,
-            teamId: team.id
-        },
-        select: { criterionId: true, value: true }
-    })
+    // Record judging attempts only for active/paused rounds, in parallel.
+    const nowMs = Date.now()
+    const roundsToTrack = rounds.filter((round) =>
+        !!round.checkpointPausedAt || new Date(round.checkpointTime).getTime() > nowMs
+    )
+    await Promise.allSettled(roundsToTrack.map((round) => recordJudgingAttempt(token, teamId, round.id)))
 
     // Convert scores to Map for client
     const scoresMap: Record<string, number> = {}

@@ -74,37 +74,46 @@ export function Scanner({ slug }: { slug: string }) {
                 const scanner = new Html5Qrcode("reader")
                 scannerRef.current = scanner
 
-                let cameraConfig: string | { facingMode: string } | { deviceId: { exact: string } } = { facingMode: "environment" }
-                const cameras = await Html5Qrcode.getCameras()
-                if (cameras.length > 0) {
-                    const rear = cameras.find((c) =>
-                        /back|rear|environment/i.test(c.label || "")
-                    )
-                    const selected = rear || cameras[0]
-                    if (selected?.id) {
-                        cameraConfig = { deviceId: { exact: selected.id } }
+                const config = { fps: 10, qrbox: { width: 250, height: 250 } }
+                const onScanSuccess = async (decodedText: string) => {
+                    if (cancelled) return
+                    const nextPath = getJudgeRoutingTarget(decodedText)
+                    if (!nextPath) {
+                        setError("Scanned QR is not a valid participant/judge pass.")
+                        return
                     }
+                    await safeStopScanner()
+                    setIsScanning(false)
+                    window.location.assign(nextPath)
+                }
+                const onScanError = () => {
+                    // Ignore per-frame decode errors.
                 }
 
-                await scanner.start(
-                    cameraConfig,
-                    { fps: 10, qrbox: { width: 250, height: 250 } },
-                    async (decodedText) => {
-                        if (cancelled) return
-                        const nextPath = getJudgeRoutingTarget(decodedText)
-                        if (!nextPath) {
-                            setError("Scanned QR is not a valid participant/judge pass.")
-                            return
-                        }
-                        await safeStopScanner()
-                        setIsScanning(false)
-                        window.location.assign(nextPath)
-                    },
-                    () => {
-                        // Ignore per-frame decode errors.
+                // Fast path: request rear camera directly (avoids slow getCameras on weak networks/devices).
+                try {
+                    await scanner.start(
+                        { facingMode: { exact: "environment" } },
+                        config,
+                        onScanSuccess,
+                        onScanError
+                    )
+                    scannerStartedRef.current = true
+                } catch {
+                    // Fallback path: enumerate cameras and pick rear/first available.
+                    let fallbackConfig: string | { deviceId: { exact: string } } = ""
+                    const cameras = await Html5Qrcode.getCameras()
+                    if (cameras.length === 0) {
+                        throw new Error("DevicesNotFoundError")
                     }
-                )
-                scannerStartedRef.current = true
+                    const rear = cameras.find((c) => /back|rear|environment/i.test(c.label || ""))
+                    const selected = rear || cameras[0]
+                    if (selected?.id) {
+                        fallbackConfig = { deviceId: { exact: selected.id } }
+                    }
+                    await scanner.start(fallbackConfig, config, onScanSuccess, onScanError)
+                    scannerStartedRef.current = true
+                }
             } catch (err) {
                 const name = (err as { name?: string })?.name || ""
                 if (name === "NotAllowedError" || name === "PermissionDeniedError") {

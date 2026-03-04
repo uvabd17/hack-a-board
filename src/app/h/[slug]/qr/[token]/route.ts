@@ -29,51 +29,65 @@ export async function GET(
         )
     }
 
-    // 1. Check if Judge
-    const judge = await prisma.judge.findUnique({
-        where: { token },
-        include: { hackathon: true }
-    })
+    const judgeToken = request.cookies.get("hackaboard_judge_token")?.value
 
-    if (judge) {
-        if (judge.hackathon.slug === slug && judge.isActive) {
-            // Create redirect response
-            const url = request.nextUrl.clone()
-            url.pathname = `/h/${slug}/judge`
-            // Bust any stale prefetch/render race on first load after cookie set.
-            url.searchParams.set("session", "1")
-            url.searchParams.delete("token") // Clean URL
-
-            const response = NextResponse.redirect(url)
-
-            // Set HTTP-only cookie
-            response.cookies.set("hackaboard_judge_token", token, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
-                sameSite: "strict",
-                path: `/h/${slug}`,
-                maxAge: 60 * 60 * 12 // 12 hours (single event day)
+    // Fast path for judge scanning participant QR: skip judge-token lookup by scanned token.
+    if (judgeToken) {
+        const participant = await prisma.participant.findUnique({
+            where: { qrToken: token },
+            select: { teamId: true, hackathonId: true, hackathon: { select: { slug: true } } }
+        })
+        if (participant && participant.hackathon.slug === slug) {
+            const activeJudge = await prisma.judge.findUnique({
+                where: { token: judgeToken },
+                select: { hackathonId: true, isActive: true }
             })
-
-            return response
+            if (activeJudge?.isActive && activeJudge.hackathonId === participant.hackathonId) {
+                const url = request.nextUrl.clone()
+                url.pathname = `/h/${slug}/judge/score/${participant.teamId}`
+                return NextResponse.redirect(url)
+            }
         }
     }
 
-    // 2. Check if Participant (Future)
+    // 1. Check if scanned token is a Judge pass
+    const judge = await prisma.judge.findUnique({
+        where: { token },
+        select: { isActive: true, hackathon: { select: { slug: true } } }
+    })
+
+    if (judge?.isActive && judge.hackathon.slug === slug) {
+        const url = request.nextUrl.clone()
+        url.pathname = `/h/${slug}/judge`
+        url.searchParams.set("session", "1")
+        url.searchParams.delete("token")
+
+        const response = NextResponse.redirect(url)
+        response.cookies.set("hackaboard_judge_token", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+            path: `/h/${slug}`,
+            maxAge: 60 * 60 * 12
+        })
+        return response
+    }
+
+    // 2. Check if scanned token is a Participant pass
     const participant = await prisma.participant.findUnique({
         where: { qrToken: token },
-        include: { hackathon: true, team: true }
+        select: { qrToken: true, teamId: true, hackathonId: true, hackathon: { select: { slug: true } } }
     })
 
     if (participant) {
         if (participant.hackathon.slug === slug) {
             // Check if potential Judge is scanning
-            const judgeToken = request.cookies.get("hackaboard_judge_token")?.value
             if (judgeToken) {
-                // Verify judge token validity (simple check)
-                const isJudge = await prisma.judge.findUnique({ where: { token: judgeToken, isActive: true } })
+                const isJudge = await prisma.judge.findUnique({
+                    where: { token: judgeToken, isActive: true },
+                    select: { hackathonId: true }
+                })
                 if (isJudge && isJudge.hackathonId === participant.hackathonId) {
-                    // Redirect to Scoring Interface
                     const url = request.nextUrl.clone()
                     url.pathname = `/h/${slug}/judge/score/${participant.teamId}`
                     return NextResponse.redirect(url)
@@ -86,7 +100,7 @@ export async function GET(
             const response = NextResponse.redirect(url)
 
             // Set Participant Cookie (Placeholder)
-            response.cookies.set(PARTICIPANT_COOKIE_NAME, token, {
+            response.cookies.set(PARTICIPANT_COOKIE_NAME, participant.qrToken, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === "production",
                 sameSite: "strict",
