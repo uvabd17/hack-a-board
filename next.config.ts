@@ -38,8 +38,8 @@ const nextConfig: NextConfig = {
         { key: "X-Frame-Options", value: "SAMEORIGIN" },
         // Strict referrer for privacy
         { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-        // Opt-out of Google FLoC / Topics
-        { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+        // Allow camera on first-party pages (judge scanner), block microphone/geolocation.
+        { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=()" },
         // Strict Transport Security — enforce HTTPS for 1 year
         { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
         // Basic CSP — allow self + inline styles (needed for Tailwind) + Google fonts

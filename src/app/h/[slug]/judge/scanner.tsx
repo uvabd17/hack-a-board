@@ -9,6 +9,19 @@ export function Scanner({ slug }: { slug: string }) {
     const [isScanning, setIsScanning] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const scannerRef = useRef<Html5Qrcode | null>(null)
+    const scannerStartedRef = useRef(false)
+
+    async function safeStopScanner() {
+        const scanner = scannerRef.current
+        if (!scanner || !scannerStartedRef.current) return
+        try {
+            await scanner.stop()
+        } catch {
+            // Ignore "not running/paused" and similar stop races.
+        } finally {
+            scannerStartedRef.current = false
+        }
+    }
 
     function getJudgeRoutingTarget(decodedText: string): string | null {
         const trimmed = decodedText.trim()
@@ -77,7 +90,7 @@ export function Scanner({ slug }: { slug: string }) {
                             setError("Scanned QR is not a valid participant/judge pass.")
                             return
                         }
-                        await scanner.stop().catch(() => {})
+                        await safeStopScanner()
                         setIsScanning(false)
                         window.location.assign(nextPath)
                     },
@@ -85,6 +98,7 @@ export function Scanner({ slug }: { slug: string }) {
                         // Ignore per-frame decode errors.
                     }
                 )
+                scannerStartedRef.current = true
             } catch (err) {
                 const name = (err as { name?: string })?.name || ""
                 if (name === "NotAllowedError" || name === "PermissionDeniedError") {
@@ -104,10 +118,7 @@ export function Scanner({ slug }: { slug: string }) {
 
         return () => {
             cancelled = true
-            const scanner = scannerRef.current
-            if (scanner) {
-                scanner.stop().catch(() => {})
-            }
+            safeStopScanner()
             scannerRef.current = null
         }
     }, [isScanning, slug])
