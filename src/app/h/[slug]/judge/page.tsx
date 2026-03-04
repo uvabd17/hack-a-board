@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
 
+export const dynamic = "force-dynamic"
+
 export default async function JudgeDashboard({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = await params
     const cookieStore = await cookies()

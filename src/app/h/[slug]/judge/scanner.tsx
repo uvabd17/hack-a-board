@@ -40,21 +40,20 @@ export function Scanner({ slug }: { slug: string }) {
         let cancelled = false
 
         const startScanner = async () => {
-            try {
-                setError(null)
-                await navigator.mediaDevices.getUserMedia({ video: true })
-            } catch {
-                setError("Camera access denied. Allow camera permission in browser site settings and retry.")
-                setIsScanning(false)
-                return
-            }
+            setError(null)
 
             const scanner = new Html5Qrcode("reader", { verbose: false })
             scannerRef.current = scanner
 
             try {
+                let cameraConfig: string | { facingMode: string } | { deviceId: { exact: string } } = { facingMode: "environment" }
+                const cameras = await Html5Qrcode.getCameras()
+                if (cameras.length > 0 && cameras[0].id) {
+                    cameraConfig = { deviceId: { exact: cameras[0].id } }
+                }
+
                 await scanner.start(
-                    { facingMode: "environment" },
+                    cameraConfig,
                     { fps: 10, qrbox: { width: 250, height: 250 } },
                     async (decodedText) => {
                         if (cancelled) return
@@ -71,8 +70,17 @@ export function Scanner({ slug }: { slug: string }) {
                         // Ignore per-frame decode errors.
                     }
                 )
-            } catch {
-                setError("Scanner could not start. Close other camera apps/tabs and retry.")
+            } catch (err) {
+                const name = (err as { name?: string })?.name || ""
+                if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+                    setError("Camera permission denied. Allow camera for this site and retry.")
+                } else if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+                    setError("No camera device found on this browser/device.")
+                } else if (name === "NotReadableError" || name === "TrackStartError") {
+                    setError("Camera is in use by another app/tab. Close it and retry.")
+                } else {
+                    setError("Scanner could not start. Check camera permissions and HTTPS, then retry.")
+                }
                 setIsScanning(false)
             }
         }

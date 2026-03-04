@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma"
-import { headers, cookies } from "next/headers"
-import { redirect } from "next/navigation"
+import { cookies } from "next/headers"
+import { JudgeSessionSync } from "./session-sync"
+
+export const dynamic = "force-dynamic"
 
 export default async function JudgeLayout({
     children,
@@ -14,11 +16,7 @@ export default async function JudgeLayout({
     const token = cookieStore.get("hackaboard_judge_token")?.value
 
     if (!token) {
-        return (
-            <div className="flex items-center justify-center min-h-screen text-destructive font-mono">
-                ACCESS DENIED — Missing judge credentials
-            </div>
-        )
+        return <JudgeSessionSync slug={slug} />
     }
 
     const judge = await prisma.judge.findUnique({
