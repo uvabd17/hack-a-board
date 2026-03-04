@@ -76,8 +76,14 @@ export function Scanner({ slug }: { slug: string }) {
 
                 let cameraConfig: string | { facingMode: string } | { deviceId: { exact: string } } = { facingMode: "environment" }
                 const cameras = await Html5Qrcode.getCameras()
-                if (cameras.length > 0 && cameras[0].id) {
-                    cameraConfig = { deviceId: { exact: cameras[0].id } }
+                if (cameras.length > 0) {
+                    const rear = cameras.find((c) =>
+                        /back|rear|environment/i.test(c.label || "")
+                    )
+                    const selected = rear || cameras[0]
+                    if (selected?.id) {
+                        cameraConfig = { deviceId: { exact: selected.id } }
+                    }
                 }
 
                 await scanner.start(
