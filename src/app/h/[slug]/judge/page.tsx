@@ -2,8 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { Scanner } from "./scanner"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { ManualCodeEntry } from "./manual-code-entry"
 import Link from "next/link"
 
 export const dynamic = "force-dynamic"
@@ -13,13 +12,13 @@ export default async function JudgeDashboard({ params }: { params: Promise<{ slu
     const cookieStore = await cookies()
     const token = cookieStore.get("hackaboard_judge_token")?.value
 
-    if (!token) redirect(`/h/${slug}/qr/login`) // Should be handled by layout but safety first
+    if (!token) redirect(`/h/${slug}/qr/login`)
 
     const judge = await prisma.judge.findUnique({
         where: { token },
         include: {
             scores: {
-                distinct: ['teamId'], // Count unique teams scored
+                distinct: ['teamId'],
                 select: { teamId: true }
             }
         }
@@ -27,47 +26,27 @@ export default async function JudgeDashboard({ params }: { params: Promise<{ slu
 
     if (!judge) redirect("/")
 
-    async function handleManualCode(formData: FormData) {
-        "use server"
-        const inviteCode = formData.get("code") as string
-        if (!inviteCode) return
-
-        const team = await prisma.team.findUnique({
-            where: { inviteCode },
-            select: { id: true, hackathonId: true }
-        })
-
-        if (team && team.hackathonId === judge!.hackathonId) {
-            redirect(`/h/${slug}/judge/score/${team.id}`)
-        }
-    }
-
     return (
-        <div className="max-w-md mx-auto space-y-8">
-            <div className="text-center space-y-2">
-                <p className="text-zinc-400 text-sm">Teams Evaluated</p>
-                <p className="text-5xl font-mono font-bold text-white">{judge.scores.length}</p>
+        <div className="max-w-md mx-auto space-y-6 pb-8">
+            {/* Stats */}
+            <div className="text-center py-4">
+                <p className="text-muted-foreground text-xs uppercase tracking-widest font-bold">Teams evaluated</p>
+                <p className="text-6xl font-mono font-black text-[var(--role-accent)] tabular-nums mt-1">{judge.scores.length}</p>
             </div>
 
-            <Scanner slug={slug} />
+            {/* Primary: Manual code entry */}
+            <ManualCodeEntry slug={slug} />
 
-            <div className="bg-zinc-900 p-6 rounded-lg border border-zinc-800">
-                <h3 className="text-zinc-400 text-sm mb-4">or enter manual code</h3>
-                <form action={handleManualCode} className="flex gap-2">
-                    <Input
-                        name="code"
-                        placeholder="Team Code (e.g. X7F9K2)"
-                        className="bg-black border-zinc-700 text-white font-mono uppercase"
-                        maxLength={6}
-                        required
-                    />
-                    <Button type="submit" variant="secondary">GO</Button>
-                </form>
+            {/* Secondary: QR Scanner */}
+            <div className="space-y-2">
+                <p className="text-xs text-muted-foreground uppercase tracking-widest font-bold px-1">Or scan their QR</p>
+                <Scanner slug={slug} />
             </div>
 
-            <div className="text-center">
-                <Link href={`/h/${slug}`} className="text-xs text-zinc-600 hover:text-green-500 underline">
-                    Return to Leaderboard
+            {/* Footer link */}
+            <div className="text-center pt-2">
+                <Link href={`/h/${slug}/display`} className="text-xs text-muted-foreground hover:text-primary underline underline-offset-4">
+                    View leaderboard
                 </Link>
             </div>
         </div>

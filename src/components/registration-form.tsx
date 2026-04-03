@@ -90,7 +90,7 @@ export default function RegistrationForm({ hackathonSlug }: { hackathonSlug: str
 
                                 <TabsContent value="join" className="pt-4 space-y-2">
                                     <Label htmlFor="inviteCode">INVITE CODE</Label>
-                                    <Input id="inviteCode" name="inviteCode" placeholder="XYZ123" required={mode === "join"} className="border-border bg-background uppercase tracking-widest" maxLength={6} />
+                                    <Input id="inviteCode" name="inviteCode" placeholder="e.g. TEAM001" required={mode === "join"} className="border-border bg-background uppercase tracking-widest" maxLength={10} />
                                 </TabsContent>
 
                                 <TabsContent value="solo" className="pt-4">

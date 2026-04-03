@@ -37,7 +37,7 @@ export function ProblemForm({ hackathonId }: { hackathonId: string }) {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>ADD_NEW_DIRECTIVE</CardTitle>
+                <CardTitle>Add Track</CardTitle>
                 <CardDescription>Define a problem statement for teams to solve.</CardDescription>
             </CardHeader>
             <CardContent>
@@ -78,7 +78,7 @@ export function ProblemForm({ hackathonId }: { hackathonId: string }) {
                     )}
 
                     <Button type="submit" disabled={loading} className="w-full">
-                        {loading ? "PROCESSING..." : "REGISTER_DIRECTIVE"}
+                        {loading ? "Processing..." : "Add Track"}
                     </Button>
                 </form>
             </CardContent>
@@ -112,7 +112,7 @@ export function ProblemItem({ problem, hackathonId }: { problem: ProblemStatemen
     }
 
     return (
-        <div className="flex items-center justify-between p-4 border border-border bg-card hover:border-primary/50 transition-colors">
+        <div className="flex items-center justify-between p-4 border border-border bg-card rounded-lg hover:border-primary/50 transition-colors">
             <div className="flex items-start gap-4">
                 <div className="text-2xl bg-muted w-12 h-12 flex items-center justify-center rounded">
                     {problem.icon || "📄"}
@@ -136,7 +136,7 @@ export function ProblemItem({ problem, hackathonId }: { problem: ProblemStatemen
                     size="sm"
                     onClick={handleToggle}
                     disabled={loading}
-                    className={problem.isReleased ? "bg-green-600 hover:bg-green-700" : ""}
+                    className={problem.isReleased ? "bg-primary hover:bg-primary/90" : ""}
                 >
                     {problem.isReleased ? (
                         <><Eye size={14} className="mr-2" /> LIVE</>
@@ -174,7 +174,7 @@ export function ReleaseAllButton({ hackathonId, hiddenCount }: { hackathonId: st
             disabled={loading}
         >
             <Radio size={14} />
-            {loading ? "RELEASING..." : `RELEASE_ALL (${hiddenCount})`}
+            {loading ? "Releasing..." : `Release All (${hiddenCount})`}
         </Button>
     )
 }

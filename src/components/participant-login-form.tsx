@@ -13,7 +13,7 @@ function SubmitButton() {
     const { pending } = useFormStatus()
     return (
         <Button type="submit" className="w-full text-sm font-mono" disabled={pending}>
-            {pending ? "SIGNING IN..." : "OPEN DASHBOARD"}
+            {pending ? "Signing in..." : "Open Dashboard"}
         </Button>
     )
 }
@@ -54,7 +54,7 @@ export function ParticipantLoginForm({ slug }: { slug: string }) {
                             id="teamCode"
                             name="teamCode"
                             required
-                            maxLength={6}
+                            maxLength={10}
                             className="uppercase tracking-widest font-mono"
                         />
                     </div>

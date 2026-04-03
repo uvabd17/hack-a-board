@@ -331,7 +331,7 @@ export function HackathonSettingsForm({ hackathon }: { hackathon: HackathonData 
             )}
 
             {status?.success && (
-                <div className="flex items-center gap-2 text-green-600 text-sm bg-green-500/10 p-3 border border-green-500/30">
+                <div className="flex items-center gap-2 text-primary text-sm bg-primary/10 p-3 border border-primary/30">
                     <CheckCircle2 size={16} />
                     {status.success}
                 </div>
@@ -343,7 +343,7 @@ export function HackathonSettingsForm({ hackathon }: { hackathon: HackathonData 
                 </p>
                 <Button type="submit" disabled={loading} className="gap-2">
                     <Save size={16} />
-                    {loading ? "SAVING..." : "SAVE SETTINGS"}
+                    {loading ? "Saving..." : "Save Settings"}
                 </Button>
             </div>
 
@@ -397,7 +397,7 @@ export function HackathonSettingsForm({ hackathon }: { hackathon: HackathonData 
                     />
                     {hackathon.isOwner ? (
                         <Button type="button" variant="outline" onClick={handleOrganizerSave} disabled={loading}>
-                            {loading ? "SAVING..." : "SAVE ORGANIZER ACCESS"}
+                            {loading ? "Saving..." : "Save Organizer Access"}
                         </Button>
                     ) : (
                         <p className="text-xs text-muted-foreground">Only the event owner can update organizer access.</p>
@@ -410,7 +410,7 @@ export function HackathonSettingsForm({ hackathon }: { hackathon: HackathonData 
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
     return (
-        <div className="border border-border bg-card/50 p-6 space-y-4">
+        <div className="border border-border bg-card/50 p-6 space-y-4 rounded-lg">
             <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground border-b border-border pb-2">
                 {title}
             </h2>

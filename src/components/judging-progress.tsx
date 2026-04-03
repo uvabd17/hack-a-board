@@ -37,7 +37,7 @@ export function JudgingProgress({
             return {
                 bonus: diffMinutes * 2,
                 label: `If submitted now: +${diffMinutes * 2} bonus`,
-                color: "text-green-500"
+                color: "text-primary"
             }
         } else {
             const penalty = Math.abs(diffMinutes)
@@ -121,7 +121,7 @@ export function JudgingProgress({
                     <div className="flex items-center justify-between p-3 bg-cyan-900/30 border border-cyan-700/30 rounded">
                         <span className="text-xs text-cyan-300 font-mono">TIME BONUS</span>
                         <span className={`text-lg font-bold font-mono ${
-                            timeBonus >= 0 ? 'text-green-400' : 'text-red-400'
+                            timeBonus >= 0 ? 'text-primary' : 'text-red-400'
                         }`}>
                             {timeBonus >= 0 ? '+' : ''}{timeBonus}
                         </span>
@@ -148,7 +148,7 @@ export function JudgingProgress({
                             {judges.map((judge, idx) => (
                                 <div key={idx} className="flex items-center justify-between text-xs bg-muted/20 p-2 rounded">
                                     <div className="flex items-center gap-2">
-                                        <CheckCircle2 className="w-3 h-3 text-green-500" />
+                                        <CheckCircle2 className="w-3 h-3 text-primary" />
                                         <span className="font-mono">{judge.name}</span>
                                     </div>
                                     <span className="text-[10px] text-muted-foreground font-mono">

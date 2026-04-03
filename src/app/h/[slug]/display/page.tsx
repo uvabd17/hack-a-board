@@ -2,86 +2,19 @@
 
 import { useEffect, useState, useMemo, useRef, use } from "react"
 import { getDisplayState, getTrackStanding } from "@/actions/display"
-import { Badge } from "@/components/ui/badge"
-import { ArrowUp, ArrowDown, Minus, Trophy, Terminal, Lock } from "lucide-react"
 import { CeremonyDisplay } from "@/components/ceremony-display"
 import { connectSocket, disconnectSocket, subscribeSocketStatus } from "@/lib/socket-client"
 import type { SocketConnectionState } from "@/lib/socket-client"
-import { CountdownTimer } from "@/components/countdown-timer"
+import { TeamRow } from "@/components/display/team-row"
+import { ColumnHeader } from "@/components/display/column-header"
+import { HeaderZone } from "@/components/display/header-zone"
+import { ConnectionStatus } from "@/components/display/connection-status"
+import { Terminal } from "lucide-react"
 
 const WATCHDOG_POLL_MS = 5000
 
-// ── Leaderboard Row (extracted for reuse in both columns) ──────────
-function TeamRow({ team, isFrozen, isRecentlySubmitted }: { 
-    team: any
-    isFrozen: boolean
-    isRecentlySubmitted?: boolean
-}) {
-    return (
-        <div
-            className={`
-                grid grid-cols-12 gap-2 items-center px-3 py-1.5 border rounded-sm
-                transition-all duration-700 ease-in-out
-                ${isRecentlySubmitted
-                    ? 'bg-cyan-400/20 border-cyan-400/60 shadow-[0_0_20px_rgba(34,211,238,0.3)] animate-pulse'
-                    : team.rank <= 3
-                    ? 'bg-cyan-500/10 border-cyan-500/20 shadow-[0_0_10px_rgba(6,182,212,0.06)]'
-                    : 'border-cyan-500/5 bg-cyan-500/[0.02]'}
-            `}
-        >
-            {/* Rank */}
-            <div className="col-span-1 font-bold text-base flex items-center">
-                <span className={team.rank <= 3 && !isFrozen ? "text-yellow-500" : "text-cyan-500/50"}>
-                    {team.rank === 1 && !isFrozen && <Trophy className="w-3.5 h-3.5 inline mr-1" />}
-                    {isFrozen ? "--" : team.rank.toString().padStart(2, '0')}
-                </span>
-            </div>
-
-            {/* Team name */}
-            <div className="col-span-7 font-bold truncate tracking-tight text-sm">
-                {team.teamName.toUpperCase()}
-            </div>
-
-            {/* Score */}
-            <div className="col-span-2 text-right font-bold text-base tabular-nums">
-                {isFrozen ? (
-                    <span className="text-zinc-600 text-[10px] tracking-widest inline-flex items-center justify-end gap-1">
-                        <Lock size={10} /> LOCKED
-                    </span>
-                ) : (
-                    team.totalScore.toFixed(1)
-                )}
-            </div>
-
-            {/* Trend */}
-            <div className="col-span-2 text-right flex justify-end items-center gap-1">
-                {!isFrozen && team.change > 0 && (
-                    <span className={`text-[9px] font-bold ${team.trend === 'up' ? 'text-cyan-400' : 'text-red-500'}`}>
-                        {team.trend === 'up' ? '+' : '-'}{team.change}
-                    </span>
-                )}
-                {!isFrozen && team.trend === 'up' && <ArrowUp className="w-3.5 h-3.5 text-cyan-400" />}
-                {!isFrozen && team.trend === 'down' && <ArrowDown className="w-3.5 h-3.5 text-red-500" />}
-                {(isFrozen || team.trend === 'same') && <Minus className="w-3.5 h-3.5 text-cyan-500/10" />}
-            </div>
-        </div>
-    )
-}
-
-// ── Column Header ──────────────────────────────────────────────────
-function ColumnHeader() {
-    return (
-        <div className="grid grid-cols-12 gap-2 text-cyan-500/40 uppercase text-[9px] px-3 font-bold tracking-widest border-b border-cyan-500/10 pb-1.5 mb-1">
-            <div className="col-span-1">#</div>
-            <div className="col-span-7">TEAM</div>
-            <div className="col-span-2 text-right">SCORE</div>
-            <div className="col-span-2 text-right">Δ</div>
-        </div>
-    )
-}
-
 // ══════════════════════════════════════════════════════════════════
-//  MAIN DISPLAY PAGE
+//  LEADERBOARD DISPLAY — Broadcast-quality projector page
 // ══════════════════════════════════════════════════════════════════
 
 export default function ProjectorDisplayPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -97,12 +30,14 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
     const [recentlySubmittedTeams, setRecentlySubmittedTeams] = useState<Set<string>>(new Set())
     const [socketStatus, setSocketStatus] = useState<SocketConnectionState>("connecting")
     const [lastSocketEventAt, setLastSocketEventAt] = useState<Date | null>(null)
-    const [submissionNotification, setSubmissionNotification] = useState<{
+    const [submissionNotifications, setSubmissionNotifications] = useState<Array<{
+        id: string
         teamName: string
         roundName: string
         timeBonus: number
-    } | null>(null)
-    
+        timestamp: number
+    }>>([])
+
     // Refs to prevent useEffect dependency thrashing
     const autoTrackIndexRef = useRef(-1)
     const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -111,10 +46,7 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
     const displayModeRef = useRef<string>("global")
 
     // Sync refs with state
-    useEffect(() => {
-        autoTrackIndexRef.current = autoTrackIndex
-    }, [autoTrackIndex])
-    
+    useEffect(() => { autoTrackIndexRef.current = autoTrackIndex }, [autoTrackIndex])
     useEffect(() => {
         if (data?.problems) problemsRef.current = data.problems
         if (data?.displayConfig?.mode) displayModeRef.current = data.displayConfig.mode
@@ -123,25 +55,24 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
     // Handle pending data with smooth crossfade transition
     useEffect(() => {
         if (!pendingData) return
-        
-        // Start fade out
         setIsTransitioning(true)
-        
-        // After fade out completes, update data and fade in
         const timeout = setTimeout(() => {
             if (data) setPrevData(data)
             setData(pendingData)
             setPendingData(null)
             setLastUpdated(new Date())
-            
-            // Start fade in immediately
-            requestAnimationFrame(() => {
-                setIsTransitioning(false)
-            })
-        }, 250) // Shortened fade out duration
-        
+            requestAnimationFrame(() => setIsTransitioning(false))
+        }, 250)
         return () => clearTimeout(timeout)
     }, [pendingData])
+
+    // Clean up old ticker notifications
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setSubmissionNotifications(prev => prev.filter(n => Date.now() - n.timestamp < 12000))
+        }, 2000)
+        return () => clearInterval(interval)
+    }, [])
 
     // Global mode shows 20 teams (2 cols × 10), problem mode shows 12
     const isGlobalMode = data?.displayConfig?.mode === "global" ||
@@ -151,46 +82,36 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
     // ── Data fetching ─────────────────────────────────────────────
     useEffect(() => {
         const fetchData = async () => {
-            // Skip fetch if transition is in progress
             if (isTransitioning || pendingData) return
-            
+
             let problemId = null
-            
-            // Use refs to get current values (avoid stale closures)
             if (displayModeRef.current === "auto") {
                 if (autoTrackIndexRef.current >= 0 && problemsRef.current[autoTrackIndexRef.current]) {
                     problemId = problemsRef.current[autoTrackIndexRef.current].id
                 }
             }
 
-            // Fetch either track-specific or global display state
-            const result = problemId 
+            const result = problemId
                 ? await getTrackStanding(slug, problemId)
                 : await getDisplayState(slug)
 
             if (result) {
                 if (!result.hackathon.isFrozen || !data) {
                     if (data) {
-                        // Check if this is an auto-track change (needs transition)
                         const isAutoTrackChange = displayModeRef.current === "auto" && autoTrackIndex !== lastAutoTrackIndex
-                        
                         if (isAutoTrackChange) {
-                            // Queue update with crossfade transition for track changes
                             setPendingData(result)
                             setLastAutoTrackIndex(autoTrackIndex)
                         } else {
-                            // Instant update for timer/score/freeze changes
                             if (data) setPrevData(data)
                             setData(result)
                             setLastUpdated(new Date())
                         }
                     } else {
-                        // First load, no transition
                         setData(result)
                         setLastUpdated(new Date())
                     }
                 } else if (result.hackathon.isFrozen && data && !data.hackathon.isFrozen) {
-                    // Just update freeze flag immediately
                     setData((prev: any) => ({
                         ...prev,
                         hackathon: { ...prev.hackathon, isFrozen: true }
@@ -202,12 +123,10 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
         fetchRef.current = fetchData
         fetchData()
         const interval = setInterval(() => {
-            if (document.visibilityState !== "hidden") {
-                fetchData()
-            }
-        }, WATCHDOG_POLL_MS) // Socket-first updates with light watchdog polling
+            if (document.visibilityState !== "hidden") fetchData()
+        }, WATCHDOG_POLL_MS)
         return () => clearInterval(interval)
-    }, [slug]) // Keep stable dependency array
+    }, [slug])
 
     // Trigger fetch when auto-cycle track changes
     useEffect(() => {
@@ -247,11 +166,18 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
             roundName: string
             timeBonus: number
         }) => {
-            setSubmissionNotification({
-                teamName: payload.teamName,
-                roundName: payload.roundName,
-                timeBonus: payload.timeBonus
-            })
+            // Add to ticker bar
+            setSubmissionNotifications(prev => [
+                ...prev.slice(-2),
+                {
+                    id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                    teamName: payload.teamName,
+                    roundName: payload.roundName,
+                    timeBonus: payload.timeBonus,
+                    timestamp: Date.now(),
+                }
+            ])
+            // Highlight row
             setRecentlySubmittedTeams(prev => new Set(prev).add(payload.teamId))
             setTimeout(() => {
                 setRecentlySubmittedTeams(prev => {
@@ -260,7 +186,6 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
                     return newSet
                 })
             }, 5000)
-            setTimeout(() => setSubmissionNotification(null), 8000)
             instantFetch()
         })
         socket.on("display:freeze", () => {
@@ -302,62 +227,50 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
             setAutoTrackIndex(-1)
             return
         }
-
-        // Initialize first track immediately
         setAutoTrackIndex(0)
-
         const cycleInterval = setInterval(() => {
             setAutoTrackIndex(prev => {
                 const totalOptions = (data.problems?.length || 0) + 1
                 return (prev + 2) % totalOptions - 1
             })
             setCurrentPage(0)
-        }, 15000) // Cycle tracks every 15s
-
+        }, 15000)
         return () => clearInterval(cycleInterval)
     }, [data?.displayConfig?.mode, data?.problems?.length])
 
     // ── Auto-pagination ───────────────────────────────────────────
     useEffect(() => {
         if (!data || data.leaderboard.length <= TEAMS_PER_PAGE) return
-
         const pageInterval = setInterval(() => {
             setCurrentPage(prev => {
                 const totalPages = Math.ceil(data.leaderboard.length / TEAMS_PER_PAGE)
                 return (prev + 1) % totalPages
             })
-        }, 5000) // Page every 5s
-
+        }, 5000)
         return () => clearInterval(pageInterval)
     }, [data, TEAMS_PER_PAGE])
 
     // ── Processed leaderboard with trend data ─────────────────────
     const processedLeaderboard = useMemo(() => {
         if (!data) return []
-        
         let teams = data.leaderboard.map((team: any) => {
             const prevTeam = prevData?.leaderboard?.find((pt: any) => pt.teamId === team.teamId)
-            let trend: 'up' | 'down' | 'same' = 'same'
+            let trend: "up" | "down" | "same" = "same"
             let change = 0
-            let prevRank = 0
             if (prevTeam) {
-                prevRank = prevTeam.rank
-                if (team.rank < prevTeam.rank) { trend = 'up'; change = prevTeam.rank - team.rank }
-                else if (team.rank > prevTeam.rank) { trend = 'down'; change = team.rank - prevTeam.rank }
+                if (team.rank < prevTeam.rank) { trend = "up"; change = prevTeam.rank - team.rank }
+                else if (team.rank > prevTeam.rank) { trend = "down"; change = team.rank - prevTeam.rank }
             }
-            return { ...team, trend, change, prevRank }
+            return { ...team, trend, change }
         })
-        
-        // Shuffle teams when frozen to hide rankings
+
+        // Shuffle teams when frozen
         if (data.hackathon.isFrozen) {
-            // Create seeded random number generator
-            const seed = data.hackathon.id.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0)
+            const seed = data.hackathon.id.split("").reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0)
             const seededRandom = (index: number) => {
                 const x = Math.sin(seed + index) * 10000
                 return x - Math.floor(x)
             }
-            
-            // Fisher-Yates shuffle with seeded random
             const shuffled = [...teams]
             for (let i = shuffled.length - 1; i > 0; i--) {
                 const j = Math.floor(seededRandom(i) * (i + 1))
@@ -365,7 +278,6 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
             }
             teams = shuffled
         }
-        
         return teams
     }, [data, prevData])
 
@@ -374,7 +286,6 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
         return processedLeaderboard.slice(start, start + TEAMS_PER_PAGE)
     }, [processedLeaderboard, currentPage, TEAMS_PER_PAGE])
 
-    // Split into left/right columns for 2-col global layout
     const leftCol = useMemo(() => isGlobalMode ? paginatedTeams.slice(0, Math.ceil(paginatedTeams.length / 2)) : paginatedTeams, [paginatedTeams, isGlobalMode])
     const rightCol = useMemo(() => isGlobalMode ? paginatedTeams.slice(Math.ceil(paginatedTeams.length / 2)) : [], [paginatedTeams, isGlobalMode])
 
@@ -389,224 +300,187 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
         return "ALL TEAMS"
     }, [data, autoTrackIndex])
 
-    // ── Active round checkpoint (nearest future deadline, or paused) ────
     const activeRound = useMemo(() => {
         if (!data?.rounds?.length) return null
         const now = Date.now()
-        const sortedByOrder = data.rounds
-            .slice()
-            .sort((a: any, b: any) => a.order - b.order)
-
-        // Current round is the first round in order that is not fully ended.
-        // A round is "not ended" if it's paused OR its checkpoint is in the future.
+        const sortedByOrder = data.rounds.slice().sort((a: any, b: any) => a.order - b.order)
         const current = sortedByOrder.find((r: any) => {
             const checkpointMs = new Date(r.checkpointTime).getTime()
             return !!r.checkpointPausedAt || checkpointMs > now
         })
-
-        // If all rounds are ended, fall back to the last one for historical display.
         return current || sortedByOrder[sortedByOrder.length - 1]
     }, [data?.rounds])
 
-    // Find current active phase
     const currentPhase = useMemo(() => {
         if (!data?.phases?.length) return null
         const now = Date.now()
-        return data.phases.find((p: any) => 
+        return data.phases.find((p: any) =>
             new Date(p.startTime).getTime() <= now && new Date(p.endTime).getTime() > now
         )
     }, [data?.phases])
 
-    // ── Loading state ─────────────────────────────────────────────
-    if (!data) return (
-        <div className="min-h-screen bg-black text-cyan-500 font-mono flex items-center justify-center">
-            <div className="flex flex-col items-center gap-4 animate-pulse">
-                <Terminal className="w-16 h-16" />
-                <h1 className="text-2xl">LOADING LEADERBOARD...</h1>
-            </div>
-        </div>
-    )
-
-    // ── Render ────────────────────────────────────────────────────
+    const totalPages = data ? Math.ceil(data.leaderboard.length / TEAMS_PER_PAGE) : 1
     const secondsSinceLiveUpdate = lastSocketEventAt
         ? Math.max(0, Math.floor((Date.now() - lastSocketEventAt.getTime()) / 1000))
         : null
     const showOfflineWarning = socketStatus === "offline" && (secondsSinceLiveUpdate === null || secondsSinceLiveUpdate >= 10)
 
+    // ── Loading state ─────────────────────────────────────────────
+    if (!data) return (
+        <div className="h-screen bg-[#0a0a0f] text-cyan-500 font-mono flex items-center justify-center" data-role="display">
+            <div className="flex flex-col items-center gap-4 animate-pulse">
+                <Terminal className="w-16 h-16" />
+                <h1 className="text-2xl font-black tracking-tight">LOADING LEADERBOARD...</h1>
+            </div>
+        </div>
+    )
+
+    // ── Render ────────────────────────────────────────────────────
     return (
-        <div className="min-h-screen bg-black text-cyan-500 font-mono p-6 overflow-hidden flex flex-col">
+        <div className="h-screen bg-[#0a0a0f] font-mono overflow-hidden flex flex-col" data-role="display">
+            {/* Offline Warning */}
             {showOfflineWarning && (
-                <div className="mb-3 border border-amber-400/40 bg-amber-500/10 text-amber-200 px-3 py-2 text-xs uppercase tracking-wider">
-                    Live sync delayed. Reconnecting to socket...
-                </div>
-            )}
-            {/* Submission Notification Toast */}
-            {submissionNotification && (
-                <div className="fixed top-6 right-6 z-50 animate-in fade-in slide-in-from-right-5 duration-500">
-                    <div className="bg-cyan-500/10 border-2 border-cyan-400 p-4 rounded shadow-2xl shadow-cyan-500/20 backdrop-blur-sm">
-                        <p className="text-cyan-200 font-bold text-lg mb-1">
-                            🎉 {submissionNotification.teamName.toUpperCase()} SUBMITTED!
-                        </p>
-                        <p className="text-cyan-300 text-sm">
-                            {submissionNotification.roundName} • {" "}
-                            <span className={submissionNotification.timeBonus >= 0 ? "text-green-400" : "text-red-400"}>
-                                {submissionNotification.timeBonus >= 0 ? "+" : ""}
-                                {submissionNotification.timeBonus.toFixed(1)} bonus
-                            </span>
-                        </p>
-                    </div>
+                <div className="flex-shrink-0 border-b border-amber-400/40 bg-amber-500/10 text-amber-200 px-4 py-1.5 text-[10px] uppercase tracking-wider font-bold">
+                    Live sync delayed — reconnecting to socket...
                 </div>
             )}
 
-            {/* Timer Bar — both timers always visible */}
-            {data.hackathon.status === "live" && (
-                <div className="border-b border-cyan-500/20 pb-4 mb-4 grid grid-cols-2 gap-8">
-                    <div className="flex justify-center">
-                        {currentPhase ? (
-                            <CountdownTimer
-                                targetMs={new Date(currentPhase.endTime).getTime()}
-                                label={`${currentPhase.name} ends in`}
-                                size="xl"
-                            />
-                        ) : (
-                            <CountdownTimer targetMs={null} label="No active phase" size="xl" />
-                        )}
-                    </div>
-                    <div className="flex justify-center">
-                        {activeRound ? (
-                            <CountdownTimer
-                                targetMs={new Date(activeRound.checkpointTime).getTime()}
-                                pausedRemainingMs={
-                                    activeRound.checkpointPausedAt
-                                        ? new Date(activeRound.checkpointTime).getTime() - new Date(activeRound.checkpointPausedAt).getTime()
-                                        : null
-                                }
-                                label={`${activeRound.name} closes in`}
-                                size="xl"
-                            />
-                        ) : (
-                            <CountdownTimer targetMs={null} label="No active round" size="xl" />
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {/* Header */}
-            <header className="border-b border-cyan-500/30 pb-4 mb-4 flex justify-between items-end">
-                <div className="space-y-1">
-                    <h1 className="text-4xl font-bold tracking-tighter uppercase leading-none">{data.hackathon.name}</h1>
-                    <div className="flex items-center gap-3">
-                        <Badge variant="outline" className="text-xs border-cyan-500/50 text-cyan-500 px-2 rounded-none font-bold">
-                            {activeTrackTitle.toUpperCase()}
-                        </Badge>
-                        {data.displayConfig.mode === "auto" && (
-                            <Badge variant="outline" className="text-xs border-yellow-500/50 text-yellow-500 px-2 rounded-none font-bold animate-pulse">
-                                AUTO-CYCLING
-                            </Badge>
-                        )}
-                        <p className="text-cyan-500/40 text-xs">
-                            {data.leaderboard.length > TEAMS_PER_PAGE && `PAGE ${currentPage + 1} · `}
-                            {lastUpdated.toLocaleTimeString()} ·{" "}
-                            {secondsSinceLiveUpdate === null ? "NO LIVE EVENTS YET" : `LAST LIVE ${secondsSinceLiveUpdate}s AGO`}
-                        </p>
-                    </div>
-                </div>
-                <div className="text-right">
-                    {data.hackathon.isFrozen ? (
-                        <div className="flex items-center gap-2 text-blue-400 animate-pulse bg-blue-500/10 px-4 py-2 border border-blue-500/30">
-                            <Lock className="w-5 h-5" />
-                            <span className="text-2xl font-bold uppercase tracking-tighter">BOARD FROZEN</span>
-                        </div>
-                    ) : (
-                        <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-2 text-cyan-500">
-                                <span className={`w-2 h-2 rounded-full ${socketStatus === "live" ? "bg-cyan-500 animate-ping" : socketStatus === "reconnecting" ? "bg-amber-400 animate-pulse" : socketStatus === "connecting" ? "bg-sky-400 animate-pulse" : "bg-red-500"}`} />
-                                <span className="text-sm font-bold tracking-widest uppercase">
-                                    {socketStatus === "live" ? "LIVE" : socketStatus === "reconnecting" ? "RECONNECTING" : socketStatus === "connecting" ? "CONNECTING" : "OFFLINE"}
-                                </span>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </header>
-
-            {/* Leaderboard */}
-            <div className={`flex-1 overflow-hidden transition-all duration-200 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
-                {isGlobalMode ? (
-                    /* ── 2-column layout for Global / overall ──────────── */
-                    <div className="grid grid-cols-2 gap-6 h-full">
-                        <div className="flex flex-col">
-                            <ColumnHeader />
-                            <div className="space-y-0.5">
-                                {leftCol.map((team: any) => (
-                                    <TeamRow 
-                                        key={team.teamId} 
-                                        team={team} 
-                                        isFrozen={data.hackathon.isFrozen}
-                                        isRecentlySubmitted={recentlySubmittedTeams.has(team.teamId)}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-                        <div className="flex flex-col">
-                            <ColumnHeader />
-                            <div className="space-y-0.5">
-                                {rightCol.map((team: any) => (
-                                    <TeamRow 
-                                        key={team.teamId} 
-                                        team={team} 
-                                        isFrozen={data.hackathon.isFrozen}
-                                        isRecentlySubmitted={recentlySubmittedTeams.has(team.teamId)}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-                    </div>
+            {/* Ticker Bar — scrolling submission feed */}
+            <div className="h-8 flex-shrink-0 bg-zinc-900/50 border-b border-zinc-800 overflow-hidden flex items-center px-4">
+                {submissionNotifications.length === 0 ? (
+                    <span className="text-[10px] text-zinc-600 uppercase tracking-[0.2em]">
+                        LIVE FEED
+                    </span>
                 ) : (
-                    /* ── Single-column for problem-specific view ───────── */
-                    <div>
-                        <ColumnHeader />
-                        <div className="space-y-0.5">
-                            {paginatedTeams.map((team: any) => (
-                                <TeamRow 
-                                    key={team.teamId} 
-                                    team={team} 
-                                    isFrozen={data.hackathon.isFrozen}
-                                    isRecentlySubmitted={recentlySubmittedTeams.has(team.teamId)}
-                                />
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {data.leaderboard.length === 0 && (
-                    <div className="h-64 flex items-center justify-center border border-dashed border-cyan-500/10 text-cyan-500/20 text-xs tracking-widest uppercase">
-                        WAITING FOR SCORES...
+                    <div className="flex items-center gap-8 whitespace-nowrap">
+                        {submissionNotifications.map(n => (
+                            <span key={n.id} className="text-xs text-cyan-300 animate-page-enter">
+                                <span className="font-bold">{n.teamName.toUpperCase()}</span>
+                                {" submitted "}
+                                <span className="text-zinc-400">{n.roundName}</span>
+                                {" "}
+                                <span className={n.timeBonus >= 0 ? "text-emerald-400" : "text-red-400"}>
+                                    ({n.timeBonus >= 0 ? "+" : ""}{n.timeBonus.toFixed(1)})
+                                </span>
+                            </span>
+                        ))}
                     </div>
                 )}
             </div>
 
-            {/* Footer */}
-            <footer className="mt-4 pt-3 border-t border-cyan-500/20 flex justify-between text-[10px] text-cyan-500/40 uppercase tracking-widest font-mono">
+            {/* Header Zone — name, badges, timers, status */}
+            <HeaderZone
+                hackathonName={data.hackathon.name}
+                activeTrackTitle={activeTrackTitle}
+                displayMode={data.displayConfig.mode}
+                isFrozen={data.hackathon.isFrozen}
+                socketStatus={socketStatus}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                lastUpdated={lastUpdated}
+                secondsSinceLiveUpdate={secondsSinceLiveUpdate}
+                isLive={data.hackathon.status === "live"}
+                currentPhase={currentPhase}
+                activeRound={activeRound}
+            />
+
+            {/* Leaderboard Body */}
+            <div className={`flex-1 min-h-0 overflow-hidden px-4 pt-2 relative ${
+                isTransitioning ? "animate-page-exit" : "animate-page-enter"
+            }`}>
+                {/* Frozen overlay */}
+                {data.hackathon.isFrozen && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                        <span className="text-6xl font-black text-blue-500/15 uppercase tracking-[0.3em] select-none">
+                            FROZEN
+                        </span>
+                    </div>
+                )}
+
+                <div className={data.hackathon.isFrozen ? "animate-freeze" : ""}>
+                    {isGlobalMode ? (
+                        /* 2-column layout for Global / overall */
+                        <div className="grid grid-cols-2 gap-8 h-full">
+                            <div className="flex flex-col">
+                                <ColumnHeader />
+                                <div className="flex flex-col gap-px">
+                                    {leftCol.map((team: any, i: number) => (
+                                        <TeamRow
+                                            key={team.teamId}
+                                            rank={team.rank}
+                                            teamName={team.teamName}
+                                            totalScore={team.totalScore}
+                                            trend={team.trend}
+                                            change={team.change}
+                                            isFrozen={data.hackathon.isFrozen}
+                                            isRecentlySubmitted={recentlySubmittedTeams.has(team.teamId)}
+                                            isEven={i % 2 === 0}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="flex flex-col">
+                                <ColumnHeader />
+                                <div className="flex flex-col gap-px">
+                                    {rightCol.map((team: any, i: number) => (
+                                        <TeamRow
+                                            key={team.teamId}
+                                            rank={team.rank}
+                                            teamName={team.teamName}
+                                            totalScore={team.totalScore}
+                                            trend={team.trend}
+                                            change={team.change}
+                                            isFrozen={data.hackathon.isFrozen}
+                                            isRecentlySubmitted={recentlySubmittedTeams.has(team.teamId)}
+                                            isEven={i % 2 === 0}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        /* Single-column for problem-specific view */
+                        <div>
+                            <ColumnHeader />
+                            <div className="flex flex-col gap-px">
+                                {paginatedTeams.map((team: any, i: number) => (
+                                    <TeamRow
+                                        key={team.teamId}
+                                        rank={team.rank}
+                                        teamName={team.teamName}
+                                        totalScore={team.totalScore}
+                                        trend={team.trend}
+                                        change={team.change}
+                                        isFrozen={data.hackathon.isFrozen}
+                                        isRecentlySubmitted={recentlySubmittedTeams.has(team.teamId)}
+                                        isEven={i % 2 === 0}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {data.leaderboard.length === 0 && (
+                        <div className="h-64 flex items-center justify-center border border-dashed border-zinc-800 text-zinc-600 text-xs tracking-widest uppercase">
+                            WAITING FOR SCORES...
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Footer Chrome */}
+            <footer className="h-7 flex-shrink-0 flex items-center justify-between px-4 border-t border-zinc-800 text-[10px] text-zinc-600 uppercase tracking-widest font-mono">
                 <div className="flex gap-6">
-                    <div>{slug.toUpperCase()}</div>
-                    <div className="hidden md:block">MODE: {data.displayConfig.mode}</div>
+                    <span>{slug.toUpperCase()}</span>
+                    <span className="hidden md:inline">MODE: {data.displayConfig.mode}</span>
                 </div>
                 <div className="flex gap-6">
-                    <div>TEAMS: {data.leaderboard.length}</div>
-                    <div className="text-cyan-500/20">hack&lt;a&gt;board</div>
+                    <span>TEAMS: {data.leaderboard.length}</span>
+                    <span className="text-zinc-700">hack&lt;a&gt;board</span>
                 </div>
             </footer>
 
             <CeremonyDisplay slug={slug} hackathonId={data?.hackathon?.id} />
         </div>
     )
-}
-
-// Helper to handle local overrides for auto-cycling
-async function getDisplayStateWithOverride(slug: string, problemId?: string | null) {
-    if (problemId) {
-        return await getTrackStanding(slug, problemId)
-    }
-    return await getDisplayState(slug)
 }

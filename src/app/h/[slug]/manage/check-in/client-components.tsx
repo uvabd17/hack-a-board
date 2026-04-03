@@ -62,16 +62,16 @@ export function CheckInList({ teams, slug }: { teams: Team[], slug: string }) {
     return (
         <div className="space-y-6">
             {/* Progress bar */}
-            <div className="p-5 border border-border bg-card/50 space-y-3">
+            <div className="p-5 border border-border bg-card/50 space-y-3 rounded-lg">
                 <div className="flex items-end gap-3">
-                    <p className="text-5xl font-bold font-mono">{checkedIn}</p>
-                    <p className="text-muted-foreground text-lg font-mono mb-1">/ {approved} teams</p>
+                    <p className="text-5xl font-bold">{checkedIn}</p>
+                    <p className="text-muted-foreground text-lg mb-1">/ {approved} teams</p>
                 </div>
                 {approved > 0 && (
                     <>
                         <div className="h-3 bg-muted rounded-full overflow-hidden">
                             <div
-                                className="h-full bg-green-500 transition-all duration-500"
+                                className="h-full bg-primary transition-all duration-500"
                                 style={{ width: `${(checkedIn / approved) * 100}%` }}
                             />
                         </div>
@@ -88,7 +88,7 @@ export function CheckInList({ teams, slug }: { teams: Team[], slug: string }) {
                         placeholder="Search by team name, invite code, or member name..."
                         value={search}
                         onChange={e => setSearch(e.target.value)}
-                        className="pl-9 font-mono"
+                        className="pl-9"
                         autoFocus
                     />
                 </div>
@@ -107,7 +107,7 @@ export function CheckInList({ teams, slug }: { teams: Team[], slug: string }) {
                 </div>
             </div>
 
-            <div className="text-xs text-muted-foreground font-mono">
+            <div className="text-xs text-muted-foreground">
                 {filtered.length} team(s) shown
             </div>
 
@@ -121,7 +121,7 @@ export function CheckInList({ teams, slug }: { teams: Team[], slug: string }) {
                     {filtered.map(team => (
                         <div
                             key={team.id}
-                            className={`flex items-center gap-4 p-4 border rounded-sm transition-all
+                            className={`flex items-center gap-4 p-4 border rounded-lg transition-all
                                 ${team.isCheckedIn
                                     ? 'border-green-500/30 bg-green-500/5'
                                     : 'border-border bg-card/50 hover:border-border/80'
@@ -133,14 +133,14 @@ export function CheckInList({ teams, slug }: { teams: Team[], slug: string }) {
                                 className="shrink-0 text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
                             >
                                 {team.isCheckedIn
-                                    ? <CheckSquare className="w-6 h-6 text-green-500" />
+                                    ? <CheckSquare className="w-6 h-6 text-primary" />
                                     : <Square className="w-6 h-6" />
                                 }
                             </button>
 
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                    <p className={`font-bold text-sm ${team.isCheckedIn ? 'text-green-400' : ''}`}>
+                                    <p className={`font-bold text-sm ${team.isCheckedIn ? 'text-primary' : ''}`}>
                                         {team.name}
                                     </p>
                                     <code className="text-[10px] bg-muted px-1 py-0.5 rounded font-mono text-muted-foreground">
@@ -158,7 +158,7 @@ export function CheckInList({ teams, slug }: { teams: Team[], slug: string }) {
                                         {team.participants.map(p => p.name).join(", ")}
                                     </span>
                                     {team.isCheckedIn && team.checkedInAt && (
-                                        <span className="text-green-500/70">
+                                        <span className="text-primary/70">
                                             ✓ {new Date(team.checkedInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </span>
                                     )}

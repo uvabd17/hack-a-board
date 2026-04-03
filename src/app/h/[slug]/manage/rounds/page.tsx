@@ -48,9 +48,9 @@ export default async function RoundsPage({ params }: { params: Promise<{ slug: s
         <div className="max-w-5xl mx-auto space-y-8">
             <LiveRefresher hackathonId={hackathon.id} />
             <div className="flex items-center justify-between">
-                <h1 className="text-3xl font-bold text-primary">JUDGING_PROTOCOLS</h1>
+                <h1 className="text-2xl font-bold tracking-tight">Scoring Rounds</h1>
                 <div className="text-sm text-muted-foreground">
-                    ROUNDS_ACTIVE: {hackathon.rounds.length}
+                    {hackathon.rounds.length} round{hackathon.rounds.length !== 1 ? "s" : ""} active
                 </div>
             </div>
 
@@ -66,7 +66,7 @@ export default async function RoundsPage({ params }: { params: Promise<{ slug: s
                 <div className="lg:col-span-2 space-y-6">
                     {hackathon.rounds.length === 0 ? (
                         <div className="p-12 border border-border border-dashed text-center text-muted-foreground">
-                            NO_PROTOCOLS_DEFINED
+                            No scoring rounds defined yet
                         </div>
                     ) : (
                         hackathon.rounds.map((round) => (

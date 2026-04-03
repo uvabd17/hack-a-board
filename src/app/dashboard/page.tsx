@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { Calendar, ArrowRight, Terminal, ArchiveRestore } from "lucide-react"
 import { canCreateHackathon, isPrivateBetaEnabled } from "@/lib/access-control"
+import { BrandFooter } from "@/components/ui/brand"
 
 export default async function DashboardPage() {
     const session = await auth()
@@ -17,18 +18,18 @@ export default async function DashboardPage() {
     const { activeHackathons, archivedHackathons } = await getUserHackathons()
 
     return (
-        <div className="min-h-screen bg-background p-8">
-            <header className="flex justify-between items-center mb-12 border-b pb-4">
-                <div className="flex items-center gap-3">
-                    <div className="bg-primary/10 p-2 rounded">
+        <div className="min-h-screen bg-background p-4 md:p-8">
+            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 md:mb-12 border-b pb-4">
+                <div className="flex items-center gap-3 min-w-0">
+                    <div className="bg-primary/10 p-2 rounded flex-shrink-0">
                         <Terminal className="w-6 h-6 text-primary" />
                     </div>
-                    <div>
-                        <h1 className="text-2xl font-bold tracking-tight">Organizer Dashboard</h1>
-                        <p className="text-muted-foreground text-sm">Welcome back, {session.user?.name}</p>
+                    <div className="min-w-0">
+                        <h1 className="text-2xl font-bold tracking-tight truncate">Organizer Dashboard</h1>
+                        <p className="text-muted-foreground text-sm truncate">Welcome back, {session.user?.name}</p>
                     </div>
                 </div>
-                <div className="flex gap-4">
+                <div className="flex gap-2 sm:gap-4 flex-shrink-0">
                     {canCreate && <CreateHackathonButton />}
                     <form action={async () => {
                         "use server"
@@ -46,7 +47,7 @@ export default async function DashboardPage() {
                     </div>
                 )}
                 {activeHackathons.length === 0 ? (
-                    <div className="text-center py-20 border-2 border-dashed rounded-lg bg-card/50">
+                    <div className="text-center py-20 border-2 border-dashed bg-card/50">
                         <Terminal className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
                         <h2 className="text-xl font-bold mb-2">No Active Hackathons</h2>
                         <p className="text-muted-foreground mb-6">
@@ -127,6 +128,7 @@ export default async function DashboardPage() {
                     </section>
                 )}
             </main>
+            <BrandFooter />
         </div>
     )
 }

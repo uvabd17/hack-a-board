@@ -4,6 +4,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatDate } from "@/lib/utils"
+import { BrandFooter } from "@/components/ui/brand"
 
 interface Phase {
     id: string;
@@ -41,7 +42,7 @@ export default async function PublicHackathonPage({ params }: { params: Promise<
     const isRegistrationOpen = hackathon.registrationDeadline ? new Date() < hackathon.registrationDeadline : true
 
     return (
-        <div className="min-h-screen bg-background text-foreground font-mono">
+        <div className="min-h-screen bg-background text-foreground">
             {/* Hero Section */}
             <section className="container mx-auto px-4 py-20 text-center">
                 <div className="space-y-6">
@@ -61,19 +62,23 @@ export default async function PublicHackathonPage({ params }: { params: Promise<
 
                     <div className="pt-8">
                         {isRegistrationOpen ? (
-                            <Button asChild size="lg" className="text-lg px-8 py-6 rounded-none border-2 border-primary bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all">
+                            <Button asChild size="lg" variant="brutal" className="text-lg px-8 py-6 font-black">
                                 <Link href={`/h/${hackathon.slug}/register`}>
-                                    &gt; REGISTER NOW
+                                    REGISTER NOW
                                 </Link>
                             </Button>
                         ) : (
-                            <Button disabled size="lg" variant="outline" className="text-lg px-8 py-6 rounded-none opacity-50 cursor-not-allowed">
+                            <Button disabled size="lg" variant="outline" className="text-lg px-8 py-6 opacity-50 cursor-not-allowed">
                                 REGISTRATION CLOSED
                             </Button>
                         )}
-                        <div className="mt-4">
-                            <Link href={`/h/${hackathon.slug}/display`} className="text-sm text-muted-foreground hover:text-primary transition-colors uppercase tracking-widest">
-                                📊 View Live Leaderboard →
+                        <div className="mt-4 flex flex-col sm:flex-row items-center gap-3 justify-center">
+                            <Link href={`/h/${hackathon.slug}/participant-login`} className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                                Already registered? Log in →
+                            </Link>
+                            <span className="hidden sm:inline text-muted-foreground/30">·</span>
+                            <Link href={`/h/${hackathon.slug}/display`} className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                                View leaderboard →
                             </Link>
                         </div>
                     </div>
@@ -84,8 +89,8 @@ export default async function PublicHackathonPage({ params }: { params: Promise<
             {hackathon.description && (
                 <section className="container mx-auto px-4 py-16 border-t border-border">
                     <div className="max-w-3xl mx-auto space-y-8">
-                        <h2 className="text-2xl font-bold text-primary flex items-center gap-2">
-                            <span className="text-muted-foreground">01.</span> ABOUT THIS HACKATHON
+                        <h2 className="text-xl font-bold tracking-tight flex items-center gap-2">
+                            <span className="text-muted-foreground">01.</span> About This Hackathon
                         </h2>
                         <div className="prose prose-invert max-w-none text-muted-foreground leading-relaxed whitespace-pre-wrap">
                             {hackathon.description}
@@ -98,12 +103,12 @@ export default async function PublicHackathonPage({ params }: { params: Promise<
             {hackathon.phases.length > 0 && (
                 <section className="container mx-auto px-4 py-16 border-t border-border">
                     <div className="max-w-3xl mx-auto space-y-8">
-                        <h2 className="text-2xl font-bold text-primary flex items-center gap-2">
-                            <span className="text-muted-foreground">02.</span> EVENT SCHEDULE
+                        <h2 className="text-xl font-bold tracking-tight flex items-center gap-2">
+                            <span className="text-muted-foreground">02.</span> Event Schedule
                         </h2>
                         <div className="space-y-4">
                             {hackathon.phases.map((phase: Phase) => (
-                                <div key={phase.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 border border-border bg-card/50 hover:bg-card hover:border-primary/50 transition-colors">
+                                <div key={phase.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 border border-border bg-card/50 rounded-lg hover:bg-card hover:border-primary/50 transition-colors">
                                     <div>
                                         <h3 className="font-bold text-lg text-foreground">{phase.name}</h3>
                                         <p className="text-sm text-muted-foreground">
@@ -126,8 +131,8 @@ export default async function PublicHackathonPage({ params }: { params: Promise<
             {hackathon.problemStatements.length > 0 && (
                 <section className="container mx-auto px-4 py-16 border-t border-border">
                     <div className="max-w-5xl mx-auto space-y-8">
-                        <h2 className="text-2xl font-bold text-primary flex items-center gap-2">
-                            <span className="text-muted-foreground">03.</span> CHALLENGE TRACKS
+                        <h2 className="text-xl font-bold tracking-tight flex items-center gap-2">
+                            <span className="text-muted-foreground">03.</span> Challenge Tracks
                         </h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {hackathon.problemStatements.map((ps: ProblemStatement) => (
@@ -153,8 +158,8 @@ export default async function PublicHackathonPage({ params }: { params: Promise<
             )}
 
             {/* Footer */}
-            <footer className="border-t border-border py-8 text-center text-sm text-muted-foreground">
-                <p>Powered by hack&lt;a&gt;board</p>
+            <footer className="border-t border-border">
+                <BrandFooter />
             </footer>
         </div>
     )

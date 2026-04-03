@@ -126,7 +126,7 @@ export function ShiftPhasesControl({ hackathonId }: { hackathonId: string }) {
                             value={shiftMinutes}
                             onChange={e => setShiftMinutes(parseInt(e.target.value) || 0)}
                             placeholder="e.g., +30 or -15"
-                            className="font-mono"
+                            className=""
                         />
                         <p className="text-[10px] text-muted-foreground">
                             Positive = delay • Negative = move earlier • Max ±1440 (24h)
@@ -138,7 +138,7 @@ export function ShiftPhasesControl({ hackathonId }: { hackathonId: string }) {
                         variant="secondary"
                         className="h-10"
                     >
-                        {loading ? "SHIFTING..." : "SHIFT ALL"}
+                        {loading ? "Shifting..." : "Shift All"}
                     </Button>
                 </div>
 
@@ -229,10 +229,10 @@ export function PhaseItem({
                     {error && <p className="text-xs text-destructive">{error}</p>}
                     <div className="flex gap-2">
                         <Button type="submit" size="sm" disabled={loading} className="gap-1 flex-1">
-                            <Check size={12} /> {loading ? "SAVING..." : "SAVE"}
+                            <Check size={12} /> {loading ? "Saving..." : "Save"}
                         </Button>
                         <Button type="button" variant="outline" size="sm" onClick={() => setEditing(false)} className="gap-1">
-                            <X size={12} /> CANCEL
+                            <X size={12} /> Cancel
                         </Button>
                     </div>
                 </form>

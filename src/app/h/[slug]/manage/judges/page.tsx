@@ -34,9 +34,9 @@ export default async function JudgesPage({ params }: { params: Promise<{ slug: s
     return (
         <div className="max-w-4xl mx-auto space-y-8">
             <div className="flex items-center justify-between">
-                <h1 className="text-3xl font-bold text-primary">JUDGE_ROSTER</h1>
+                <h1 className="text-2xl font-bold tracking-tight">Judges</h1>
                 <div className="text-sm text-muted-foreground">
-                    ACTIVE_UNITS: {hackathon.judges.filter((j: Judge) => j.isActive).length}
+                    {hackathon.judges.filter((j: Judge) => j.isActive).length} active
                 </div>
             </div>
 

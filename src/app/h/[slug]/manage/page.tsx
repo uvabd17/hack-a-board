@@ -43,10 +43,10 @@ export default async function ManagePage({ params }: { params: Promise<{ slug: s
     return (
         <div className="space-y-8 max-w-5xl">
             {/* Header */}
-            <div className="flex items-start justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold text-primary tracking-tight">EVENT OVERVIEW</h1>
-                    <p className="text-muted-foreground text-xs mt-1 uppercase tracking-widest">{hackathon.name}</p>
+            <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                    <h1 className="text-2xl font-bold tracking-tight">Event Overview</h1>
+                    <p className="text-muted-foreground text-xs mt-1 uppercase tracking-widest truncate">{hackathon.name}</p>
                 </div>
                 <Badge
                     variant={hackathon.status === 'live' ? 'default' : hackathon.status === 'ended' ? 'destructive' : 'secondary'}
@@ -68,7 +68,7 @@ export default async function ManagePage({ params }: { params: Promise<{ slug: s
             </div>
 
             {/* Check-in Progress */}
-            <div className="p-6 border border-border bg-card/50 space-y-3">
+            <div className="p-4 md:p-6 border border-border bg-card/50 space-y-3 rounded-lg">
                 <div className="flex items-center justify-between">
                     <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                         <CheckSquare className="w-4 h-4" /> CHECK-IN PROGRESS
@@ -78,7 +78,7 @@ export default async function ManagePage({ params }: { params: Promise<{ slug: s
                     </Button>
                 </div>
                 <div className="flex items-end gap-3">
-                    <p className="text-4xl font-bold font-mono">{checkedInTeams}<span className="text-muted-foreground text-2xl">/{hackathon._count.teams}</span></p>
+                    <p className="text-3xl md:text-4xl font-bold font-mono">{checkedInTeams}<span className="text-muted-foreground text-xl md:text-2xl">/{hackathon._count.teams}</span></p>
                     <p className="text-muted-foreground text-xs pb-1">teams checked in</p>
                 </div>
                 {hackathon._count.teams > 0 && (
@@ -100,7 +100,7 @@ export default async function ManagePage({ params }: { params: Promise<{ slug: s
 
             {/* Problem Statements State */}
             {hackathon.problemStatements.length > 0 && (
-                <div className="border border-border bg-card/50 p-6 space-y-4">
+                <div className="border border-border bg-card/50 p-4 md:p-6 space-y-4 rounded-lg">
                     <div className="flex items-center justify-between">
                         <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                             <BarChart2 className="w-4 h-4" /> PROBLEM TRACKS
@@ -109,9 +109,9 @@ export default async function ManagePage({ params }: { params: Promise<{ slug: s
                             <Link href={`/h/${slug}/manage/problems`}>Manage →</Link>
                         </Button>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                         {hackathon.problemStatements.map(p => (
-                            <div key={p.title} className="flex items-center gap-2 p-2 border border-border/50 rounded text-xs">
+                            <div key={p.title} className="flex items-center gap-2 p-2 border border-border/50 rounded text-xs min-w-0">
                                 <span>{p.icon || "📌"}</span>
                                 <span className="font-medium truncate">{p.title}</span>
                                 <Badge variant={p.isReleased ? "default" : "secondary"} className="ml-auto text-[9px] py-0">
@@ -125,7 +125,7 @@ export default async function ManagePage({ params }: { params: Promise<{ slug: s
 
             {/* Phases / Schedule */}
             {hackathon.phases.length > 0 && (
-                <div className="border border-border bg-card/50 p-6 space-y-4">
+                <div className="border border-border bg-card/50 p-4 md:p-6 space-y-4 rounded-lg">
                     <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">EVENT SCHEDULE</p>
                     <div className="space-y-2">
                         {hackathon.phases.map(phase => {
@@ -133,14 +133,14 @@ export default async function ManagePage({ params }: { params: Promise<{ slug: s
                             const isActive = now >= phase.startTime && now <= phase.endTime
                             const isPast = now > phase.endTime
                             return (
-                                <div key={phase.name} className={`flex items-center justify-between p-3 border text-xs ${isActive ? 'border-primary/50 bg-primary/5' : 'border-border/50'}`}>
-                                    <div className="flex items-center gap-3">
+                                <div key={phase.name} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-3 p-3 border text-xs ${isActive ? 'border-primary/50 bg-primary/5' : 'border-border/50'}`}>
+                                    <div className="flex items-center gap-3 min-w-0">
                                         {isActive && <span className="w-2 h-2 rounded-full bg-primary animate-ping" />}
                                         {isPast && !isActive && <span className="w-2 h-2 rounded-full bg-muted-foreground" />}
                                         {!isActive && !isPast && <span className="w-2 h-2 rounded-full border border-muted-foreground" />}
                                         <span className={`font-bold uppercase ${isActive ? 'text-primary' : isPast ? 'text-muted-foreground line-through' : ''}`}>{phase.name}</span>
                                     </div>
-                                    <div className="text-muted-foreground font-mono">
+                                    <div className="text-muted-foreground font-mono flex-shrink-0 pl-5 sm:pl-0">
                                         {phase.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} → {phase.endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </div>
                                 </div>
@@ -155,9 +155,9 @@ export default async function ManagePage({ params }: { params: Promise<{ slug: s
 
 function StatCard({ label, value, sub }: { label: string, value: number, sub?: string }) {
     return (
-        <div className="p-5 border border-border bg-card rounded-none space-y-1">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-widest">{label}</p>
-            <p className="text-4xl font-bold font-mono">{value}</p>
+        <div className="p-3 md:p-5 border-2 border-[var(--brutal-border)] bg-card shadow-[3px_3px_0_var(--brutal-shadow)] space-y-1">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">{label}</p>
+            <p className="text-3xl md:text-5xl font-black font-mono tabular-nums">{value}</p>
             {sub && <p className="text-[10px] text-muted-foreground">{sub}</p>}
         </div>
     )
@@ -165,10 +165,10 @@ function StatCard({ label, value, sub }: { label: string, value: number, sub?: s
 
 function QuickLink({ href, icon, label, desc }: { href: string, icon: string, label: string, desc: string }) {
     return (
-        <Link href={href} className="p-5 border border-border bg-card/50 hover:border-primary/50 hover:bg-primary/5 transition-all block group">
+        <Link href={href} className="p-5 border-2 border-border bg-card/50 hover:-translate-y-1 hover:shadow-[4px_4px_0_var(--role-accent,var(--brutal-shadow))] transition-all duration-150 block group">
             <div className="flex items-center gap-2 mb-2">
                 <span>{icon}</span>
-                <p className="text-xs font-bold uppercase tracking-widest group-hover:text-primary transition-colors">{label}</p>
+                <p className="text-xs font-bold uppercase tracking-widest group-hover:text-[var(--role-accent)] transition-colors">{label}</p>
             </div>
             <p className="text-[11px] text-muted-foreground">{desc}</p>
         </Link>

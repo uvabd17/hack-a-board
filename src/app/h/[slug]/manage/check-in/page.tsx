@@ -33,12 +33,12 @@ export default async function CheckInPage({ params }: { params: Promise<{ slug: 
         <div className="max-w-3xl mx-auto space-y-8">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-primary">CHECK-IN</h1>
+                    <h1 className="text-2xl font-bold tracking-tight">Check-in</h1>
                     <p className="text-xs text-muted-foreground mt-1 uppercase tracking-widest">
                         Mark teams as present on arrival
                     </p>
                 </div>
-                <div className="text-right font-mono">
+                <div className="text-right">
                     <p className="text-2xl font-bold">{checkedIn}/{approved}</p>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-widest">PRESENT</p>
                 </div>

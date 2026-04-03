@@ -2,8 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
-import { ArrowDown, ArrowUp, Lock, Minus, Trophy } from "lucide-react"
+import { Lock } from "lucide-react"
 import { CountdownTimer } from "@/components/countdown-timer"
+import { TeamRow } from "@/components/display/team-row"
+import { ColumnHeader } from "@/components/display/column-header"
+import { ConnectionStatus } from "@/components/display/connection-status"
 
 type Team = {
   teamId: string
@@ -45,7 +48,7 @@ function seedTeams(): Team[] {
   return BASE_TEAMS.map((t, i) => ({
     ...t,
     rank: i + 1,
-    trend: "same",
+    trend: "same" as const,
     change: 0,
   }))
 }
@@ -53,79 +56,20 @@ function seedTeams(): Team[] {
 function tickLeaderboard(current: Team[]): Team[] {
   const boosted = [...current]
   const picked = new Set<number>()
-
   while (picked.size < 5) {
     picked.add(Math.floor(Math.random() * boosted.length))
   }
-
   picked.forEach((idx) => {
     const gain = Number((Math.random() * 8 + 1.2).toFixed(1))
-    boosted[idx] = {
-      ...boosted[idx],
-      totalScore: Number((boosted[idx].totalScore + gain).toFixed(1)),
-    }
+    boosted[idx] = { ...boosted[idx], totalScore: Number((boosted[idx].totalScore + gain).toFixed(1)) }
   })
-
   const oldRank = new Map(boosted.map((t) => [t.teamId, t.rank]))
   boosted.sort((a, b) => b.totalScore - a.totalScore)
-
   return boosted.map((t, index) => {
     const rank = index + 1
     const prev = oldRank.get(t.teamId) ?? rank
-    return {
-      ...t,
-      rank,
-      trend: rank < prev ? "up" : rank > prev ? "down" : "same",
-      change: Math.abs(rank - prev),
-    }
+    return { ...t, rank, trend: rank < prev ? "up" : rank > prev ? "down" : "same", change: Math.abs(rank - prev) }
   })
-}
-
-function TeamRow({ team }: { team: Team }) {
-  return (
-    <div
-      className={`
-        grid grid-cols-12 gap-2 items-center px-3 py-1.5 border rounded-sm
-        ${team.rank <= 3
-          ? "bg-cyan-500/10 border-cyan-500/20 shadow-[0_0_10px_rgba(6,182,212,0.06)]"
-          : "border-cyan-500/5 bg-cyan-500/[0.02]"}
-      `}
-    >
-      <div className="col-span-1 font-bold text-base flex items-center">
-        <span className={team.rank <= 3 ? "text-yellow-500" : "text-cyan-500/50"}>
-          {team.rank === 1 && <Trophy className="w-3.5 h-3.5 inline mr-1" />}
-          {team.rank.toString().padStart(2, "0")}
-        </span>
-      </div>
-
-      <div className="col-span-7 font-bold truncate tracking-tight text-sm">{team.teamName.toUpperCase()}</div>
-
-      <div className="col-span-2 text-right font-bold text-base tabular-nums">{team.totalScore.toFixed(1)}</div>
-
-      <div className="col-span-2 text-right flex justify-end items-center gap-1">
-        {team.change > 0 && (
-          <span className={`text-[9px] font-bold ${team.trend === "up" ? "text-cyan-400" : "text-red-500"}`}>
-            {team.trend === "up" ? "+" : "-"}
-            {team.change}
-          </span>
-        )}
-        {team.trend === "up" && <ArrowUp className="w-3.5 h-3.5 text-cyan-400" />}
-        {team.trend === "down" && <ArrowDown className="w-3.5 h-3.5 text-red-500" />}
-        {team.trend === "same" && <Minus className="w-3.5 h-3.5 text-cyan-500/10" />}
-      </div>
-    </div>
-  )
-}
-
-function ColumnHeader() {
-  return (
-    <div className="grid grid-cols-12 gap-2 text-cyan-500/40 uppercase text-[9px] px-3 font-bold tracking-widest border-b border-cyan-500/10 pb-1.5 mb-1">
-      <div className="col-span-1">#</div>
-      <div className="col-span-7">TEAM</div>
-      <div className="col-span-2 text-right">SCORE</div>
-      <div className="col-span-2 text-right">Δ</div>
-    </div>
-  )
 }
 
 export default function DemoDisplayPage() {
@@ -141,17 +85,14 @@ export default function DemoDisplayPage() {
       setLeaderboard((prev) => tickLeaderboard(prev))
       setLastUpdated(new Date())
     }, 3500)
-
     return () => clearInterval(scoreInterval)
   }, [])
 
   useEffect(() => {
     if (leaderboard.length <= TEAMS_PER_PAGE) return
-
     const pageInterval = setInterval(() => {
       setCurrentPage((prev) => (prev + 1) % Math.ceil(leaderboard.length / TEAMS_PER_PAGE))
     }, 5000)
-
     return () => clearInterval(pageInterval)
   }, [leaderboard.length])
 
@@ -167,10 +108,9 @@ export default function DemoDisplayPage() {
   const roundEndMs = Date.now() + 1000 * 60 * 19
 
   return (
-    <div className="min-h-screen bg-black text-cyan-500 font-mono p-6 overflow-hidden flex flex-col">
-      <div className="fixed inset-0 bg-[radial-gradient(circle_800px_at_50%_-100px,#16a34a15,transparent)] pointer-events-none" />
-
-      <div className="border-b border-cyan-500/20 pb-4 mb-4 grid grid-cols-2 gap-8 relative z-10">
+    <div className="h-screen bg-[#0a0a0f] font-mono overflow-hidden flex flex-col" data-role="display">
+      {/* Timer Bar */}
+      <div className="border-b border-zinc-800 py-4 px-4 grid grid-cols-2 gap-8 flex-shrink-0">
         <div className="flex justify-center">
           <CountdownTimer targetMs={phaseEndMs} label="Hacking ends in" size="xl" />
         </div>
@@ -179,58 +119,76 @@ export default function DemoDisplayPage() {
         </div>
       </div>
 
-      <header className="border-b border-cyan-500/30 pb-4 mb-4 flex justify-between items-end relative z-10">
-        <div className="space-y-1">
-          <h1 className="text-4xl font-bold tracking-tighter uppercase leading-none">DEMO HACKATHON 2026</h1>
-          <div className="flex items-center gap-3">
-            <Badge variant="outline" className="text-xs border-cyan-500/50 text-cyan-500 px-2 rounded-none font-bold">
+      {/* Header */}
+      <header className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 flex-shrink-0">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-3xl font-black tracking-tighter uppercase leading-none text-zinc-100">DEMO HACKATHON 2026</h1>
+          <div className="flex items-center gap-3 mt-1">
+            <Badge variant="outline" className="text-[11px] border-cyan-500/30 text-cyan-400 px-2.5 font-bold">
               ALL TEAMS
             </Badge>
-            <p className="text-cyan-500/40 text-xs">
-              {totalPages > 1 && `PAGE ${currentPage + 1} · `}
+            <span className="text-[10px] text-zinc-600 tracking-wider">
+              {totalPages > 1 && `PAGE ${currentPage + 1}/${totalPages} · `}
               {lastUpdated.toLocaleTimeString()}
-            </p>
+            </span>
           </div>
         </div>
-        <div className="text-right">
-          <div className="flex items-center gap-2 text-cyan-500">
-            <span className="w-2 h-2 bg-cyan-500 rounded-full animate-ping" />
-            <span className="text-sm font-bold tracking-widest uppercase">LIVE</span>
-          </div>
-        </div>
+        <ConnectionStatus status="live" />
       </header>
 
-      <div className="flex-1 overflow-hidden relative z-10">
-        <div className="grid grid-cols-2 gap-6 h-full">
+      {/* Leaderboard Body */}
+      <div className="flex-1 min-h-0 overflow-hidden px-4 pt-2">
+        <div className="grid grid-cols-2 gap-8 h-full">
           <div className="flex flex-col">
             <ColumnHeader />
-            <div className="space-y-0.5">
-              {leftCol.map((team) => (
-                <TeamRow key={team.teamId} team={team} />
+            <div className="flex flex-col gap-px">
+              {leftCol.map((team, i) => (
+                <TeamRow
+                  key={team.teamId}
+                  rank={team.rank}
+                  teamName={team.teamName}
+                  totalScore={team.totalScore}
+                  trend={team.trend}
+                  change={team.change}
+                  isFrozen={false}
+                  isRecentlySubmitted={false}
+                  isEven={i % 2 === 0}
+                />
               ))}
             </div>
           </div>
           <div className="flex flex-col">
             <ColumnHeader />
-            <div className="space-y-0.5">
-              {rightCol.map((team) => (
-                <TeamRow key={team.teamId} team={team} />
+            <div className="flex flex-col gap-px">
+              {rightCol.map((team, i) => (
+                <TeamRow
+                  key={team.teamId}
+                  rank={team.rank}
+                  teamName={team.teamName}
+                  totalScore={team.totalScore}
+                  trend={team.trend}
+                  change={team.change}
+                  isFrozen={false}
+                  isRecentlySubmitted={false}
+                  isEven={i % 2 === 0}
+                />
               ))}
             </div>
           </div>
         </div>
       </div>
 
-      <footer className="mt-4 pt-3 border-t border-cyan-500/20 flex justify-between text-[10px] text-cyan-500/40 uppercase tracking-widest font-mono relative z-10">
+      {/* Footer */}
+      <footer className="h-7 flex-shrink-0 flex items-center justify-between px-4 border-t border-zinc-800 text-[10px] text-zinc-600 uppercase tracking-widest">
         <div className="flex gap-6">
-          <div>DEMO</div>
-          <div className="hidden md:block">MODE: GLOBAL</div>
+          <span>DEMO</span>
+          <span className="hidden md:inline">MODE: GLOBAL</span>
         </div>
         <div className="flex gap-6">
-          <div>TEAMS: {leaderboard.length}</div>
-          <div className="text-cyan-500/20 inline-flex items-center gap-1">
-            <Lock size={10} /> NON-PRODUCTION DATA
-          </div>
+          <span>TEAMS: {leaderboard.length}</span>
+          <span className="text-zinc-700 inline-flex items-center gap-1">
+            <Lock size={10} /> DEMO DATA
+          </span>
         </div>
       </footer>
     </div>

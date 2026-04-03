@@ -59,7 +59,7 @@ export function LifecycleControls({
 
     if (transitions.length === 0) {
         return (
-            <div className="border border-border bg-card/50 p-4 flex items-center justify-between">
+            <div className="border border-border bg-card/50 p-4 flex items-center justify-between rounded-lg">
                 <div className="flex items-center gap-3">
                     <span className="w-2 h-2 rounded-full bg-muted-foreground" />
                     <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
@@ -86,9 +86,9 @@ export function LifecycleControls({
     }
 
     return (
-        <div className="border border-border bg-card/50 p-4 flex items-center justify-between flex-wrap gap-3">
+        <div className="border border-border bg-card/50 p-4 flex items-center justify-between rounded-lg flex-wrap gap-3">
             <div className="flex items-center gap-3">
-                <span className={`w-2 h-2 rounded-full ${status === "live" ? "bg-green-500 animate-pulse" : status === "published" ? "bg-blue-500" : "bg-muted-foreground"}`} />
+                <span className={`w-2 h-2 rounded-full ${status === "live" ? "bg-primary animate-pulse" : status === "published" ? "bg-blue-500" : "bg-muted-foreground"}`} />
                 <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                     EVENT STATUS: {status.toUpperCase()}
                 </p>

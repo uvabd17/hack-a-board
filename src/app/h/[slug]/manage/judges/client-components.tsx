@@ -31,7 +31,7 @@ export function JudgeForm({ hackathonId }: { hackathonId: string }) {
     return (
         <Card className="border-primary/20">
             <CardHeader>
-                <CardTitle>AUTHORIZE_JUDGE</CardTitle>
+                <CardTitle>Add Judge</CardTitle>
                 <CardDescription>Grant access to scoring interface.</CardDescription>
             </CardHeader>
             <CardContent>
@@ -40,7 +40,7 @@ export function JudgeForm({ hackathonId }: { hackathonId: string }) {
                         <Input name="name" placeholder="Judge Name (e.g. Jane Doe)" required />
                     </div>
                     <Button type="submit" disabled={loading}>
-                        {loading ? "ADDING..." : "ADD_JUDGE"}
+                        {loading ? "Adding..." : "Add Judge"}
                     </Button>
                 </form>
             </CardContent>
@@ -55,7 +55,7 @@ export function JudgeItem({ judge, hackathonId, slug }: { judge: Judge, hackatho
 
     useEffect(() => {
         if (showQr && !qrUrl) {
-            // Correct URL: /h/{slug}/qr/{token} — sets cookie then redirects to judge panel
+            // Use current origin — most reliable since you're already on the right host/port
             const url = `${window.location.origin}/h/${slug}/qr/${judge.token}`
             QRCode.toDataURL(url, { width: 300, margin: 2 }).then(setQrUrl)
         }
@@ -90,11 +90,11 @@ export function JudgeItem({ judge, hackathonId, slug }: { judge: Judge, hackatho
                 <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm" onClick={() => setShowQr(!showQr)}>
                         <QrCode size={16} className="mr-2" />
-                        {showQr ? "HIDE_QR" : "SHOW_QR"}
+                        {showQr ? "Hide QR" : "Show QR"}
                     </Button>
 
                     <Button variant="ghost" size="icon" onClick={handleToggle} disabled={loading} title={judge.isActive ? "Deactivate" : "Activate"} className={judge.isActive ? "" : "text-muted-foreground"}>
-                        {judge.isActive ? <UserCheck size={16} className="text-green-600" /> : <UserX size={16} />}
+                        {judge.isActive ? <UserCheck size={16} className="text-primary" /> : <UserX size={16} />}
                     </Button>
 
                     <Button variant="ghost" size="icon" className="text-destructive" onClick={handleDelete} disabled={loading}>
@@ -111,7 +111,7 @@ export function JudgeItem({ judge, hackathonId, slug }: { judge: Judge, hackatho
                     ) : (
                         <p>Generating QR...</p>
                     )}
-                    <p className="text-xs text-black mt-2 font-mono">{judge.name}</p>
+                    <p className="text-xs text-foreground mt-2 font-mono">{judge.name}</p>
                 </div>
             )}
         </Card>

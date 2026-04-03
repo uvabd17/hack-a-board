@@ -36,7 +36,7 @@ export default async function PhasesPage({
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-2xl font-bold tracking-tight">PHASES</h1>
+                <h1 className="text-2xl font-bold tracking-tight">Schedule</h1>
                 <p className="text-muted-foreground text-sm mt-1">
                     Schedule blocks shown on the event display (Check-in, Hacking, Judging, Ceremony…)
                 </p>
@@ -55,14 +55,14 @@ export default async function PhasesPage({
                 <div className="lg:col-span-2 space-y-3">
                     {phases.length === 0 ? (
                         <div className="border border-dashed border-primary/20 p-8 text-center">
-                            <p className="text-muted-foreground text-sm font-mono">NO_PHASES_DEFINED</p>
+                            <p className="text-muted-foreground text-sm">No phases defined yet</p>
                             <p className="text-muted-foreground text-xs mt-2">
                                 Add phases to show a live schedule on the display screen.
                             </p>
                         </div>
                     ) : (
                         <>
-                            <div className="text-xs text-muted-foreground font-mono uppercase tracking-wider mb-2">
+                            <div className="text-xs text-muted-foreground uppercase tracking-wider mb-2">
                                 {phases.length} phase{phases.length !== 1 ? "s" : ""} scheduled
                             </div>
                             {phases.map((phase) => (

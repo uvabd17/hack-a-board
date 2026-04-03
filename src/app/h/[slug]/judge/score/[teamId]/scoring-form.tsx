@@ -1,16 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { submitScore } from "@/actions/scoring"
-import { recordJudgingAttempt } from "@/actions/judging"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle2, AlertCircle, Trophy } from "lucide-react"
-
-// Native range input is safer if Slider component missing, but let's try to be premium.
-// Actually, I'll use a styled native input for MVP reliability unless I check for Slider.
-// But I can build a quick custom slider UI.
 
 interface Criterion {
     id: string;
@@ -26,6 +21,14 @@ interface Round {
     criteria: Criterion[];
 }
 
+const SCORE_LABELS: Record<number, string> = {
+    1: "Poor",
+    2: "Fair",
+    3: "Good",
+    4: "Great",
+    5: "Excellent",
+}
+
 export function ScoringForm({
     hackathonId,
     teamId,
@@ -39,7 +42,7 @@ export function ScoringForm({
 }) {
     const [scores, setScores] = useState<Record<string, number>>(initialScores)
     const [loading, setLoading] = useState(false)
-    const [status, setStatus] = useState<{ 
+    const [status, setStatus] = useState<{
         error?: string
         success?: string
         submissionStatus?: {
@@ -51,8 +54,7 @@ export function ScoringForm({
         }
     } | null>(null)
 
-    // Ensure at least one round exists
-    if (rounds.length === 0) return <div>No scoring rounds configured yet</div>
+    if (rounds.length === 0) return <div className="text-muted-foreground p-4">No scoring rounds configured yet</div>
 
     const handleScoreChange = (criterionId: string, value: number) => {
         setScores(prev => ({ ...prev, [criterionId]: value }))
@@ -62,7 +64,6 @@ export function ScoringForm({
         setLoading(true)
         setStatus(null)
 
-        // Filter scores for this round only
         const round = rounds.find(r => r.id === roundId)
         if (!round) return
 
@@ -71,7 +72,7 @@ export function ScoringForm({
         round.criteria.forEach(c => {
             const val = scores[c.id]
             if (val === undefined) allFilled = false
-            roundScores[c.id] = val || 0 // Send 0 or handle error? verification usually blocks execution.
+            roundScores[c.id] = val || 0
         })
 
         if (!allFilled) {
@@ -90,25 +91,24 @@ export function ScoringForm({
         if (res.error) {
             setStatus({ error: res.error })
         } else {
-            // Check if this score triggered a submission
             if (res.submissionStatus?.newSubmission && res.submissionStatus.submitted) {
                 const bonus = res.submissionStatus.timeBonus || 0
-                const bonusText = bonus > 0 
-                    ? `+${bonus} time bonus!` 
-                    : bonus < 0 
-                    ? `${bonus} time penalty` 
+                const bonusText = bonus > 0
+                    ? `+${bonus} time bonus!`
+                    : bonus < 0
+                    ? `${bonus} time penalty`
                     : ''
-                setStatus({ 
-                    success: `🎉 Team submitted! ${bonusText}`,
+                setStatus({
+                    success: `Team submitted! ${bonusText}`,
                     submissionStatus: res.submissionStatus
                 })
             } else if (res.submissionStatus?.submitted) {
-                setStatus({ 
+                setStatus({
                     success: `Scores saved. Team already submitted (${res.submissionStatus.judgeCount}/${res.submissionStatus.requiredJudges} judges).`,
                     submissionStatus: res.submissionStatus
                 })
             } else {
-                setStatus({ 
+                setStatus({
                     success: `Scores saved! Team progress: ${res.submissionStatus?.judgeCount}/${res.submissionStatus?.requiredJudges} judges completed.`,
                     submissionStatus: res.submissionStatus
                 })
@@ -119,81 +119,100 @@ export function ScoringForm({
 
     return (
         <Tabs defaultValue={rounds[0].id} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 bg-zinc-800">
+            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 bg-secondary">
                 {rounds.map(round => (
-                    <TabsTrigger key={round.id} value={round.id} className="data-[state=active]:bg-cyan-600 data-[state=active]:text-white">
+                    <TabsTrigger
+                        key={round.id}
+                        value={round.id}
+                        className="data-[state=active]:bg-[var(--role-accent)] data-[state=active]:text-[var(--role-accent-foreground)] font-bold"
+                    >
                         {round.name}
                     </TabsTrigger>
                 ))}
             </TabsList>
 
             {rounds.map(round => (
-                <TabsContent key={round.id} value={round.id} className="space-y-6 mt-6">
-                    <div className="flex justify-between items-center bg-zinc-900/50 p-3 border-x border-t border-zinc-800 rounded-t-lg">
-                        <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">
+                <TabsContent key={round.id} value={round.id} className="space-y-5 mt-5">
+                    {/* Round header */}
+                    <div className="flex justify-between items-center bg-card p-3 border-2 border-border rounded-lg">
+                        <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
                             Round: {round.name}
                         </div>
                         {round.criteria.some(c => initialScores[c.id] !== undefined) && (
-                            <Badge variant="outline" className="text-[10px] border-yellow-500/30 text-yellow-500 bg-yellow-500/5 rounded-none px-2 py-0">
+                            <Badge variant="outline" className="text-[10px] border-amber-500/30 text-amber-500 bg-amber-500/5 px-2 py-0">
                                 RE-SCORING
                             </Badge>
                         )}
                     </div>
 
-                    <div className="space-y-6">
+                    {/* Criteria with chunky score buttons */}
+                    <div className="space-y-5">
                         {round.criteria.map(criterion => (
-                            <div key={criterion.id} className="p-4 bg-zinc-900 border border-zinc-800 rounded-lg space-y-4">
+                            <div key={criterion.id} className="border-2 border-border bg-card p-4 space-y-3 rounded-lg">
                                 <div className="flex justify-between items-center">
-                                    <label className="font-bold text-lg text-white">{criterion.name}</label>
-                                    <span className="text-2xl font-mono text-cyan-400">
-                                        {scores[criterion.id] || 0}<span className="text-zinc-600 text-sm">/5</span>
+                                    <label className="font-bold text-lg text-foreground">{criterion.name}</label>
+                                    <span className="text-2xl font-mono font-black text-[var(--role-accent)] tabular-nums">
+                                        {scores[criterion.id] || 0}<span className="text-muted-foreground text-sm">/5</span>
                                     </span>
                                 </div>
 
-                                <input
-                                    type="range"
-                                    min="1"
-                                    max="5"
-                                    step="1"
-                                    value={scores[criterion.id] || 0}
-                                    onChange={(e) => handleScoreChange(criterion.id, parseInt(e.target.value))}
-                                    className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
-                                />
-
-                                <div className="flex justify-between text-xs text-zinc-500 font-mono">
-                                    <span>POOR (1)</span>
-                                    <span>EXCELLENT (5)</span>
+                                {/* Chunky tappable score buttons */}
+                                <div className="grid grid-cols-5 gap-2">
+                                    {[1, 2, 3, 4, 5].map(value => {
+                                        const isSelected = scores[criterion.id] === value
+                                        return (
+                                            <button
+                                                key={value}
+                                                type="button"
+                                                onClick={() => handleScoreChange(criterion.id, value)}
+                                                className={[
+                                                    "h-16 flex flex-col items-center justify-center border-2 font-mono transition-all duration-150",
+                                                    isSelected
+                                                        ? "bg-[var(--role-accent)] text-[var(--role-accent-foreground)] border-[var(--role-accent)] shadow-[2px_2px_0_var(--brutal-shadow)]"
+                                                        : "bg-secondary border-border text-muted-foreground hover:border-[var(--role-accent)]/50 hover:text-foreground",
+                                                ].join(" ")}
+                                            >
+                                                <span className="text-xl font-black">{value}</span>
+                                                <span className="text-[8px] uppercase tracking-wider leading-none mt-0.5">
+                                                    {SCORE_LABELS[value]}
+                                                </span>
+                                            </button>
+                                        )
+                                    })}
                                 </div>
                             </div>
                         ))}
                     </div>
 
+                    {/* Status messages */}
                     {status?.error && (
-                        <div className="flex items-center gap-2 text-red-400 bg-red-900/20 p-4 rounded border border-red-900">
+                        <div className="flex items-center gap-2 text-destructive bg-destructive/10 p-4 border-2 border-destructive/30">
                             <AlertCircle size={18} /> {status.error}
                         </div>
                     )}
 
                     {status?.success && (
-                        <div className={`flex items-center gap-2 p-4 rounded border ${
-                            status.submissionStatus?.newSubmission 
-                                ? 'text-cyan-300 bg-cyan-900/30 border-cyan-700 shadow-[0_0_30px_rgba(34,211,238,0.2)]'
-                                : 'text-green-400 bg-green-900/20 border-green-900'
+                        <div className={`flex items-center gap-2 p-4 border-2 ${
+                            status.submissionStatus?.newSubmission
+                                ? 'text-primary bg-primary/10 border-primary/30 shadow-[0_0_30px_rgba(34,211,238,0.15)]'
+                                : 'text-emerald-400 bg-emerald-900/20 border-emerald-700/30'
                         }`}>
                             {status.submissionStatus?.newSubmission ? <Trophy size={18} /> : <CheckCircle2 size={18} />}
                             <span>{status.success}</span>
                         </div>
                     )}
 
+                    {/* Submit button */}
                     <Button
                         onClick={() => handleSubmit(round.id)}
                         disabled={loading}
-                        className="w-full h-14 text-xl font-bold bg-white text-black hover:bg-zinc-200 shadow-[0_0_20px_rgba(255,255,255,0.05)]"
+                        variant="brutal"
+                        className="w-full h-16 text-xl font-black"
                     >
                         {loading ? "SAVING..." : "SUBMIT SCORES"}
                     </Button>
                 </TabsContent>
             ))}
-        </Tabs >
+        </Tabs>
     )
 }

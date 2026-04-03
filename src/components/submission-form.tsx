@@ -60,7 +60,7 @@ export function SubmissionForm({
                     </div>
                 </div>
                 {existingSubmission && (
-                    <Badge className="text-[10px] text-green-500 border-green-500/50">
+                    <Badge className="text-[10px] text-primary border-primary/50">
                         <CheckCircle2 className="w-3 h-3 mr-1" />
                         SUBMITTED
                     </Badge>

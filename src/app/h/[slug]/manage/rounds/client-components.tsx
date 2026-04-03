@@ -236,7 +236,7 @@ function CheckpointControls({ round, hackathonId }: { round: Round, hackathonId:
                     <Button
                         size="sm"
                         variant={isPaused ? "default" : "outline"}
-                        className={`h-7 text-xs px-2 ml-auto ${isPaused ? "bg-cyan-600 hover:bg-cyan-700" : "border-amber-500/50 text-amber-400 hover:bg-amber-500/10"}`}
+                        className={`h-7 text-xs px-2 ml-auto ${isPaused ? "bg-primary hover:bg-primary/90" : "border-amber-500/50 text-amber-400 hover:bg-amber-500/10"}`}
                         onClick={handlePauseResume}
                         disabled={busy}
                     >
@@ -374,7 +374,7 @@ export function RoundItem({ round, hackathonId }: { round: Round, hackathonId: s
                             onClick={handleToggleLinkSubmission}
                             className={`px-3 py-1 rounded text-xs font-bold transition-colors ${
                                 round.requiresLinkSubmission
-                                    ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"
+                                    ? "bg-primary/20 text-primary border border-primary/30"
                                     : "bg-gray-500/20 text-gray-400 border border-gray-500/30"
                             }`}
                         >

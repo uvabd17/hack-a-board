@@ -17,6 +17,7 @@ import { CheckCircle2 } from "lucide-react"
 import { CountdownTimer } from "@/components/countdown-timer"
 import { LiveRefresher } from "@/components/live-refresher"
 import { PARTICIPANT_COOKIE_NAME } from "@/lib/participant-session"
+import { BrandFooter } from "@/components/ui/brand"
 
 // Revalidate this page every 5 seconds for ISR performance
 export const revalidate = 5
@@ -115,16 +116,16 @@ export default async function DashboardPage({
         : null
 
     return (
-        <div className="min-h-screen bg-background p-4 font-mono text-foreground pb-20">
+        <div className="min-h-screen bg-background p-4 text-foreground pb-20" data-role="participant">
             <LiveRefresher hackathonId={participant.hackathonId} />
             <header className="mb-8 border-b border-border pb-4 max-w-6xl mx-auto space-y-3">
-                <div className="flex justify-between items-center">
-                    <div>
-                        <h1 className="text-xl font-bold text-primary">{participant.hackathon.name}</h1>
-                        <p className="text-xs text-muted-foreground">HACKER_DASHBOARD</p>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <div className="min-w-0">
+                        <h1 className="text-lg sm:text-xl font-bold text-primary truncate">{participant.hackathon.name}</h1>
+                        <p className="text-xs text-muted-foreground">Participant Dashboard</p>
                     </div>
-                    <div className="flex gap-2 items-center">
-                        <a href={`/h/${slug}/display`} target="_blank" className="text-xs text-primary hover:underline uppercase tracking-widest">
+                    <div className="flex gap-2 items-center flex-shrink-0">
+                        <a href={`/h/${slug}/display`} target="_blank" className="text-xs text-primary hover:underline uppercase tracking-widest hidden sm:inline">
                             📊 Leaderboard
                         </a>
                         <Badge variant={participant.team.status === 'approved' ? 'default' : 'secondary'} className="uppercase">
@@ -135,7 +136,7 @@ export default async function DashboardPage({
 
                 {/* Live timer bar — only shown when event is live */}
                 {participant.hackathon.status === "live" && (
-                    <div className="flex items-center gap-6 bg-muted/30 border border-border rounded px-4 py-2">
+                    <div className="flex flex-wrap items-center gap-3 sm:gap-6 bg-muted/30 border border-border rounded px-3 sm:px-4 py-2 overflow-hidden">
                         {currentPhase && (
                             <CountdownTimer
                                 targetMs={new Date(currentPhase.endTime).getTime()}
@@ -164,12 +165,12 @@ export default async function DashboardPage({
                 {/* Left Column: Identity & Intel */}
                 <div className="lg:col-span-1 space-y-6">
                     {/* QR Passport Card */}
-                    <div className="relative overflow-hidden border border-primary/30 bg-gradient-to-br from-card via-card to-primary/5 rounded-lg">
+                    <div className="relative overflow-hidden border-2 border-primary/30 bg-gradient-to-br from-card via-card to-primary/5">
                         {/* Decorative corner accents */}
-                        <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-primary/40 rounded-tl-lg" />
-                        <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-primary/40 rounded-tr-lg" />
-                        <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-primary/40 rounded-bl-lg" />
-                        <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-primary/40 rounded-br-lg" />
+                        <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-primary/40" />
+                        <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-primary/40" />
+                        <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-primary/40" />
+                        <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-primary/40" />
 
                         <div className="px-6 pt-5 pb-2">
                             <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground font-bold text-center">Participant Pass</p>
@@ -207,7 +208,7 @@ export default async function DashboardPage({
 
                         {/* Token footer */}
                         <div className="bg-muted/30 px-4 py-2">
-                            <p className="text-[8px] text-center text-muted-foreground/40 font-mono">SESSION_ACTIVE</p>
+                            <p className="text-[8px] text-center text-muted-foreground/40 font-mono tracking-widest">Session active</p>
                         </div>
                     </div>
 
@@ -270,7 +271,7 @@ export default async function DashboardPage({
                     {/* Submissions / Judging Progress */}
                     {selectedProblem && rounds.length > 0 && (
                         <div className="space-y-4">
-                            <h2 className="text-sm text-muted-foreground uppercase tracking-widest pl-1">Round Progress</h2>
+                            <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground pl-1">Round Progress</h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {rounds.map((round: any, idx: number) => {
                                     const submission = submissions.find((s: any) => s.roundId === round.id)
@@ -328,6 +329,7 @@ export default async function DashboardPage({
                     )}
                 </div>
             </main>
+            <BrandFooter className="max-w-6xl mx-auto" />
         </div>
     )
 }

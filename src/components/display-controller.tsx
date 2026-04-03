@@ -98,9 +98,9 @@ export function DisplayController({
         <div className="space-y-4">
             {/* Status Message */}
             {statusMessage && (
-                <div className={`p-3 rounded-lg border transition-all duration-300 ${
-                    statusMessage.type === 'success' 
-                        ? 'bg-green-500/10 border-green-500/50 text-green-500' 
+                <div className={`p-3 border transition-all duration-300 ${
+                    statusMessage.type === 'success'
+                        ? 'bg-primary/10 border-primary/50 text-primary'
                         : 'bg-red-500/10 border-red-500/50 text-red-500'
                 }`}>
                     <p className="text-sm font-medium">{statusMessage.message}</p>
@@ -116,7 +116,7 @@ export function DisplayController({
                         {isFrozen ? (
                             <Badge variant="destructive" className="text-[10px] transition-all duration-300">FROZEN</Badge>
                         ) : (
-                            <Badge variant="outline" className="text-[10px] text-green-500 border-green-500/50 transition-all duration-300">LIVE</Badge>
+                            <Badge variant="outline" className="text-[10px] text-primary border-primary/50 transition-all duration-300">LIVE</Badge>
                         )}
                     </CardTitle>
                     <CardDescription className="text-xs">

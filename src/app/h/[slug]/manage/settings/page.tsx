@@ -51,7 +51,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
     return (
         <div className="max-w-3xl mx-auto space-y-8">
             <div>
-                <h1 className="text-3xl font-bold text-primary tracking-tight">SETTINGS</h1>
+                <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
                 <p className="text-muted-foreground text-xs mt-1 uppercase tracking-widest">
                     Configure your hackathon details and rules
                 </p>

@@ -89,7 +89,7 @@ export function TeamsTable({ teams, slug }: { teams: Team[], slug: string }) {
                         placeholder="Search teams, members, emails..."
                         value={search}
                         onChange={e => setSearch(e.target.value)}
-                        className="pl-9 font-mono"
+                        className="pl-9"
                     />
                 </div>
                 <div className="flex gap-2">
@@ -111,7 +111,7 @@ export function TeamsTable({ teams, slug }: { teams: Team[], slug: string }) {
             </div>
 
             {/* Stats row */}
-            <div className="text-xs text-muted-foreground font-mono">
+            <div className="text-xs text-muted-foreground">
                 Showing {filtered.length} of {teams.length} teams &nbsp;·&nbsp;
                 {teams.filter(t => t.status === "approved").length} approved &nbsp;·&nbsp;
                 {teams.filter(t => t.status === "pending").length} pending &nbsp;·&nbsp;
@@ -121,12 +121,12 @@ export function TeamsTable({ teams, slug }: { teams: Team[], slug: string }) {
             {/* Table */}
             {filtered.length === 0 ? (
                 <div className="p-12 border border-border border-dashed text-center text-muted-foreground text-sm">
-                    NO_TEAMS_MATCH_FILTER
+                    No teams match your search
                 </div>
             ) : (
                 <div className="space-y-2">
                     {filtered.map(team => (
-                        <div key={team.id} className="border border-border bg-card/50 rounded-sm overflow-hidden">
+                        <div key={team.id} className="border border-border bg-card/50 rounded-lg overflow-hidden">
                             {/* Row */}
                             <div className="flex items-center gap-3 p-3 text-sm">
                                 <button
@@ -141,7 +141,7 @@ export function TeamsTable({ teams, slug }: { teams: Team[], slug: string }) {
                                         <p className="font-bold truncate">{team.name}</p>
                                         <code className="text-[10px] bg-muted px-1 py-0.5 rounded font-mono">{team.inviteCode}</code>
                                         {team.isCheckedIn && (
-                                            <Badge variant="outline" className="text-[9px] border-green-500/50 text-green-500 py-0">CHECKED IN</Badge>
+                                            <Badge variant="outline" className="text-[9px] border-primary/50 text-primary py-0">CHECKED IN</Badge>
                                         )}
                                     </div>
                                     <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5 flex-wrap">
@@ -169,7 +169,7 @@ export function TeamsTable({ teams, slug }: { teams: Team[], slug: string }) {
                                         <Button
                                             size="sm"
                                             variant="outline"
-                                            className="h-7 text-[10px] text-green-500 border-green-500/50 hover:bg-green-500/10"
+                                            className="h-7 text-[10px] text-primary border-primary/50 hover:bg-primary/10"
                                             disabled={isPending && loadingId === team.id}
                                             onClick={() => handleStatusChange(team.id, "approved")}
                                         >
@@ -190,7 +190,7 @@ export function TeamsTable({ teams, slug }: { teams: Team[], slug: string }) {
 
                             {/* Expanded Members */}
                             {expandedId === team.id && (
-                                <div className="border-t border-border bg-black/20 p-4 space-y-3">
+                                <div className="border-t border-border bg-background/20 p-4 space-y-3">
                                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Team Members</p>
                                     <div className="divide-y divide-border/50">
                                         {team.participants.map(p => (

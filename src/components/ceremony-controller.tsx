@@ -182,9 +182,9 @@ export function CeremonyController({
             <CardContent className="space-y-4">
                 {/* Status Message */}
                 {statusMessage && (
-                    <div className={`p-3 rounded-lg border transition-all duration-300 ${
-                        statusMessage.type === 'success' 
-                            ? 'bg-green-500/10 border-green-500/50 text-green-500' 
+                    <div className={`p-3 border transition-all duration-300 ${
+                        statusMessage.type === 'success'
+                            ? 'bg-primary/10 border-primary/50 text-primary'
                             : 'bg-red-500/10 border-red-500/50 text-red-500'
                     }`}>
                         <p className="text-sm font-medium">{statusMessage.message}</p>
@@ -239,11 +239,11 @@ export function CeremonyController({
                                 Winner Preview
                                 {isPreviewLoading && <span className="animate-pulse">Analyzing...</span>}
                             </label>
-                            <div className="bg-black/20 rounded border border-border/50 max-h-40 overflow-y-auto divide-y divide-border/30">
+                            <div className="bg-background/20 border border-border/50 max-h-40 overflow-y-auto divide-y divide-border/30">
                                 {winners.length > 0 ? winners.map((w, i) => (
                                     <div key={i} className="p-2 flex justify-between items-center text-[10px] font-mono">
-                                        <span className="text-zinc-400">#{(mode === "overall" ? (i + 1) : 1).toString().padStart(2, '0')}</span>
-                                        <span className="font-bold text-zinc-200 truncate mx-2 flex-1">{w.teamName}</span>
+                                        <span className="text-muted-foreground">#{(mode === "overall" ? (i + 1) : 1).toString().padStart(2, '0')}</span>
+                                        <span className="font-bold text-foreground truncate mx-2 flex-1">{w.teamName}</span>
                                         <span className="text-yellow-500/80">{w.score.toFixed(1)} pts</span>
                                     </div>
                                 )) : !isPreviewLoading && (
@@ -277,7 +277,7 @@ export function CeremonyController({
                     </div>
                 ) : (
                     <div className="flex flex-col gap-4">
-                        <div className="text-center py-6 bg-black/40 rounded border border-border/50">
+                        <div className="text-center py-6 bg-background/40 border border-border/50">
                             <div className="text-4xl font-mono font-bold text-yellow-500 mb-1">
                                 STEP_{currentIndex.toString().padStart(2, '0')}
                             </div>

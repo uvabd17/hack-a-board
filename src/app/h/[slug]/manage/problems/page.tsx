@@ -37,11 +37,11 @@ export default async function ProblemsPage({ params }: { params: Promise<{ slug:
     return (
         <div className="max-w-5xl mx-auto space-y-8">
             <div className="flex items-center justify-between">
-                <h1 className="text-3xl font-bold text-primary">PROBLEM_STATEMENTS</h1>
+                <h1 className="text-2xl font-bold tracking-tight">Challenge Tracks</h1>
                 <div className="flex items-center gap-4">
                     <ReleaseAllButton hackathonId={hackathon.id} hiddenCount={hiddenCount} />
                     <div className="text-sm text-muted-foreground">
-                        TOTAL_COUNT: {hackathon.problemStatements.length}
+                        Total: {hackathon.problemStatements.length}
                     </div>
                 </div>
             </div>
@@ -58,7 +58,7 @@ export default async function ProblemsPage({ params }: { params: Promise<{ slug:
                 <div className="lg:col-span-2 space-y-4">
                     {hackathon.problemStatements.length === 0 ? (
                         <div className="p-12 border border-border border-dashed text-center text-muted-foreground">
-                            NO_DIRECTIVES_FOUND
+                            No challenge tracks yet
                         </div>
                     ) : (
                         hackathon.problemStatements.map((problem: ProblemStatement) => (

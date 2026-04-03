@@ -16,7 +16,7 @@ const registerSchema = z.object({
     // mode: "create" | "join" | "solo"
     mode: z.enum(["create", "join", "solo"]),
     teamName: z.string().optional(), // Required if mode === "create"
-    inviteCode: z.string().length(6, "Invite code must be 6 characters").optional(), // Required if mode === "join"
+    inviteCode: z.string().min(3, "Invite code too short").max(10, "Invite code too long").optional(), // Required if mode === "join"
 })
 
 export type RegisterState = {
@@ -182,7 +182,7 @@ export async function registerParticipant(prevState: RegisterState, formData: Fo
 const participantLoginSchema = z.object({
     hackathonSlug: z.string().min(1),
     email: z.string().email("Invalid email address"),
-    teamCode: z.string().length(6, "Team code must be 6 characters"),
+    teamCode: z.string().min(3, "Team code too short").max(10, "Team code too long"),
 })
 
 export type ParticipantLoginState = {
