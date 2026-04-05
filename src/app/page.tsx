@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
+import { BrandMark } from "@/components/ui/brand";
 
 export default function Home() {
   return (
@@ -11,9 +12,7 @@ export default function Home() {
       {/* Header */}
       <header className="relative border-b border-border z-10">
         <div className="max-w-5xl mx-auto px-6 h-14 flex justify-between items-center">
-          <div className="text-base font-bold tracking-tight lowercase">
-            hack&lt;a&gt;board
-          </div>
+          <BrandMark size="md" />
           <Link href="/signin">
             <Button variant="outline" size="sm" className="font-black uppercase tracking-wider">
               Organizer Login
@@ -124,7 +123,7 @@ export default function Home() {
                 {/* Footer */}
                 <div className="h-5 flex items-center justify-between px-4 border-t border-zinc-800 text-[7px] text-zinc-700 uppercase tracking-widest font-mono">
                   <span>TECHFEST-2026 · MODE: GLOBAL</span>
-                  <span>TEAMS: 24 · hack&lt;a&gt;board</span>
+                  <span>TEAMS: 24 · hack<span className="text-cyan-500/60">&lt;a&gt;</span>board</span>
                 </div>
               </div>
 
@@ -203,7 +202,7 @@ export default function Home() {
 
       <footer className="border-t border-border py-8">
         <div className="max-w-5xl mx-auto px-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-muted-foreground text-[10px] uppercase tracking-[0.15em]">
-          <p>hackaboard</p>
+          <BrandMark size="xs" />
           <div className="flex gap-6">
             <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
             <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>

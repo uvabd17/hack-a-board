@@ -20,8 +20,8 @@ export default async function SignInPage() {
                     <div className="text-[10px] text-muted-foreground/40 tracking-[0.3em] uppercase mb-6">
                         organizer portal
                     </div>
-                    <h1 className="text-3xl md:text-4xl font-black tracking-tighter mb-3 text-transparent bg-clip-text bg-gradient-to-b from-white to-zinc-500">
-                        hack&lt;a&gt;board
+                    <h1 className="text-3xl md:text-4xl font-black tracking-tighter mb-3">
+                        <span className="text-transparent bg-clip-text bg-gradient-to-b from-white to-zinc-500">hack</span><span className="text-primary">&lt;a&gt;</span><span className="text-transparent bg-clip-text bg-gradient-to-b from-white to-zinc-500">board</span>
                     </h1>
                     <p className="text-muted-foreground text-xs tracking-widest uppercase">
                         sign in to manage your hackathons

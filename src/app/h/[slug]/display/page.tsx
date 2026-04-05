@@ -483,7 +483,7 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
                 </div>
                 <div className="flex gap-6">
                     <span>TEAMS: {data.leaderboard.length}</span>
-                    <span className="text-zinc-700">hack&lt;a&gt;board</span>
+                    <span className="text-zinc-500">hack<span className="text-cyan-500/60">&lt;a&gt;</span>board</span>
                 </div>
             </footer>
 
