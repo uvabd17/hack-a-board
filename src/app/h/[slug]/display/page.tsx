@@ -82,7 +82,8 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
 
     useEffect(() => {
         const fetchData = async () => {
-            if (isTransitioning || pendingData) return
+            // Only skip during auto-cycle transitions, not scene changes
+            if (pendingData) return
 
             let problemId = null
             if (displayModeRef.current === "auto") {
@@ -198,18 +199,24 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
         })
         socket.on("display:freeze", () => {
             setData((prev: any) => prev ? { ...prev, hackathon: { ...prev.hackathon, isFrozen: true } } : prev)
+            etagRef.current = null
             triggerFetch()
         })
         socket.on("display:unfreeze", () => {
             setData((prev: any) => prev ? { ...prev, hackathon: { ...prev.hackathon, isFrozen: false } } : prev)
+            etagRef.current = null
             triggerFetch()
         })
         socket.on("display:set-scene", (payload: { mode: string; problemId?: string | null }) => {
             if (payload?.mode) {
+                // Update state AND refs synchronously so fetchData uses the new mode
+                displayModeRef.current = payload.mode
                 setData((prev: any) => prev ? {
                     ...prev,
                     displayConfig: { mode: payload.mode, problemId: payload.problemId || null }
                 } : prev)
+                // Clear ETag — new scene = different data, old ETag would cause stale 304
+                etagRef.current = null
             }
             triggerFetch()
         })

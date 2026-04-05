@@ -7,10 +7,6 @@ import { Badge } from "@/components/ui/badge"
 import { toggleFreeze, updateDisplayConfig } from "@/actions/display"
 import { Loader2, Lock, Unlock, Monitor, Layers, RefreshCcw } from "lucide-react"
 import { ProblemStatement } from "@prisma/client"
-// Actually, I'll skip toast for now or use standard alert if I don't have it.
-// Checking package.json, I don't see sonner or toast manually installed, but shadcn might have it.
-// To be safe, I'll use simple state message or standard alert for MVP speed, or I can try adding toast later.
-// Let's stick to simple UI feedback.
 
 export function DisplayController({
     hackathonId,
@@ -30,67 +26,63 @@ export function DisplayController({
     const [isFrozen, setIsFrozen] = useState(initialIsFrozen)
     const [displayMode, setDisplayMode] = useState<"global" | "problem" | "auto">(initialMode as "global" | "problem" | "auto")
     const [activeProblemId, setActiveProblemId] = useState<string | null>(initialProblemId)
-    const [isLoading, setIsLoading] = useState(false)
+    const [freezeLoading, setFreezeLoading] = useState(false)
+    const [configLoading, setConfigLoading] = useState<string | null>(null) // track which button is loading
     const [statusMessage, setStatusMessage] = useState<{type: 'success' | 'error', message: string} | null>(null)
 
     const handleToggleFreeze = async () => {
         const newState = !isFrozen
         const previousState = isFrozen
-        
-        // Optimistic update - change UI immediately
+
         setIsFrozen(newState)
-        setIsLoading(true)
-        
+        setFreezeLoading(true)
+
         try {
             const result = await toggleFreeze(hackathonId, newState, slug)
             if (!result.success) {
-                // Revert on failure
                 setIsFrozen(previousState)
                 setStatusMessage({type: 'error', message: result.error || "Failed to update freeze state"})
                 setTimeout(() => setStatusMessage(null), 3000)
             } else {
-                setStatusMessage({type: 'success', message: `Leaderboard ${newState ? 'frozen' : 'unfrozen'} successfully`})
+                setStatusMessage({type: 'success', message: `Leaderboard ${newState ? 'frozen' : 'unfrozen'}`})
                 setTimeout(() => setStatusMessage(null), 2000)
             }
         } catch (error) {
-            // Revert on error
             setIsFrozen(previousState)
             setStatusMessage({type: 'error', message: "An error occurred"})
             setTimeout(() => setStatusMessage(null), 3000)
         } finally {
-            setIsLoading(false)
+            setFreezeLoading(false)
         }
     }
 
     const handleConfigChange = async (mode: "global" | "problem" | "auto", problemId: string | null = null) => {
         const previousMode = displayMode
         const previousProblemId = activeProblemId
-        
-        // Optimistic update - change UI immediately
+        const loadingKey = problemId || mode
+
         setDisplayMode(mode)
         setActiveProblemId(problemId)
-        setIsLoading(true)
-        
+        setConfigLoading(loadingKey)
+
         try {
             const result = await updateDisplayConfig(hackathonId, { mode, problemId }, slug)
             if (!result.success) {
-                // Revert on failure
                 setDisplayMode(previousMode)
                 setActiveProblemId(previousProblemId)
                 setStatusMessage({type: 'error', message: result.error || "Failed to update config"})
                 setTimeout(() => setStatusMessage(null), 3000)
             } else {
-                setStatusMessage({type: 'success', message: 'Display updated successfully'})
+                setStatusMessage({type: 'success', message: 'Display updated'})
                 setTimeout(() => setStatusMessage(null), 2000)
             }
         } catch (error) {
-            // Revert on error
             setDisplayMode(previousMode)
             setActiveProblemId(previousProblemId)
             setStatusMessage({type: 'error', message: "Failed to update config"})
             setTimeout(() => setStatusMessage(null), 3000)
         } finally {
-            setIsLoading(false)
+            setConfigLoading(null)
         }
     }
 
@@ -126,11 +118,11 @@ export function DisplayController({
                 <CardContent>
                     <Button
                         onClick={handleToggleFreeze}
-                        disabled={isLoading}
+                        disabled={freezeLoading}
                         variant={isFrozen ? "outline" : "destructive"}
                         className="w-full font-bold uppercase text-xs transition-all duration-200"
                     >
-                        {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : isFrozen ? "UNFREEZE" : "FREEZE LEADERBOARD"}
+                        {freezeLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : isFrozen ? "UNFREEZE" : "FREEZE LEADERBOARD"}
                     </Button>
                 </CardContent>
             </Card>
@@ -153,9 +145,9 @@ export function DisplayController({
                             size="sm"
                             className="text-xs uppercase justify-start"
                             onClick={() => handleConfigChange("global")}
-                            disabled={isLoading}
+                            disabled={configLoading === "global"}
                         >
-                            <Monitor className="w-3 h-3 mr-2" />
+                            {configLoading === "global" ? <Loader2 className="w-3 h-3 mr-2 animate-spin" /> : <Monitor className="w-3 h-3 mr-2" />}
                             GLOBAL LEADERBOARD
                         </Button>
 
@@ -164,9 +156,9 @@ export function DisplayController({
                             size="sm"
                             className="text-xs uppercase justify-start border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10"
                             onClick={() => handleConfigChange("auto")}
-                            disabled={isLoading}
+                            disabled={configLoading === "auto"}
                         >
-                            <RefreshCcw className="w-3 h-3 mr-2 animate-spin-slow" />
+                            {configLoading === "auto" ? <Loader2 className="w-3 h-3 mr-2 animate-spin" /> : <RefreshCcw className="w-3 h-3 mr-2 animate-spin-slow" />}
                             AUTO CYCLE ALL TRACKS
                         </Button>
 
@@ -180,9 +172,9 @@ export function DisplayController({
                                         size="sm"
                                         className="text-[10px] uppercase justify-start h-7"
                                         onClick={() => handleConfigChange("problem", ps.id)}
-                                        disabled={isLoading}
+                                        disabled={configLoading === ps.id}
                                     >
-                                        <Layers className="w-3 h-3 mr-2" />
+                                        {configLoading === ps.id ? <Loader2 className="w-3 h-3 mr-2 animate-spin" /> : <Layers className="w-3 h-3 mr-2" />}
                                         {ps.title}
                                     </Button>
                                 ))}
