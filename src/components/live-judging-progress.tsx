@@ -17,6 +17,8 @@ interface LiveJudgingProgressProps {
     initialSubmitted: boolean
     initialTimeBonus: number | null
     initialJudges: Array<{ judgeId: string; timestamp: Date; judgeName: string }>
+    timeBonusRate?: number
+    timePenaltyRate?: number
 }
 
 type JudgingProgressJudge = { judgeId: string; timestamp: Date; judgeName: string }
@@ -33,6 +35,8 @@ export function LiveJudgingProgress({
     initialSubmitted,
     initialTimeBonus,
     initialJudges,
+    timeBonusRate,
+    timePenaltyRate,
 }: LiveJudgingProgressProps) {
     const [requiredJudges, setRequiredJudges] = useState(initialRequiredJudges)
     const [judgeCount, setJudgeCount] = useState(initialJudgeCount)
@@ -47,7 +51,11 @@ export function LiveJudgingProgress({
         const socket = connectSocket(hackathonId, ["hackathon"])
         const handleUpdate = async (payload: { teamId: string; roundId: string }) => {
             if (payload.teamId !== teamId || payload.roundId !== roundId) return
-            const progressData = await getTeamJudgingProgress(teamId, roundId)
+            // 10s timeout — on slow WiFi, keep stale data rather than hanging
+            const progressData = await Promise.race([
+                getTeamJudgingProgress(teamId, roundId),
+                new Promise<null>(resolve => setTimeout(() => resolve(null), 10000))
+            ])
             if (progressData && "submitted" in progressData) {
                 setRequiredJudges(progressData.requiredJudges)
                 setJudgeCount(progressData.judgeCount)
@@ -78,6 +86,8 @@ export function LiveJudgingProgress({
             judgeCount={judgeCount}
             submitted={submitted}
             timeBonus={timeBonus}
+            timeBonusRate={timeBonusRate}
+            timePenaltyRate={timePenaltyRate}
             judges={judges}
         />
     )

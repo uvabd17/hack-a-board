@@ -44,8 +44,10 @@ export default async function JudgesPage({ params }: { params: Promise<{ slug: s
 
             <div className="space-y-4">
                 {hackathon.judges.length === 0 ? (
-                    <div className="p-12 border border-border border-dashed text-center text-muted-foreground">
-                        NO_JUDGES_ASSIGNED
+                    <div className="p-12 border border-border border-dashed text-center text-muted-foreground rounded-lg space-y-2">
+                        <p className="text-2xl">👨‍⚖️</p>
+                        <p className="font-bold text-foreground">No judges added yet</p>
+                        <p className="text-xs">Create judges above to enable scoring at your hackathon.</p>
                     </div>
                 ) : (
                     hackathon.judges.map((judge: Judge) => (

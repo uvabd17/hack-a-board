@@ -22,6 +22,7 @@ export function SubmissionForm({
     existingSubmission?: Submission | null
 }) {
     const [loading, setLoading] = useState(false)
+    const [status, setStatus] = useState<{ error?: string; success?: string } | null>(null)
     const [formData, setFormData] = useState({
         githubUrl: existingSubmission?.githubUrl || "",
         demoUrl: existingSubmission?.demoUrl || "",
@@ -32,11 +33,14 @@ export function SubmissionForm({
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
         setLoading(true)
+        setStatus(null)
         const res = await submitProject({ ...formData, teamId, roundId: round.id }, slug)
         if (res.success) {
-            alert(`Submission received! Time Bonus: ${res.timeBonus}`)
+            const bonus = res.timeBonus ?? 0
+            const bonusText = bonus > 0 ? ` (+${bonus} time bonus)` : bonus < 0 ? ` (${bonus} penalty)` : ""
+            setStatus({ success: `Submission received!${bonusText}` })
         } else {
-            alert("Submission failed: " + res.error)
+            setStatus({ error: res.error || "Submission failed" })
         }
         setLoading(false)
     }
@@ -88,6 +92,16 @@ export function SubmissionForm({
                             />
                         </div>
                     </div>
+                    {status?.error && (
+                        <div className="text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded p-2">
+                            {status.error}
+                        </div>
+                    )}
+                    {status?.success && (
+                        <div className="text-xs text-emerald-400 bg-emerald-900/20 border border-emerald-700/30 rounded p-2 flex items-center gap-1.5">
+                            <CheckCircle2 className="w-3 h-3" /> {status.success}
+                        </div>
+                    )}
                     <Button
                         type="submit"
                         size="sm"

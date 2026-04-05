@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { AlertCircle, CheckCircle2, Archive, ArchiveRestore, Save } from "lucide-react"
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion"
 
 interface HackathonData {
     id: string
@@ -154,184 +155,281 @@ export function HackathonSettingsForm({ hackathon }: { hackathon: HackathonData 
     }
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-8">
-            {/* General Info */}
-            <Section title="GENERAL INFO">
-                <div className="space-y-4">
-                    <Field label="Hackathon Name">
-                        <Input
-                            value={form.name}
-                            onChange={e => update("name", e.target.value)}
-                            required
-                        />
-                    </Field>
+        <form onSubmit={handleSubmit} className="space-y-6">
+            <Accordion type="multiple" defaultValue={["general", "schedule", "location", "teams", "scoring"]} className="space-y-3">
+                {/* General Info */}
+                <AccordionItem value="general" className="border-2 border-border rounded-lg overflow-hidden bg-card/50">
+                    <AccordionTrigger className="px-5 py-3 hover:bg-muted/30 hover:no-underline">
+                        <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">General Info</span>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-5">
+                        <div className="space-y-4">
+                            <Field label="Hackathon Name">
+                                <Input
+                                    value={form.name}
+                                    onChange={e => update("name", e.target.value)}
+                                    required
+                                />
+                            </Field>
 
-                    <Field label="URL Slug" hint={`Your event is at /h/${form.slug} — slug cannot be changed after creation`}>
-                        <Input
-                            value={form.slug}
-                            readOnly
-                            className="opacity-60 cursor-not-allowed"
-                        />
-                    </Field>
+                            <Field label="URL Slug" hint={`Your event is at /h/${form.slug} — slug cannot be changed after creation`}>
+                                <Input
+                                    value={form.slug}
+                                    readOnly
+                                    className="opacity-60 cursor-not-allowed"
+                                />
+                            </Field>
 
-                    <Field label="Tagline">
-                        <Input
-                            value={form.tagline}
-                            onChange={e => update("tagline", e.target.value)}
-                            placeholder="Build the future in 24 hours"
-                        />
-                    </Field>
+                            <Field label="Tagline">
+                                <Input
+                                    value={form.tagline}
+                                    onChange={e => update("tagline", e.target.value)}
+                                    placeholder="Build the future in 24 hours"
+                                />
+                            </Field>
 
-                    <Field label="Description">
-                        <Textarea
-                            value={form.description}
-                            onChange={e => update("description", e.target.value)}
-                            placeholder="Full description of the hackathon..."
-                            className="h-24"
-                        />
-                    </Field>
-                </div>
-            </Section>
-
-            {/* Schedule */}
-            <Section title="SCHEDULE">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Field label="Start Date/Time">
-                        <Input
-                            type="datetime-local"
-                            value={form.startDate}
-                            onChange={e => update("startDate", e.target.value)}
-                            required
-                        />
-                    </Field>
-
-                    <Field label="End Date/Time">
-                        <Input
-                            type="datetime-local"
-                            value={form.endDate}
-                            onChange={e => update("endDate", e.target.value)}
-                            required
-                        />
-                    </Field>
-
-                    <Field label="Timezone">
-                        <Input
-                            value={form.timezone}
-                            onChange={e => update("timezone", e.target.value)}
-                            placeholder="Asia/Kolkata"
-                        />
-                    </Field>
-
-                    <Field label="Registration Deadline (optional)">
-                        <Input
-                            type="datetime-local"
-                            value={form.registrationDeadline}
-                            onChange={e => update("registrationDeadline", e.target.value)}
-                        />
-                    </Field>
-                </div>
-            </Section>
-
-            {/* Venue / Mode */}
-            <Section title="LOCATION">
-                <div className="space-y-4">
-                    <Field label="Mode">
-                        <div className="flex gap-2">
-                            {(["in-person", "online", "hybrid"] as const).map(m => (
-                                <Button
-                                    key={m}
-                                    type="button"
-                                    variant={form.mode === m ? "default" : "outline"}
-                                    size="sm"
-                                    className="uppercase text-xs"
-                                    onClick={() => update("mode", m)}
-                                >
-                                    {m}
-                                </Button>
-                            ))}
+                            <Field label="Description">
+                                <Textarea
+                                    value={form.description}
+                                    onChange={e => update("description", e.target.value)}
+                                    placeholder="Full description of the hackathon..."
+                                    className="h-24"
+                                />
+                            </Field>
                         </div>
-                    </Field>
+                    </AccordionContent>
+                </AccordionItem>
 
-                    {(form.mode === "in-person" || form.mode === "hybrid") && (
-                        <Field label="Venue">
-                            <Input
-                                value={form.venue}
-                                onChange={e => update("venue", e.target.value)}
-                                placeholder="Building A, Room 101"
+                {/* Schedule */}
+                <AccordionItem value="schedule" className="border-2 border-border rounded-lg overflow-hidden bg-card/50">
+                    <AccordionTrigger className="px-5 py-3 hover:bg-muted/30 hover:no-underline">
+                        <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Schedule</span>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-5">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Field label="Start Date/Time">
+                                <Input
+                                    type="datetime-local"
+                                    value={form.startDate}
+                                    onChange={e => update("startDate", e.target.value)}
+                                    required
+                                />
+                            </Field>
+
+                            <Field label="End Date/Time">
+                                <Input
+                                    type="datetime-local"
+                                    value={form.endDate}
+                                    onChange={e => update("endDate", e.target.value)}
+                                    required
+                                />
+                            </Field>
+
+                            <Field label="Timezone">
+                                <Input
+                                    value={form.timezone}
+                                    onChange={e => update("timezone", e.target.value)}
+                                    placeholder="Asia/Kolkata"
+                                />
+                            </Field>
+
+                            <Field label="Registration Deadline (optional)">
+                                <Input
+                                    type="datetime-local"
+                                    value={form.registrationDeadline}
+                                    onChange={e => update("registrationDeadline", e.target.value)}
+                                />
+                            </Field>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+
+                {/* Location */}
+                <AccordionItem value="location" className="border-2 border-border rounded-lg overflow-hidden bg-card/50">
+                    <AccordionTrigger className="px-5 py-3 hover:bg-muted/30 hover:no-underline">
+                        <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Location</span>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-5">
+                        <div className="space-y-4">
+                            <Field label="Mode">
+                                <div className="flex gap-2">
+                                    {(["in-person", "online", "hybrid"] as const).map(m => (
+                                        <Button
+                                            key={m}
+                                            type="button"
+                                            variant={form.mode === m ? "default" : "outline"}
+                                            size="sm"
+                                            className="uppercase text-xs"
+                                            onClick={() => update("mode", m)}
+                                        >
+                                            {m}
+                                        </Button>
+                                    ))}
+                                </div>
+                            </Field>
+
+                            {(form.mode === "in-person" || form.mode === "hybrid") && (
+                                <Field label="Venue">
+                                    <Input
+                                        value={form.venue}
+                                        onChange={e => update("venue", e.target.value)}
+                                        placeholder="Building A, Room 101"
+                                    />
+                                </Field>
+                            )}
+
+                            {(form.mode === "online" || form.mode === "hybrid") && (
+                                <Field label="Online Link">
+                                    <Input
+                                        value={form.onlineLink}
+                                        onChange={e => update("onlineLink", e.target.value)}
+                                        placeholder="https://meet.google.com/..."
+                                    />
+                                </Field>
+                            )}
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+
+                {/* Team Rules */}
+                <AccordionItem value="teams" className="border-2 border-border rounded-lg overflow-hidden bg-card/50">
+                    <AccordionTrigger className="px-5 py-3 hover:bg-muted/30 hover:no-underline">
+                        <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Team Rules</span>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-5">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <Field label="Min Team Size">
+                                <NumberStepper value={form.minTeamSize} min={1} max={20}
+                                    onChange={v => update("minTeamSize", v)} />
+                            </Field>
+
+                            <Field label="Max Team Size">
+                                <NumberStepper value={form.maxTeamSize} min={1} max={20}
+                                    onChange={v => update("maxTeamSize", v)} />
+                            </Field>
+
+                            <Field label="Max Teams" hint="0 = unlimited">
+                                <NumberStepper value={form.maxTeams} min={0} max={999}
+                                    onChange={v => update("maxTeams", v)} />
+                            </Field>
+                        </div>
+
+                        <div className="mt-4 flex items-center gap-3">
+                            <input
+                                type="checkbox"
+                                id="requireApproval"
+                                checked={form.requireApproval}
+                                onChange={e => update("requireApproval", e.target.checked)}
+                                className="w-4 h-4"
                             />
-                        </Field>
-                    )}
+                            <Label htmlFor="requireApproval" className="text-sm cursor-pointer">
+                                Require manual approval for team registrations
+                            </Label>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
 
-                    {(form.mode === "online" || form.mode === "hybrid") && (
-                        <Field label="Online Link">
-                            <Input
-                                value={form.onlineLink}
-                                onChange={e => update("onlineLink", e.target.value)}
-                                placeholder="https://meet.google.com/..."
+                {/* Scoring Config */}
+                <AccordionItem value="scoring" className="border-2 border-border rounded-lg overflow-hidden bg-card/50">
+                    <AccordionTrigger className="px-5 py-3 hover:bg-muted/30 hover:no-underline">
+                        <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Scoring Config</span>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-5">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Field label="Time Bonus Rate" hint="+pts/min for early submission">
+                                <NumberStepper value={form.timeBonusRate} min={0} max={100} step={0.1}
+                                    onChange={v => update("timeBonusRate", v)} decimal />
+                            </Field>
+
+                            <Field label="Time Penalty Rate" hint="-pts/min for late submission">
+                                <NumberStepper value={form.timePenaltyRate} min={0} max={100} step={0.1}
+                                    onChange={v => update("timePenaltyRate", v)} decimal />
+                            </Field>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+
+                {/* Organizer Access */}
+                <AccordionItem value="organizers" className="border-2 border-border rounded-lg overflow-hidden bg-card/50">
+                    <AccordionTrigger className="px-5 py-3 hover:bg-muted/30 hover:no-underline">
+                        <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Organizer Access</span>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-5">
+                        <div className="space-y-3">
+                            <p className="text-xs text-muted-foreground">
+                                Add additional organizer emails (comma-separated). They can sign in with their own Google accounts and manage this event.
+                            </p>
+                            <Textarea
+                                value={organizerEmails}
+                                onChange={(e) => setOrganizerEmails(e.target.value)}
+                                placeholder="cofounder@example.com, ops@example.com"
+                                className="h-24"
+                                disabled={!hackathon.isOwner}
                             />
-                        </Field>
-                    )}
-                </div>
-            </Section>
+                            {hackathon.isOwner ? (
+                                <Button type="button" variant="outline" onClick={handleOrganizerSave} disabled={loading}>
+                                    {loading ? "Saving..." : "Save Organizer Access"}
+                                </Button>
+                            ) : (
+                                <p className="text-xs text-muted-foreground">Only the event owner can update organizer access.</p>
+                            )}
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
 
-            {/* Team Config */}
-            <Section title="TEAM RULES">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Field label="Min Team Size">
-                        <NumberStepper value={form.minTeamSize} min={1} max={20}
-                            onChange={v => update("minTeamSize", v)} />
-                    </Field>
+                {/* Danger Zone */}
+                <AccordionItem value="danger" className="border-2 border-destructive/30 rounded-lg overflow-hidden bg-card/50">
+                    <AccordionTrigger className="px-5 py-3 hover:bg-destructive/5 hover:no-underline">
+                        <span className="text-xs font-bold uppercase tracking-widest text-destructive/70">Danger Zone</span>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-5">
+                        <div className="border border-destructive/30 bg-destructive/5 p-4 space-y-4 rounded-lg">
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                                Archiving is reversible. The event and all related data are preserved, but hidden from active dashboard lists and public pages.
+                            </p>
+                            {hackathon.archivedAt && (
+                                <p className="text-[11px] text-muted-foreground">
+                                    Archived on: {new Date(hackathon.archivedAt).toLocaleString()}
+                                </p>
+                            )}
+                            {hackathon.isArchived ? (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="gap-2 uppercase text-xs"
+                                    disabled={loading}
+                                    onClick={handleRestore}
+                                >
+                                    <ArchiveRestore size={14} />
+                                    {loading ? "PROCESSING..." : "Restore Event"}
+                                </Button>
+                            ) : (
+                                <Button
+                                    type="button"
+                                    variant="destructive"
+                                    className="gap-2 uppercase text-xs"
+                                    disabled={loading}
+                                    onClick={handleArchive}
+                                >
+                                    <Archive size={14} />
+                                    {loading ? "PROCESSING..." : "Archive Event"}
+                                </Button>
+                            )}
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
 
-                    <Field label="Max Team Size">
-                        <NumberStepper value={form.maxTeamSize} min={1} max={20}
-                            onChange={v => update("maxTeamSize", v)} />
-                    </Field>
-
-                    <Field label="Max Teams" hint="0 = unlimited">
-                        <NumberStepper value={form.maxTeams} min={0} max={999}
-                            onChange={v => update("maxTeams", v)} />
-                    </Field>
-                </div>
-
-                <div className="mt-4 flex items-center gap-3">
-                    <input
-                        type="checkbox"
-                        id="requireApproval"
-                        checked={form.requireApproval}
-                        onChange={e => update("requireApproval", e.target.checked)}
-                        className="w-4 h-4"
-                    />
-                    <Label htmlFor="requireApproval" className="text-sm cursor-pointer">
-                        Require manual approval for team registrations
-                    </Label>
-                </div>
-            </Section>
-
-            {/* Scoring Config */}
-            <Section title="SCORING CONFIG">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Field label="Time Bonus Rate" hint="+pts/min for early submission">
-                        <NumberStepper value={form.timeBonusRate} min={0} max={100} step={0.1}
-                            onChange={v => update("timeBonusRate", v)} decimal />
-                    </Field>
-
-                    <Field label="Time Penalty Rate" hint="-pts/min for late submission">
-                        <NumberStepper value={form.timePenaltyRate} min={0} max={100} step={0.1}
-                            onChange={v => update("timePenaltyRate", v)} decimal />
-                    </Field>
-                </div>
-            </Section>
-
-            {/* Status + Feedback */}
+            {/* Status + Feedback + Save — always visible outside accordion */}
             {status?.error && (
-                <div className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 p-3 border border-destructive/30">
+                <div className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 p-3 border border-destructive/30 rounded-lg">
                     <AlertCircle size={16} />
                     {status.error}
                 </div>
             )}
 
             {status?.success && (
-                <div className="flex items-center gap-2 text-primary text-sm bg-primary/10 p-3 border border-primary/30">
+                <div className="flex items-center gap-2 text-primary text-sm bg-primary/10 p-3 border border-primary/30 rounded-lg">
                     <CheckCircle2 size={16} />
                     {status.success}
                 </div>
@@ -346,78 +444,10 @@ export function HackathonSettingsForm({ hackathon }: { hackathon: HackathonData 
                     {loading ? "Saving..." : "Save Settings"}
                 </Button>
             </div>
-
-            <Section title="DANGER ZONE">
-                <div className="border border-destructive/30 bg-destructive/5 p-4 space-y-4">
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                        Archiving is reversible. The event and all related data are preserved, but hidden from active dashboard lists and public pages.
-                    </p>
-                    {hackathon.archivedAt && (
-                        <p className="text-[11px] text-muted-foreground">
-                            Archived on: {new Date(hackathon.archivedAt).toLocaleString()}
-                        </p>
-                    )}
-                    {hackathon.isArchived ? (
-                        <Button
-                            type="button"
-                            variant="outline"
-                            className="gap-2 uppercase text-xs"
-                            disabled={loading}
-                            onClick={handleRestore}
-                        >
-                            <ArchiveRestore size={14} />
-                            {loading ? "PROCESSING..." : "Restore Event"}
-                        </Button>
-                    ) : (
-                        <Button
-                            type="button"
-                            variant="destructive"
-                            className="gap-2 uppercase text-xs"
-                            disabled={loading}
-                            onClick={handleArchive}
-                        >
-                            <Archive size={14} />
-                            {loading ? "PROCESSING..." : "Archive Event"}
-                        </Button>
-                    )}
-                </div>
-            </Section>
-
-            <Section title="ORGANIZER ACCESS">
-                <div className="space-y-3">
-                    <p className="text-xs text-muted-foreground">
-                        Add additional organizer emails (comma-separated). They can sign in with their own Google accounts and manage this event.
-                    </p>
-                    <Textarea
-                        value={organizerEmails}
-                        onChange={(e) => setOrganizerEmails(e.target.value)}
-                        placeholder="cofounder@example.com, ops@example.com"
-                        className="h-24"
-                        disabled={!hackathon.isOwner}
-                    />
-                    {hackathon.isOwner ? (
-                        <Button type="button" variant="outline" onClick={handleOrganizerSave} disabled={loading}>
-                            {loading ? "Saving..." : "Save Organizer Access"}
-                        </Button>
-                    ) : (
-                        <p className="text-xs text-muted-foreground">Only the event owner can update organizer access.</p>
-                    )}
-                </div>
-            </Section>
         </form>
     )
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-    return (
-        <div className="border border-border bg-card/50 p-6 space-y-4 rounded-lg">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground border-b border-border pb-2">
-                {title}
-            </h2>
-            {children}
-        </div>
-    )
-}
 
 function Field({
     label,

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 
 function formatTime(ms: number): string {
     if (ms < 0) ms = 0
@@ -16,6 +16,10 @@ function formatTime(ms: number): string {
 //   pausedRemainingMs — if the timer is paused, pass remaining ms here
 //   label           — display label above the clock
 //   size            — "sm" | "lg" | "xl"
+//
+// Drift-resistant: recalculates from Date.now() on every tick
+// instead of decrementing a counter. Handles tab backgrounding
+// via visibilitychange listener.
 // ─────────────────────────────────────────────
 export function CountdownTimer({
     targetMs,
@@ -31,6 +35,15 @@ export function CountdownTimer({
     const isPaused = pausedRemainingMs != null
     const [remaining, setRemaining] = useState<number | null>(null)
 
+    // Recalculate from absolute time — no drift accumulation
+    const tick = useCallback(() => {
+        if (isPaused) {
+            setRemaining(pausedRemainingMs ?? 0)
+        } else if (targetMs) {
+            setRemaining(targetMs - Date.now())
+        }
+    }, [targetMs, isPaused, pausedRemainingMs])
+
     useEffect(() => {
         if (isPaused) {
             setRemaining(pausedRemainingMs ?? 0)
@@ -40,11 +53,21 @@ export function CountdownTimer({
             setRemaining(null)
             return
         }
-        const tick = () => setRemaining(targetMs - Date.now())
+
         tick()
         const id = setInterval(tick, 1000)
-        return () => clearInterval(id)
-    }, [targetMs, isPaused, pausedRemainingMs])
+
+        // Re-sync immediately when tab becomes visible again (fixes backgrounded drift)
+        const handleVisibility = () => {
+            if (document.visibilityState === "visible") tick()
+        }
+        document.addEventListener("visibilitychange", handleVisibility)
+
+        return () => {
+            clearInterval(id)
+            document.removeEventListener("visibilitychange", handleVisibility)
+        }
+    }, [targetMs, isPaused, pausedRemainingMs, tick])
 
     const isExpired = !isPaused && remaining !== null && remaining <= 0
     const isDanger  = !isPaused && remaining !== null && remaining <= 10 * 60 * 1000  // < 10 min

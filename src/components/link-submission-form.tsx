@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,6 +28,7 @@ export function LinkSubmissionForm({
     checkpointTime,
     checkpointPausedAt
 }: LinkSubmissionFormProps) {
+    const router = useRouter()
     const [loading, setLoading] = useState(false)
     const [status, setStatus] = useState<{ success?: string; error?: string } | null>(null)
     const [formData, setFormData] = useState({
@@ -36,8 +38,14 @@ export function LinkSubmissionForm({
         otherUrl: "",
     })
 
+    const hasAtLeastOneLink = Object.values(formData).some(v => v.trim() !== "")
+
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
+        if (!hasAtLeastOneLink) {
+            setStatus({ error: "Please provide at least one link." })
+            return
+        }
         setLoading(true)
         setStatus(null)
 
@@ -50,8 +58,7 @@ export function LinkSubmissionForm({
             setStatus({ error: res.error })
         } else {
             setStatus({ success: "Links submitted! You can now get judged for this round." })
-            // Refresh page after 2 seconds to show judging progress
-            setTimeout(() => window.location.reload(), 2000)
+            setTimeout(() => router.refresh(), 1500)
         }
         setLoading(false)
     }
@@ -160,7 +167,7 @@ export function LinkSubmissionForm({
 
                     <Button
                         type="submit"
-                        disabled={loading}
+                        disabled={loading || !hasAtLeastOneLink}
                         className="w-full h-11 text-sm font-bold bg-yellow-600 hover:bg-yellow-700 text-white"
                     >
                         {loading ? "SUBMITTING..." : "SUBMIT LINKS →"}

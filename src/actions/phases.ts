@@ -58,34 +58,39 @@ export async function createPhase(hackathonId: string, formData: FormData) {
         return { error: "Phase must be within event start/end time" }
     }
 
-    const overlapping = await prisma.phase.findFirst({
-        where: {
-            hackathonId,
-            startTime: { lt: parsedEnd },
-            endTime: { gt: parsedStart },
-        },
-        select: { id: true }
-    })
-    if (overlapping) {
-        return { error: "Phase overlaps with an existing phase" }
-    }
-
     try {
-        await prisma.phase.create({
-            data: {
-                hackathonId,
-                name,
-                startTime: parsedStart,
-                endTime: parsedEnd,
-                order,
+        // Overlap check + create in single transaction to prevent race conditions
+        await prisma.$transaction(async (tx) => {
+            const overlapping = await tx.phase.findFirst({
+                where: {
+                    hackathonId,
+                    startTime: { lt: parsedEnd },
+                    endTime: { gt: parsedStart },
+                },
+                select: { id: true }
+            })
+            if (overlapping) {
+                throw new Error("Phase overlaps with an existing phase")
             }
+
+            await tx.phase.create({
+                data: {
+                    hackathonId,
+                    name,
+                    startTime: parsedStart,
+                    endTime: parsedEnd,
+                    order,
+                }
+            })
         })
 
         revalidatePath(`/h/${hackathon.slug}/manage/phases`)
         revalidatePath(`/h/${hackathon.slug}/manage`)
         revalidatePath(`/h/${hackathon.slug}`)
         return { success: true }
-    } catch (e) {
+    } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : ""
+        if (msg.includes("overlaps")) return { error: msg }
         console.error(e)
         return { error: "Failed to create phase" }
     }

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
 import { z } from "zod"
 import { PARTICIPANT_COOKIE_NAME } from "@/lib/participant-session"
+import { invalidateLeaderboard } from "@/lib/redis"
 
 const LinkSubmissionSchema = z.object({
     teamId: z.string(),
@@ -145,22 +146,16 @@ export async function submitProject(data: z.infer<typeof SubmissionSchema>, slug
 
         const submittedAt = new Date()
 
-        // Calculate Time Bonus/Penalty
-        // Bonus = (Checkpoint - Submitted) * Rate
-        // If Submitted > Checkpoint, it becomes negative (penalty)
-        // CheckpointTime is a DateTime in the DB.
-
-        const diffInMs = round.checkpointTime.getTime() - submittedAt.getTime()
-        const diffInMinutes = diffInMs / (1000 * 60)
+        // Use effective deadline (paused checkpoint = use paused time)
+        const effectiveDeadline = round.checkpointPausedAt || round.checkpointTime
+        const diffMs = effectiveDeadline.getTime() - submittedAt.getTime()
+        const diffMinutes = diffMs / 60000
 
         let timeBonus = 0
-        if (diffInMinutes > 0) {
-            // Early submission: Bonus
-            timeBonus = Math.floor(diffInMinutes * round.hackathon.timeBonusRate)
-        } else {
-            // Late submission: Penalty (diff is negative)
-            // Example: 10 mins late -> diff = -10. Penalty = -10 * penaltyRate.
-            timeBonus = Math.floor(diffInMinutes * round.hackathon.timePenaltyRate)
+        if (diffMinutes > 0) {
+            timeBonus = Math.floor(diffMinutes * round.hackathon.timeBonusRate)
+        } else if (diffMinutes < 0) {
+            timeBonus = Math.floor(diffMinutes * round.hackathon.timePenaltyRate)
         }
 
         await prisma.submission.upsert({
@@ -189,6 +184,9 @@ export async function submitProject(data: z.infer<typeof SubmissionSchema>, slug
                 timeBonus
             }
         })
+
+        // Invalidate leaderboard cache — submission affects scoring
+        await invalidateLeaderboard(participant.hackathonId)
 
         return { success: true, timeBonus }
     } catch (e) {

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion"
 import { Trash2, Plus, Scale, Pause, Play, Clock, Users, Link2 } from "lucide-react"
 import { formatDateTimeLocal } from "@/lib/datetime"
 
@@ -55,10 +56,10 @@ export function RoundForm({ hackathonId }: { hackathonId: string }) {
                             <p className="text-xs text-muted-foreground">How many judges must score each team</p>
                         </div>
                         <div className="space-y-2 flex items-center gap-2 pt-6">
-                            <input 
-                                type="checkbox" 
-                                name="requiresLinkSubmission" 
-                                id="requiresLinkSubmission" 
+                            <input
+                                type="checkbox"
+                                name="requiresLinkSubmission"
+                                id="requiresLinkSubmission"
                                 className="w-4 h-4 rounded border-gray-300"
                             />
                             <Label htmlFor="requiresLinkSubmission" className="cursor-pointer text-sm">
@@ -77,29 +78,39 @@ export function RoundForm({ hackathonId }: { hackathonId: string }) {
 
 export function CriterionForm({ hackathonId, roundId }: { hackathonId: string, roundId: string }) {
     const [loading, setLoading] = useState(false)
+    const [warning, setWarning] = useState<string | null>(null)
 
     async function handleSubmit(formData: FormData) {
         setLoading(true)
-        await createCriterion(hackathonId, roundId, formData)
+        setWarning(null)
+        const result = await createCriterion(hackathonId, roundId, formData)
+        if (result?.warning) setWarning(result.warning)
         setLoading(false)
         const form = document.getElementById(`crit-form-${roundId}`) as HTMLFormElement
         form?.reset()
     }
 
     return (
-        <form id={`crit-form-${roundId}`} action={handleSubmit} className="flex gap-2 items-end mt-4 pt-4 border-t border-dashed border-border">
-            <div className="flex-1 space-y-1">
-                <Label className="text-xs">New Criterion</Label>
-                <Input name="name" placeholder="Innovation" size={1} required className="h-8" />
-            </div>
-            <div className="w-20 space-y-1">
-                <Label className="text-xs">Weight</Label>
-                <Input name="weight" type="number" placeholder="%" size={1} required className="h-8" />
-            </div>
-            <Button type="submit" size="sm" variant="secondary" disabled={loading} className="h-8">
-                <Plus size={14} />
-            </Button>
-        </form>
+        <div className="mt-4 pt-4 border-t border-dashed border-border space-y-2">
+            <form id={`crit-form-${roundId}`} action={handleSubmit} className="flex gap-2 items-end">
+                <div className="flex-1 space-y-1">
+                    <Label className="text-xs">New Criterion</Label>
+                    <Input name="name" placeholder="Innovation" size={1} required className="h-8" />
+                </div>
+                <div className="w-20 space-y-1">
+                    <Label className="text-xs">Weight</Label>
+                    <Input name="weight" type="number" placeholder="%" size={1} required className="h-8" />
+                </div>
+                <Button type="submit" size="sm" variant="secondary" disabled={loading} className="h-8">
+                    <Plus size={14} />
+                </Button>
+            </form>
+            {warning && (
+                <p className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded px-2 py-1">
+                    {warning}
+                </p>
+            )}
+        </div>
     )
 }
 
@@ -138,7 +149,6 @@ function CheckpointControls({ round, hackathonId }: { round: Round, hackathonId:
             ? "ended"
             : "running"
 
-    // Remaining ms when paused
     const pausedRemainingMs = isPaused
         ? new Date(round.checkpointTime).getTime() - new Date(round.checkpointPausedAt!).getTime()
         : null
@@ -185,7 +195,7 @@ function CheckpointControls({ round, hackathonId }: { round: Round, hackathonId:
                     <Clock size={12} />
                     <span>{formatCheckpoint()}</span>
                     {isPaused && (
-                        <span className="bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded text-[10px] font-medium">⏸ PAUSED</span>
+                        <span className="bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded text-[10px] font-medium">PAUSED</span>
                     )}
                 </div>
                 <button
@@ -252,10 +262,31 @@ function CheckpointControls({ round, hackathonId }: { round: Round, hackathonId:
     )
 }
 
-export function RoundItem({ round, hackathonId }: { round: Round, hackathonId: string }) {
+export function RoundList({ rounds, hackathonId }: { rounds: Round[], hackathonId: string }) {
+    if (rounds.length === 0) {
+        return (
+            <div className="p-12 border border-border border-dashed text-center text-muted-foreground rounded-lg">
+                No scoring rounds defined yet
+            </div>
+        )
+    }
+
+    return (
+        <Accordion type="single" collapsible className="space-y-3">
+            {rounds.map((round) => (
+                <RoundAccordionItem key={round.id} round={round} hackathonId={hackathonId} />
+            ))}
+        </Accordion>
+    )
+}
+
+function RoundAccordionItem({ round, hackathonId }: { round: Round, hackathonId: string }) {
     const [loading, setLoading] = useState(false)
     const [editingJudges, setEditingJudges] = useState(false)
     const [requiredJudges, setRequiredJudges] = useState(round.requiredJudges)
+
+    const isPaused = !!round.checkpointPausedAt
+    const checkpointEnded = !isPaused && new Date(round.checkpointTime).getTime() <= Date.now()
 
     async function handleDeleteRound() {
         if (!confirm("Delete round? Scores will be lost.")) return
@@ -282,26 +313,44 @@ export function RoundItem({ round, hackathonId }: { round: Round, hackathonId: s
     }
 
     return (
-        <Card>
-            <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                        <span className="bg-primary/10 text-primary px-2 py-0.5 rounded text-sm">
-                            #{round.order}
+        <AccordionItem value={round.id} className="border-2 border-border rounded-lg overflow-hidden bg-card">
+            <AccordionTrigger className="px-4 py-3 hover:bg-muted/30 hover:no-underline">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <span className="bg-primary/10 text-primary px-2.5 py-1 rounded-md text-sm font-black shrink-0">
+                        #{round.order}
+                    </span>
+                    <span className="font-bold text-base truncate">{round.name}</span>
+                    <div className="hidden sm:flex items-center gap-2 ml-auto mr-2">
+                        <span className="text-xs text-muted-foreground border border-border px-2 py-0.5 rounded flex items-center gap-1">
+                            <Scale size={10} /> {round.weight}%
                         </span>
-                        {round.name}
-                    </CardTitle>
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground border border-border px-2 py-1 rounded flex items-center gap-1">
-                            <Scale size={12} /> {round.weight}%
+                        <span className="text-xs text-muted-foreground border border-border px-2 py-0.5 rounded">
+                            {round.criteria.length} criteria
                         </span>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={handleDeleteRound} disabled={loading}>
-                            <Trash2 size={14} />
-                        </Button>
+                        {isPaused && (
+                            <span className="text-[10px] font-bold bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded">PAUSED</span>
+                        )}
+                        {checkpointEnded && (
+                            <span className="text-[10px] font-bold bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded">ENDED</span>
+                        )}
+                        {!isPaused && !checkpointEnded && (
+                            <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded">ACTIVE</span>
+                        )}
                     </div>
                 </div>
-            </CardHeader>
-            <CardContent>
+            </AccordionTrigger>
+            <AccordionContent className="px-4 pb-4">
+                {/* Mobile-only badges */}
+                <div className="flex sm:hidden items-center gap-2 mb-3">
+                    <span className="text-xs text-muted-foreground border border-border px-2 py-0.5 rounded flex items-center gap-1">
+                        <Scale size={10} /> {round.weight}%
+                    </span>
+                    <span className="text-xs text-muted-foreground border border-border px-2 py-0.5 rounded">
+                        {round.criteria.length} criteria
+                    </span>
+                </div>
+
+                {/* Criteria */}
                 <div className="space-y-2">
                     {round.criteria.map((c: Criterion) => (
                         <div key={c.id} className="flex items-center justify-between text-sm bg-muted/50 p-2 rounded">
@@ -320,12 +369,11 @@ export function RoundItem({ round, hackathonId }: { round: Round, hackathonId: s
                 </div>
 
                 <CriterionForm hackathonId={hackathonId} roundId={round.id} />
-                
+
                 {/* Judging Requirements */}
                 <div className="mt-4 pt-4 border-t border-dashed border-border space-y-3">
                     <p className="text-xs font-semibold text-muted-foreground uppercase">Judging Requirements</p>
-                    
-                    {/* Required Judges */}
+
                     <div className="flex items-center justify-between bg-muted/50 p-2 rounded">
                         <div className="flex items-center gap-2 text-sm">
                             <Users size={14} className="text-muted-foreground" />
@@ -363,8 +411,7 @@ export function RoundItem({ round, hackathonId }: { round: Round, hackathonId: s
                             </div>
                         )}
                     </div>
-                    
-                    {/* Link Submission Requirement */}
+
                     <div className="flex items-center justify-between bg-muted/50 p-2 rounded">
                         <div className="flex items-center gap-2 text-sm">
                             <Link2 size={14} className="text-muted-foreground" />
@@ -382,9 +429,24 @@ export function RoundItem({ round, hackathonId }: { round: Round, hackathonId: s
                         </button>
                     </div>
                 </div>
-                
+
                 <CheckpointControls round={round} hackathonId={hackathonId} />
-            </CardContent>
-        </Card>
+
+                {/* Delete round */}
+                <div className="mt-4 pt-4 border-t border-dashed border-border flex justify-end">
+                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5" onClick={handleDeleteRound} disabled={loading}>
+                        <Trash2 size={14} />
+                        Delete Round
+                    </Button>
+                </div>
+            </AccordionContent>
+        </AccordionItem>
+    )
+}
+
+// Keep backward compat export
+export function RoundItem({ round, hackathonId }: { round: Round, hackathonId: string }) {
+    return (
+        <RoundList rounds={[round]} hackathonId={hackathonId} />
     )
 }

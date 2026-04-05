@@ -124,7 +124,18 @@ export async function createCriterion(hackathonId: string, roundId: string, form
         }
     })
 
+    // Check if criteria weights sum to 100% and warn if not
+    const allCriteria = await prisma.criterion.findMany({
+        where: { roundId },
+        select: { weight: true }
+    })
+    const totalWeight = allCriteria.reduce((sum, c) => sum + c.weight, 0)
+
     revalidatePath(`/h/${hackathon.slug}/manage/rounds`)
+
+    if (totalWeight !== 100) {
+        return { success: true, warning: `Criteria weights sum to ${totalWeight}%, not 100%. Scores may be skewed.` }
+    }
     return { success: true }
 }
 

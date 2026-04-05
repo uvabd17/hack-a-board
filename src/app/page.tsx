@@ -14,8 +14,10 @@ export default function Home() {
           <div className="text-base font-bold tracking-tight lowercase">
             hack&lt;a&gt;board
           </div>
-          <Link href="/signin" className="text-xs uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors">
-            Organizer Login
+          <Link href="/signin">
+            <Button variant="outline" size="sm" className="font-black uppercase tracking-wider">
+              Organizer Login
+            </Button>
           </Link>
         </div>
       </header>
@@ -35,9 +37,9 @@ export default function Home() {
 
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">
             <Link href="/dashboard">
-              <Button variant="brutal" size="lg" className="h-12 px-8 text-sm font-black">
+              <Button variant="brutal" size="xl" className="font-black">
                 Get started for free
-                <ArrowRight className="w-4 h-4 ml-1" />
+                <ArrowRight className="w-5 h-5 ml-1" />
               </Button>
             </Link>
             <Link href="/h/demo/display" className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5">
@@ -192,8 +194,8 @@ export default function Home() {
             Free to use. Takes a few minutes to set up.
           </p>
           <Link href="/dashboard">
-            <Button variant="brutal" size="lg" className="h-12 px-8 text-sm font-black">
-              Create your hackaboard <ArrowRight className="w-4 h-4 ml-1" />
+            <Button variant="brutal" size="xl" className="font-black">
+              Create your hackaboard <ArrowRight className="w-5 h-5 ml-1" />
             </Button>
           </Link>
         </section>

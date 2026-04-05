@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState, useMemo, useRef, use } from "react"
-import { getDisplayState, getTrackStanding } from "@/actions/display"
 import { CeremonyDisplay } from "@/components/ceremony-display"
 import { connectSocket, disconnectSocket, subscribeSocketStatus } from "@/lib/socket-client"
 import type { SocketConnectionState } from "@/lib/socket-client"
@@ -10,8 +9,7 @@ import { ColumnHeader } from "@/components/display/column-header"
 import { HeaderZone } from "@/components/display/header-zone"
 import { ConnectionStatus } from "@/components/display/connection-status"
 import { Terminal } from "lucide-react"
-
-const WATCHDOG_POLL_MS = 5000
+import { AdaptivePollController } from "@/lib/adaptive-poll"
 
 // ══════════════════════════════════════════════════════════════════
 //  LEADERBOARD DISPLAY — Broadcast-quality projector page
@@ -40,8 +38,8 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
 
     // Refs to prevent useEffect dependency thrashing
     const autoTrackIndexRef = useRef(-1)
-    const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
     const fetchRef = useRef<(() => Promise<void>) | null>(null)
+    const pollControllerRef = useRef<AdaptivePollController | null>(null)
     const problemsRef = useRef<any[]>([])
     const displayModeRef = useRef<string>("global")
 
@@ -79,7 +77,9 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
         (data?.displayConfig?.mode === "auto" && autoTrackIndex === -1)
     const TEAMS_PER_PAGE = isGlobalMode ? 20 : 12
 
-    // ── Data fetching ─────────────────────────────────────────────
+    // ── Data fetching via ETag endpoint (95% less bandwidth) ─────
+    const etagRef = useRef<string | null>(null)
+
     useEffect(() => {
         const fetchData = async () => {
             if (isTransitioning || pendingData) return
@@ -91,9 +91,22 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
                 }
             }
 
-            const result = problemId
-                ? await getTrackStanding(slug, problemId)
-                : await getDisplayState(slug)
+            const url = problemId
+                ? `/api/display/${slug}?problemId=${problemId}`
+                : `/api/display/${slug}`
+
+            try {
+                const headers: HeadersInit = {}
+                if (etagRef.current) headers["If-None-Match"] = etagRef.current
+
+                const res = await fetch(url, { headers })
+
+                // 304 Not Modified — data unchanged, skip update
+                if (res.status === 304) return
+
+                if (!res.ok) return
+                const result = await res.json()
+                etagRef.current = res.headers.get("etag")
 
             if (result) {
                 if (!result.hackathon.isFrozen || !data) {
@@ -118,14 +131,18 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
                     }))
                 }
             }
+            } catch {
+                // Network error — keep showing stale data, adaptive polling will retry
+            }
         }
 
         fetchRef.current = fetchData
-        fetchData()
-        const interval = setInterval(() => {
-            if (document.visibilityState !== "hidden") fetchData()
-        }, WATCHDOG_POLL_MS)
-        return () => clearInterval(interval)
+
+        // Adaptive polling — backs off on slow WiFi instead of hammering every 5s
+        const controller = new AdaptivePollController()
+        pollControllerRef.current = controller
+        controller.start(fetchData)
+        return () => controller.stop()
     }, [slug])
 
     // Trigger fetch when auto-cycle track changes
@@ -144,22 +161,13 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
         const socket = connectSocket(hackathonId, ["display", "hackathon"])
         const markLiveUpdate = () => setLastSocketEventAt(new Date())
 
-        const debouncedFetch = () => {
-            if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
-            debounceTimerRef.current = setTimeout(() => {
-                markLiveUpdate()
-                fetchRef.current?.()
-            }, 100)
-        }
-
-        const instantFetch = () => {
-            if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+        const triggerFetch = () => {
             markLiveUpdate()
-            fetchRef.current?.()
+            pollControllerRef.current?.forceNow()
         }
 
-        socket.on("score-updated", debouncedFetch)
-        socket.on("checkpoint-updated", instantFetch)
+        socket.on("score-updated", triggerFetch)
+        socket.on("checkpoint-updated", triggerFetch)
         socket.on("team-submitted", (payload: {
             teamId: string
             teamName: string
@@ -186,15 +194,15 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
                     return newSet
                 })
             }, 5000)
-            instantFetch()
+            triggerFetch()
         })
         socket.on("display:freeze", () => {
             setData((prev: any) => prev ? { ...prev, hackathon: { ...prev.hackathon, isFrozen: true } } : prev)
-            instantFetch()
+            triggerFetch()
         })
         socket.on("display:unfreeze", () => {
             setData((prev: any) => prev ? { ...prev, hackathon: { ...prev.hackathon, isFrozen: false } } : prev)
-            instantFetch()
+            triggerFetch()
         })
         socket.on("display:set-scene", (payload: { mode: string; problemId?: string | null }) => {
             if (payload?.mode) {
@@ -203,12 +211,11 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
                     displayConfig: { mode: payload.mode, problemId: payload.problemId || null }
                 } : prev)
             }
-            instantFetch()
+            triggerFetch()
         })
-        socket.on("problem-statements-released", debouncedFetch)
+        socket.on("problem-statements-released", triggerFetch)
 
         return () => {
-            if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
             socket.off("score-updated")
             socket.off("checkpoint-updated")
             socket.off("team-submitted")

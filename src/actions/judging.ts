@@ -6,6 +6,7 @@ import { emitTeamSubmitted } from "@/lib/socket-emit"
 import { cookies } from "next/headers"
 import { normalizeEmail } from "@/lib/access-control"
 import { PARTICIPANT_COOKIE_NAME } from "@/lib/participant-session"
+import { invalidateLeaderboard } from "@/lib/redis"
 
 /**
  * Record when a judge scans a team's QR code (starts judging session)
@@ -227,21 +228,21 @@ function calculateTimeBonus(
     // If checkpoint is paused, use the paused time as the effective deadline
     const effectiveDeadline = checkpointPausedAt || checkpointTime
 
-    // Calculate time difference in milliseconds
+    // Calculate time difference in minutes (fractional)
     const diffMs = effectiveDeadline.getTime() - submittedAt.getTime()
-    const diffMinutes = Math.floor(diffMs / 60000)
+    const diffMinutes = diffMs / 60000
 
     let timeBonus = 0
 
     if (diffMinutes > 0) {
-        // Early submission - positive bonus
-        timeBonus = diffMinutes * bonusRate
+        // Early submission - positive bonus, floor final result
+        timeBonus = Math.floor(diffMinutes * bonusRate)
     } else if (diffMinutes < 0) {
-        // Late submission - negative penalty
-        timeBonus = diffMinutes * penaltyRate // diffMinutes is already negative
+        // Late submission - negative penalty, ceil to make penalty harsher
+        timeBonus = Math.floor(diffMinutes * penaltyRate) // diffMinutes is already negative
     }
 
-    return { timeBonus, diffMinutes }
+    return { timeBonus, diffMinutes: Math.floor(diffMinutes) }
 }
 
 /**
@@ -317,6 +318,122 @@ export async function getTeamJudgingProgress(teamId: string, roundId: string) {
 }
 
 /**
+ * Batch version of getTeamJudgingProgress — fetches all rounds in 2 queries instead of 5N.
+ * Used by participant dashboard to avoid N+1 query problem.
+ */
+export async function getTeamJudgingProgressBatch(teamId: string, hackathonId: string, roundIds: string[]) {
+    try {
+        const [cookieStore, session] = await Promise.all([cookies(), auth()])
+        const participantToken = cookieStore.get(PARTICIPANT_COOKIE_NAME)?.value ?? null
+
+        // Auth check — once for all rounds
+        let authorized = false
+        if (session?.user?.id) {
+            const email = normalizeEmail(session.user.email)
+            const hackathon = await prisma.hackathon.findUnique({
+                where: { id: hackathonId },
+                select: { userId: true, organizerEmails: true },
+            })
+            authorized = !!hackathon && (
+                hackathon.userId === session.user.id ||
+                (!!email && hackathon.organizerEmails.includes(email))
+            )
+        }
+        if (!authorized && participantToken) {
+            const participant = await prisma.participant.findUnique({
+                where: { qrToken: participantToken },
+                select: { teamId: true, hackathonId: true },
+            })
+            authorized = !!participant && participant.teamId === teamId && participant.hackathonId === hackathonId
+        }
+        if (!authorized) return null
+
+        // Batch query: all rounds + criteria + hackathon rates
+        const [rounds, scores, submissions] = await Promise.all([
+            prisma.round.findMany({
+                where: { id: { in: roundIds } },
+                include: {
+                    criteria: true,
+                    hackathon: { select: { timeBonusRate: true, timePenaltyRate: true } }
+                }
+            }),
+            prisma.score.findMany({
+                where: { teamId, roundId: { in: roundIds } },
+                include: { judge: { select: { id: true, name: true } } },
+                orderBy: { createdAt: "asc" }
+            }),
+            prisma.submission.findMany({
+                where: { teamId, roundId: { in: roundIds } },
+                select: { roundId: true, submittedAt: true, timeBonus: true }
+            })
+        ])
+
+        // Group scores by round
+        const scoresByRound = new Map<string, typeof scores>()
+        for (const score of scores) {
+            const arr = scoresByRound.get(score.roundId) || []
+            arr.push(score)
+            scoresByRound.set(score.roundId, arr)
+        }
+
+        const submissionByRound = new Map(submissions.map(s => [s.roundId, s]))
+
+        // Compute progress per round
+        const results: Record<string, {
+            submitted: boolean
+            judgeCount: number
+            requiredJudges: number
+            timeBonus: number | null
+            judges: Array<{ judgeId: string; timestamp: Date; judgeName: string }>
+        }> = {}
+
+        for (const round of rounds) {
+            const roundScores = scoresByRound.get(round.id) || []
+            const submission = submissionByRound.get(round.id)
+
+            if (roundScores.length === 0) {
+                results[round.id] = {
+                    submitted: false, judgeCount: 0, requiredJudges: round.requiredJudges,
+                    timeBonus: null, judges: []
+                }
+                continue
+            }
+
+            // Group by judge, find complete judges
+            const judgeMap = new Map<string, typeof roundScores>()
+            for (const score of roundScores) {
+                const arr = judgeMap.get(score.judgeId) || []
+                arr.push(score)
+                judgeMap.set(score.judgeId, arr)
+            }
+
+            const completeJudges: Array<{ judgeId: string; timestamp: Date; judgeName: string }> = []
+            for (const [judgeId, judgeScores] of judgeMap.entries()) {
+                if (judgeScores.length >= round.criteria.length) {
+                    const latest = judgeScores.reduce((a, b) => b.createdAt > a.createdAt ? b : a)
+                    completeJudges.push({ judgeId, timestamp: latest.createdAt, judgeName: latest.judge.name })
+                }
+            }
+            completeJudges.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+
+            const isSubmitted = completeJudges.length >= round.requiredJudges
+            results[round.id] = {
+                submitted: isSubmitted || !!submission?.submittedAt,
+                judgeCount: completeJudges.length,
+                requiredJudges: round.requiredJudges,
+                timeBonus: submission?.timeBonus ?? null,
+                judges: completeJudges
+            }
+        }
+
+        return results
+    } catch (error) {
+        console.error("Error in batch judging progress:", error)
+        return null
+    }
+}
+
+/**
  * Create submission record with time bonus
  * Called after checkSubmissionStatus confirms new submission
  */
@@ -351,6 +468,9 @@ export async function createSubmission(
                 }
             }
         })
+
+        // Invalidate leaderboard cache — submission changes scores
+        await invalidateLeaderboard(submission.team.hackathonId)
 
         // Emit socket event for real-time leaderboard update
         await emitTeamSubmitted(

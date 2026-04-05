@@ -1,7 +1,7 @@
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { notFound, redirect } from "next/navigation"
-import { RoundForm, RoundItem } from "./client-components"
+import { RoundForm, RoundList } from "./client-components"
 import { LiveRefresher } from "@/components/live-refresher"
 import { canManageHackathon } from "@/lib/access-control"
 
@@ -63,20 +63,15 @@ export default async function RoundsPage({ params }: { params: Promise<{ slug: s
                 </div>
 
                 {/* List Section */}
-                <div className="lg:col-span-2 space-y-6">
-                    {hackathon.rounds.length === 0 ? (
-                        <div className="p-12 border border-border border-dashed text-center text-muted-foreground">
-                            No scoring rounds defined yet
-                        </div>
-                    ) : (
-                        hackathon.rounds.map((round) => (
-                            <RoundItem key={round.id} round={{
-                                ...round,
-                                checkpointTime: round.checkpointTime.toISOString(),
-                                checkpointPausedAt: round.checkpointPausedAt?.toISOString() ?? null,
-                            }} hackathonId={hackathon.id} />
-                        ))
-                    )}
+                <div className="lg:col-span-2">
+                    <RoundList
+                        rounds={hackathon.rounds.map((round) => ({
+                            ...round,
+                            checkpointTime: round.checkpointTime.toISOString(),
+                            checkpointPausedAt: round.checkpointPausedAt?.toISOString() ?? null,
+                        }))}
+                        hackathonId={hackathon.id}
+                    />
                 </div>
             </div>
         </div>

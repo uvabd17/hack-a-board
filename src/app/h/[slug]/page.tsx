@@ -62,21 +62,22 @@ export default async function PublicHackathonPage({ params }: { params: Promise<
 
                     <div className="pt-8">
                         {isRegistrationOpen ? (
-                            <Button asChild size="lg" variant="brutal" className="text-lg px-8 py-6 font-black">
+                            <Button asChild size="xl" variant="brutal" className="text-lg font-black">
                                 <Link href={`/h/${hackathon.slug}/register`}>
                                     REGISTER NOW
                                 </Link>
                             </Button>
                         ) : (
-                            <Button disabled size="lg" variant="outline" className="text-lg px-8 py-6 opacity-50 cursor-not-allowed">
+                            <Button disabled size="xl" variant="outline" className="text-lg opacity-50 cursor-not-allowed">
                                 REGISTRATION CLOSED
                             </Button>
                         )}
-                        <div className="mt-4 flex flex-col sm:flex-row items-center gap-3 justify-center">
-                            <Link href={`/h/${hackathon.slug}/participant-login`} className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                                Already registered? Log in →
-                            </Link>
-                            <span className="hidden sm:inline text-muted-foreground/30">·</span>
+                        <div className="mt-6 flex flex-col sm:flex-row items-center gap-4 justify-center">
+                            <Button asChild variant="outline" size="lg" className="font-black">
+                                <Link href={`/h/${hackathon.slug}/participant-login`}>
+                                    Already registered? Log in
+                                </Link>
+                            </Button>
                             <Link href={`/h/${hackathon.slug}/display`} className="text-sm text-muted-foreground hover:text-primary transition-colors">
                                 View leaderboard →
                             </Link>

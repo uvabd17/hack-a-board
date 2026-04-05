@@ -25,7 +25,7 @@ export default async function JudgeLayout({
         include: { hackathon: true }
     })
 
-    if (!judge || judge.hackathon.slug !== slug || !judge.isActive) {
+    if (!judge || judge.hackathon.slug !== slug || !judge.isActive || judge.hackathon.isArchived) {
         return (
             <div className="flex items-center justify-center min-h-screen text-destructive font-mono">
                 ACCESS DENIED — Invalid or inactive judge token

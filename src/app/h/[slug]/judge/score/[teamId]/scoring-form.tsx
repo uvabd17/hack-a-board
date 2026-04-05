@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { submitScore } from "@/actions/scoring"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle2, AlertCircle, Trophy } from "lucide-react"
+import { CheckCircle2, AlertCircle, Trophy, Loader2 } from "lucide-react"
+import { retryWithBackoff } from "@/lib/retry"
 
 interface Criterion {
     id: string;
@@ -42,6 +43,7 @@ export function ScoringForm({
 }) {
     const [scores, setScores] = useState<Record<string, number>>(initialScores)
     const [loading, setLoading] = useState(false)
+    const [syncing, setSyncing] = useState(false)
     const [status, setStatus] = useState<{
         error?: string
         success?: string
@@ -53,6 +55,34 @@ export function ScoringForm({
             timeBonus?: number
         }
     } | null>(null)
+
+    // Recover pending scores from localStorage on mount
+    useEffect(() => {
+        const pendingKey = `pending:${teamId}`
+        const pending = localStorage.getItem(pendingKey)
+        if (!pending) return
+
+        try {
+            const { roundId, scores: pendingScores } = JSON.parse(pending)
+            setSyncing(true)
+            setStatus({ success: "Recovering saved scores..." })
+            retryWithBackoff(
+                () => submitScore({ hackathonId, teamId, roundId, scores: pendingScores }),
+                { maxAttempts: 3, onRetry: (a, m) => setStatus({ success: `Syncing saved scores... (${a}/${m})` }) }
+            ).then(res => {
+                if (res.error) {
+                    setStatus({ error: `Recovery failed: ${res.error}` })
+                } else {
+                    localStorage.removeItem(pendingKey)
+                    setStatus({ success: "Saved scores synced successfully!" })
+                }
+            }).catch(() => {
+                setStatus({ error: "Could not sync saved scores. Will retry next time." })
+            }).finally(() => setSyncing(false))
+        } catch {
+            localStorage.removeItem(pendingKey)
+        }
+    }, [hackathonId, teamId])
 
     if (rounds.length === 0) return <div className="text-muted-foreground p-4">No scoring rounds configured yet</div>
 
@@ -81,50 +111,64 @@ export function ScoringForm({
             return
         }
 
-        const res = await submitScore({
-            hackathonId,
-            teamId,
-            roundId,
-            scores: roundScores
-        })
+        // Optimistic UI — show success immediately, sync in background
+        setStatus({ success: "Scores submitted! Syncing..." })
+        setSyncing(true)
 
-        if (res.error) {
-            setStatus({ error: res.error })
-        } else {
-            if (res.submissionStatus?.newSubmission && res.submissionStatus.submitted) {
-                const bonus = res.submissionStatus.timeBonus || 0
-                const bonusText = bonus > 0
-                    ? `+${bonus} time bonus!`
-                    : bonus < 0
-                    ? `${bonus} time penalty`
-                    : ''
-                setStatus({
-                    success: `Team submitted! ${bonusText}`,
-                    submissionStatus: res.submissionStatus
-                })
-            } else if (res.submissionStatus?.submitted) {
-                setStatus({
-                    success: `Scores saved. Team already submitted (${res.submissionStatus.judgeCount}/${res.submissionStatus.requiredJudges} judges).`,
-                    submissionStatus: res.submissionStatus
-                })
+        // Persist to localStorage in case of crash/timeout
+        const pendingKey = `pending:${teamId}`
+        localStorage.setItem(pendingKey, JSON.stringify({ roundId, scores: roundScores }))
+
+        try {
+            const res = await retryWithBackoff(
+                () => submitScore({ hackathonId, teamId, roundId, scores: roundScores }),
+                {
+                    maxAttempts: 3,
+                    onRetry: (attempt, max) => {
+                        setStatus({ success: `Syncing... (retry ${attempt}/${max})` })
+                    }
+                }
+            )
+
+            // Clear pending — server confirmed
+            localStorage.removeItem(pendingKey)
+
+            if (res.error) {
+                setStatus({ error: res.error })
             } else {
-                setStatus({
-                    success: `Scores saved! Team progress: ${res.submissionStatus?.judgeCount}/${res.submissionStatus?.requiredJudges} judges completed.`,
-                    submissionStatus: res.submissionStatus
-                })
+                if (res.submissionStatus?.newSubmission && res.submissionStatus.submitted) {
+                    const bonus = res.submissionStatus.timeBonus || 0
+                    const bonusText = bonus > 0 ? `+${bonus} time bonus!` : bonus < 0 ? `${bonus} time penalty` : ''
+                    setStatus({ success: `Team submitted! ${bonusText}`, submissionStatus: res.submissionStatus })
+                } else if (res.submissionStatus?.submitted) {
+                    setStatus({
+                        success: `Scores saved. Team already submitted (${res.submissionStatus.judgeCount}/${res.submissionStatus.requiredJudges} judges).`,
+                        submissionStatus: res.submissionStatus
+                    })
+                } else {
+                    setStatus({
+                        success: `Scores saved! ${res.submissionStatus?.judgeCount}/${res.submissionStatus?.requiredJudges} judges completed.`,
+                        submissionStatus: res.submissionStatus
+                    })
+                }
             }
+        } catch {
+            // All retries exhausted — scores are in localStorage for recovery
+            setStatus({ error: "Network issue. Scores saved locally — will sync when connection improves." })
+        } finally {
+            setLoading(false)
+            setSyncing(false)
         }
-        setLoading(false)
     }
 
     return (
         <Tabs defaultValue={rounds[0].id} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 bg-secondary">
+            <TabsList className="flex w-full overflow-x-auto bg-secondary">
                 {rounds.map(round => (
                     <TabsTrigger
                         key={round.id}
                         value={round.id}
-                        className="data-[state=active]:bg-[var(--role-accent)] data-[state=active]:text-[var(--role-accent-foreground)] font-bold"
+                        className="flex-1 min-w-0 data-[state=active]:bg-[var(--role-accent)] data-[state=active]:text-[var(--role-accent-foreground)] font-bold truncate"
                     >
                         {round.name}
                     </TabsTrigger>
@@ -146,6 +190,12 @@ export function ScoringForm({
                     </div>
 
                     {/* Criteria with chunky score buttons */}
+                    {round.criteria.length === 0 ? (
+                        <div className="p-8 border-2 border-border border-dashed rounded-lg text-center text-muted-foreground space-y-2">
+                            <p className="font-bold text-foreground">No scoring criteria</p>
+                            <p className="text-xs">The organizer hasn&apos;t added criteria for this round yet.</p>
+                        </div>
+                    ) : (
                     <div className="space-y-5">
                         {round.criteria.map(criterion => (
                             <div key={criterion.id} className="border-2 border-border bg-card p-4 space-y-3 rounded-lg">
@@ -166,10 +216,10 @@ export function ScoringForm({
                                                 type="button"
                                                 onClick={() => handleScoreChange(criterion.id, value)}
                                                 className={[
-                                                    "h-16 flex flex-col items-center justify-center border-2 font-mono transition-all duration-150",
+                                                    "h-16 flex flex-col items-center justify-center border-2 border-b-[4px] rounded-lg font-mono transition-all duration-100 cursor-pointer select-none active:border-b-2 active:mt-[2px]",
                                                     isSelected
-                                                        ? "bg-[var(--role-accent)] text-[var(--role-accent-foreground)] border-[var(--role-accent)] shadow-[2px_2px_0_var(--brutal-shadow)]"
-                                                        : "bg-secondary border-border text-muted-foreground hover:border-[var(--role-accent)]/50 hover:text-foreground",
+                                                        ? "bg-[var(--role-accent)] text-[var(--role-accent-foreground)] border-[var(--role-accent)] border-b-[var(--role-accent)]/60"
+                                                        : "bg-secondary border-border border-b-border/60 text-muted-foreground hover:border-[var(--role-accent)]/50 hover:text-foreground",
                                                 ].join(" ")}
                                             >
                                                 <span className="text-xl font-black">{value}</span>
@@ -183,6 +233,7 @@ export function ScoringForm({
                             </div>
                         ))}
                     </div>
+                    )}
 
                     {/* Status messages */}
                     {status?.error && (
@@ -192,12 +243,14 @@ export function ScoringForm({
                     )}
 
                     {status?.success && (
-                        <div className={`flex items-center gap-2 p-4 border-2 ${
-                            status.submissionStatus?.newSubmission
-                                ? 'text-primary bg-primary/10 border-primary/30 shadow-[0_0_30px_rgba(34,211,238,0.15)]'
-                                : 'text-emerald-400 bg-emerald-900/20 border-emerald-700/30'
+                        <div className={`flex items-center gap-2 p-4 border-2 rounded-lg ${
+                            syncing
+                                ? 'text-amber-400 bg-amber-900/20 border-amber-700/30'
+                                : status.submissionStatus?.newSubmission
+                                    ? 'text-primary bg-primary/10 border-primary/30 shadow-[0_0_30px_rgba(34,211,238,0.15)]'
+                                    : 'text-emerald-400 bg-emerald-900/20 border-emerald-700/30'
                         }`}>
-                            {status.submissionStatus?.newSubmission ? <Trophy size={18} /> : <CheckCircle2 size={18} />}
+                            {syncing ? <Loader2 size={18} className="animate-spin" /> : status.submissionStatus?.newSubmission ? <Trophy size={18} /> : <CheckCircle2 size={18} />}
                             <span>{status.success}</span>
                         </div>
                     )}
@@ -205,11 +258,12 @@ export function ScoringForm({
                     {/* Submit button */}
                     <Button
                         onClick={() => handleSubmit(round.id)}
-                        disabled={loading}
+                        disabled={loading || syncing || round.criteria.length === 0}
                         variant="brutal"
-                        className="w-full h-16 text-xl font-black"
+                        size="xl"
+                        className="w-full text-xl font-black"
                     >
-                        {loading ? "SAVING..." : "SUBMIT SCORES"}
+                        {loading ? "SAVING..." : syncing ? "SYNCING..." : "SUBMIT SCORES"}
                     </Button>
                 </TabsContent>
             ))}

@@ -21,11 +21,15 @@ export function ManualCodeEntry({ slug }: { slug: string }) {
         setError(null)
 
         try {
+            const controller = new AbortController()
+            const timeoutId = setTimeout(() => controller.abort(), 10000)
             const res = await fetch(`/api/judge/lookup-team`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ inviteCode: trimmed }),
+                signal: controller.signal,
             })
+            clearTimeout(timeoutId)
 
             if (res.ok) {
                 const { teamId } = await res.json()
@@ -34,9 +38,12 @@ export function ManualCodeEntry({ slug }: { slug: string }) {
                 const data = await res.json().catch(() => ({}))
                 setError(data.error || "Team not found. Check the code and try again.")
             }
-        } catch {
-            // Fallback: try server action style navigation
-            window.location.assign(`/h/${slug}/judge/score-by-code/${trimmed}`)
+        } catch (err: unknown) {
+            if (err instanceof DOMException && err.name === "AbortError") {
+                setError("Request timed out. Tap GO to retry.")
+            } else {
+                setError("Network error. Check your connection and try again.")
+            }
         } finally {
             setLoading(false)
         }

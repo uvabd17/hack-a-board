@@ -12,7 +12,7 @@ import { ProblemSelection } from "@/components/problem-selection"
 import { SubmissionForm } from "@/components/submission-form"
 import { LiveJudgingProgress } from "@/components/live-judging-progress"
 import { LinkSubmissionForm } from "@/components/link-submission-form"
-import { getTeamJudgingProgress } from "@/actions/judging"
+import { getTeamJudgingProgressBatch } from "@/actions/judging"
 import { CheckCircle2 } from "lucide-react"
 import { CountdownTimer } from "@/components/countdown-timer"
 import { LiveRefresher } from "@/components/live-refresher"
@@ -69,15 +69,26 @@ export default async function DashboardPage({
         }
     })
 
-    // Security check: Match slug
+    // Security check: Match slug + not archived
     if (!participant || participant.hackathon.slug !== slug) {
         redirect(`/h/${slug}/participant-login`)
+    }
+    if (participant.hackathon.isArchived) {
+        return (
+            <div className="min-h-screen bg-background flex items-center justify-center p-4">
+                <div className="text-center space-y-3">
+                    <p className="text-2xl">📦</p>
+                    <h1 className="text-lg font-bold">Event Archived</h1>
+                    <p className="text-sm text-muted-foreground">This hackathon has ended and been archived.</p>
+                </div>
+            </div>
+        )
     }
 
     const qrCodeDataUrl = await getCachedQRCode(participant.qrToken, slug)
 
     // Parallelize independent queries for better performance
-    const [{ leaderboard, frozen }, problems, rounds, submissions, phases, roundsWithJudgingProgress] = await Promise.all([
+    const [{ leaderboard, frozen }, problems, rounds, submissions, phases, batchedProgress] = await Promise.all([
         getLeaderboardData(slug),
         prisma.problemStatement.findMany({
             where: { hackathonId: participant.hackathonId, isReleased: true },
@@ -94,12 +105,12 @@ export default async function DashboardPage({
             where: { hackathonId: participant.hackathonId },
             orderBy: { order: 'asc' }
         }),
-        // Fetch judging progress for all rounds
-        Promise.all(
-            (await prisma.round.findMany({
-                where: { hackathonId: participant.hackathonId },
-                select: { id: true }
-            })).map((r: { id: string }) => getTeamJudgingProgress(participant.teamId, r.id))
+        // Batch query: all rounds in 3 queries instead of 5N
+        prisma.round.findMany({
+            where: { hackathonId: participant.hackathonId },
+            select: { id: true }
+        }).then(rs =>
+            getTeamJudgingProgressBatch(participant.teamId, participant.hackathonId, rs.map(r => r.id))
         )
     ])
 
@@ -110,6 +121,7 @@ export default async function DashboardPage({
     )
 
     const teamEntry = leaderboard.find((e: any) => e.teamId === participant.teamId)
+    const isCheckedIn = participant.team.isCheckedIn
 
     const selectedProblem = participant.team.problemStatementId
         ? problems.find((p: any) => p.id === participant.team.problemStatementId)
@@ -161,7 +173,7 @@ export default async function DashboardPage({
                 )}
             </header>
 
-            <main className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+            <main className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
                 {/* Left Column: Identity & Intel */}
                 <div className="lg:col-span-1 space-y-6">
                     {/* QR Passport Card */}
@@ -243,89 +255,105 @@ export default async function DashboardPage({
 
                 {/* Right Column: Mission Control */}
                 <div className="lg:col-span-2 space-y-6">
-                    {/* Problem Statement Selection */}
-                    <Card className="bg-card border-border">
-                        <CardHeader>
-                            <CardTitle className="text-sm text-muted-foreground uppercase tracking-widest">
-                                Challenge Track
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            {selectedProblem ? (
-                                <div className="p-4 border border-primary/20 bg-primary/5 rounded">
-                                    <h3 className="text-lg font-bold text-primary mb-1">{selectedProblem.title}</h3>
-                                    <p className="text-xs text-muted-foreground">{selectedProblem.description}</p>
-                                    <div className="mt-4 flex items-center gap-2 text-[10px] text-primary/70 uppercase">
-                                        <CheckCircle2 className="w-3 h-3" />
-                                        Track Locked
+                    {!isCheckedIn ? (
+                        <Card className="bg-card border-2 border-amber-500/30">
+                            <CardContent className="py-12 text-center space-y-3">
+                                <div className="text-4xl">📋</div>
+                                <h3 className="text-lg font-bold text-foreground">Check-in required</h3>
+                                <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                                    Show your QR code to an organizer at the venue to check in.
+                                    Once checked in, you&apos;ll be able to pick your challenge track and participate in rounds.
+                                </p>
+                                <Badge variant="outline" className="border-amber-500/30 text-amber-500 mt-2">
+                                    NOT CHECKED IN
+                                </Badge>
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        <>
+                            {/* Problem Statement Selection */}
+                            <Card className="bg-card border-border">
+                                <CardHeader>
+                                    <CardTitle className="text-sm text-muted-foreground uppercase tracking-widest">
+                                        Challenge Track
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    {selectedProblem ? (
+                                        <div className="p-4 border border-primary/20 bg-primary/5 rounded">
+                                            <h3 className="text-lg font-bold text-primary mb-1">{selectedProblem.title}</h3>
+                                            <p className="text-xs text-muted-foreground">{selectedProblem.description}</p>
+                                            <div className="mt-4 flex items-center gap-2 text-[10px] text-primary/70 uppercase">
+                                                <CheckCircle2 className="w-3 h-3" />
+                                                Track Locked
+                                            </div>
+                                        </div>
+                                    ) : problems.length > 0 ? (
+                                        <ProblemSelection problems={problems} teamId={participant.teamId} slug={slug} />
+                                    ) : (
+                                        <p className="text-xs text-muted-foreground italic">Problem statements have not been released by the organizer yet.</p>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            {/* Submissions / Judging Progress */}
+                            {selectedProblem && rounds.length > 0 && (
+                                <div className="space-y-4">
+                                    <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground pl-1">Round Progress</h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {rounds.map((round: any) => {
+                                            const submission = submissions.find((s: any) => s.roundId === round.id)
+                                            const progressData = batchedProgress?.[round.id]
+
+                                            if (round.requiresLinkSubmission && !submission?.linksSubmittedAt) {
+                                                return (
+                                                    <LinkSubmissionForm
+                                                        key={round.id}
+                                                        roundId={round.id}
+                                                        roundName={round.name}
+                                                        teamId={participant.teamId}
+                                                        slug={slug}
+                                                        checkpointTime={round.checkpointTime}
+                                                        checkpointPausedAt={round.checkpointPausedAt}
+                                                    />
+                                                )
+                                            }
+
+                                            if (progressData) {
+                                                return (
+                                                    <LiveJudgingProgress
+                                                        key={round.id}
+                                                        roundName={round.name}
+                                                        roundId={round.id}
+                                                        teamId={participant.teamId}
+                                                        hackathonId={participant.hackathonId}
+                                                        checkpointTime={new Date(round.checkpointTime)}
+                                                        checkpointPausedAt={round.checkpointPausedAt ? new Date(round.checkpointPausedAt) : null}
+                                                        initialRequiredJudges={progressData.requiredJudges}
+                                                        initialJudgeCount={progressData.judgeCount}
+                                                        initialSubmitted={progressData.submitted}
+                                                        initialTimeBonus={progressData.timeBonus ?? null}
+                                                        initialJudges={progressData.judges || []}
+                                                        timeBonusRate={participant.hackathon.timeBonusRate}
+                                                        timePenaltyRate={participant.hackathon.timePenaltyRate}
+                                                    />
+                                                )
+                                            }
+
+                                            return (
+                                                <SubmissionForm
+                                                    key={round.id}
+                                                    round={round}
+                                                    teamId={participant.teamId}
+                                                    slug={slug}
+                                                    existingSubmission={submission}
+                                                />
+                                            )
+                                        })}
                                     </div>
                                 </div>
-                            ) : problems.length > 0 ? (
-                                <ProblemSelection problems={problems} teamId={participant.teamId} slug={slug} />
-                            ) : (
-                                <p className="text-xs text-muted-foreground italic">Problem statements have not been released by the organizer yet.</p>
                             )}
-                        </CardContent>
-                    </Card>
-
-                    {/* Submissions / Judging Progress */}
-                    {selectedProblem && rounds.length > 0 && (
-                        <div className="space-y-4">
-                            <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground pl-1">Round Progress</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {rounds.map((round: any, idx: number) => {
-                                    const submission = submissions.find((s: any) => s.roundId === round.id)
-                                    const progressData = roundsWithJudgingProgress[idx]
-                                    
-                                    // Check if round requires link submission and if links are submitted
-                                    if (round.requiresLinkSubmission && !submission?.linksSubmittedAt) {
-                                        // Show link submission form
-                                        return (
-                                            <LinkSubmissionForm
-                                                key={round.id}
-                                                roundId={round.id}
-                                                roundName={round.name}
-                                                teamId={participant.teamId}
-                                                slug={slug}
-                                                checkpointTime={round.checkpointTime}
-                                                checkpointPausedAt={round.checkpointPausedAt}
-                                            />
-                                        )
-                                    }
-                                    
-                                    // Check if this round has judging progress data
-                                    if (progressData && 'submitted' in progressData) {
-                                        return (
-                                            <LiveJudgingProgress
-                                                key={round.id}
-                                                roundName={round.name}
-                                                roundId={round.id}
-                                                teamId={participant.teamId}
-                                                hackathonId={participant.hackathonId}
-                                                checkpointTime={new Date(round.checkpointTime)}
-                                                checkpointPausedAt={round.checkpointPausedAt ? new Date(round.checkpointPausedAt) : null}
-                                                initialRequiredJudges={progressData.requiredJudges}
-                                                initialJudgeCount={progressData.judgeCount}
-                                                initialSubmitted={progressData.submitted}
-                                                initialTimeBonus={progressData.timeBonus ?? null}
-                                                initialJudges={progressData.judges || []}
-                                            />
-                                        )
-                                    }
-                                    
-                                    // Fallback to old submission form (for backwards compatibility)
-                                    return (
-                                        <SubmissionForm
-                                            key={round.id}
-                                            round={round}
-                                            teamId={participant.teamId}
-                                            slug={slug}
-                                            existingSubmission={submission}
-                                        />
-                                    )
-                                })}
-                            </div>
-                        </div>
+                        </>
                     )}
                 </div>
             </main>

@@ -14,6 +14,8 @@ interface JudgingProgressProps {
     judgeCount: number
     submitted: boolean
     timeBonus?: number
+    timeBonusRate?: number
+    timePenaltyRate?: number
     judges: Array<{ name: string; timestamp: Date }>
 }
 
@@ -25,25 +27,28 @@ export function JudgingProgress({
     judgeCount,
     submitted,
     timeBonus,
+    timeBonusRate = 2,
+    timePenaltyRate = 1,
     judges
 }: JudgingProgressProps) {
-    // Calculate time bonus preview if not submitted yet
+    // Calculate time bonus preview using actual hackathon rates
     const getTimeBonusPreview = () => {
         const effectiveCheckpoint = checkpointPausedAt || checkpointTime
         const now = new Date()
-        const diffMinutes = Math.floor((effectiveCheckpoint.getTime() - now.getTime()) / 60000)
-        
+        const diffMinutes = (effectiveCheckpoint.getTime() - now.getTime()) / 60000
+
         if (diffMinutes > 0) {
+            const bonus = Math.floor(diffMinutes * timeBonusRate)
             return {
-                bonus: diffMinutes * 2,
-                label: `If submitted now: +${diffMinutes * 2} bonus`,
+                bonus,
+                label: `If submitted now: +${bonus} bonus`,
                 color: "text-primary"
             }
         } else {
-            const penalty = Math.abs(diffMinutes)
+            const penalty = Math.floor(diffMinutes * timePenaltyRate)
             return {
-                bonus: -penalty,
-                label: `If submitted now: -${penalty} penalty`,
+                bonus: penalty,
+                label: `If submitted now: ${penalty} penalty`,
                 color: "text-red-500"
             }
         }

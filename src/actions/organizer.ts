@@ -229,6 +229,22 @@ export async function updateHackathonStatus(hackathonId: string, newStatus: stri
         return { error: `Cannot transition from "${hackathon.status}" to "${newStatus}"` }
     }
 
+    // Pre-flight safety checks before going live
+    if (newStatus === "live") {
+        const [roundCount, judgeCount, teamCount] = await Promise.all([
+            prisma.round.count({ where: { hackathonId } }),
+            prisma.judge.count({ where: { hackathonId, isActive: true } }),
+            prisma.team.count({ where: { hackathonId } }),
+        ])
+        const warnings: string[] = []
+        if (roundCount === 0) warnings.push("no scoring rounds")
+        if (judgeCount === 0) warnings.push("no active judges")
+        if (teamCount === 0) warnings.push("no registered teams")
+        if (warnings.length > 0) {
+            return { error: `Cannot go live: ${warnings.join(", ")}. Set these up first.` }
+        }
+    }
+
     const timestampUpdates: Record<string, unknown> = {}
     if (newStatus === "live") timestampUpdates.liveStartedAt = new Date()
     if (newStatus === "ended") timestampUpdates.endedAt = new Date()

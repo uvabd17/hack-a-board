@@ -95,83 +95,85 @@ export async function registerParticipant(prevState: RegisterState, formData: Fo
             }
         }
 
-        // Handle Team Logic
-        let teamId: string = ""
-
-        if (mode === "create") {
-            if (!teamName || teamName.length < 3) {
+        // Handle Team Logic — wrapped in transaction for atomicity
+        if (mode === "create" || mode === "solo") {
+            if (mode === "create" && (!teamName || teamName.length < 3)) {
                 return { error: "Team name must be at least 3 characters" }
             }
 
-            // Generate unique invite code
-            const code = crypto.randomBytes(3).toString("hex").toUpperCase()
+            const displayName = mode === "solo" ? `${name}'s Team` : teamName!
+            const qrToken = crypto.randomBytes(32).toString("hex")
 
-            const team = await prisma.team.create({
-                data: {
-                    hackathonId: hackathon.id,
-                    name: teamName,
-                    inviteCode: code,
-                    status: hackathon.requireApproval ? "pending" : "approved"
+            // Retry loop for invite code uniqueness
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    const code = crypto.randomBytes(4).toString("hex").toUpperCase()
+                    await prisma.$transaction(async (tx) => {
+                        const team = await tx.team.create({
+                            data: {
+                                hackathonId: hackathon.id,
+                                name: displayName,
+                                inviteCode: code,
+                                status: hackathon.requireApproval ? "pending" : "approved"
+                            }
+                        })
+                        await tx.participant.create({
+                            data: {
+                                hackathonId: hackathon.id,
+                                teamId: team.id,
+                                name,
+                                email: normalizedEmail,
+                                phone,
+                                college,
+                                role: "leader",
+                                qrToken,
+                                status: "approved"
+                            }
+                        })
+                    })
+                    return { success: true, qrToken }
+                } catch (e: unknown) {
+                    const isUniqueViolation = e instanceof Error && e.message.includes("Unique constraint")
+                    if (!isUniqueViolation || attempt === 2) throw e
+                    // Retry with new code
                 }
-            })
-            teamId = team.id
+            }
         } else if (mode === "join") {
             if (!inviteCode) return { error: "Invite code is required" }
 
-            const team = await prisma.team.findUnique({
-                where: { inviteCode }
-            })
+            const qrToken = crypto.randomBytes(32).toString("hex")
 
-            if (!team) return { error: "Invalid invite code" }
+            const result = await prisma.$transaction(async (tx) => {
+                const team = await tx.team.findUnique({ where: { inviteCode } })
+                if (!team) return { error: "Invalid invite code" } as const
+                if (team.hackathonId !== hackathon.id) return { error: "Invalid invite code" } as const
 
-            // Ensure the team belongs to this hackathon (prevent cross-hackathon joins)
-            if (team.hackathonId !== hackathon.id) {
-                return { error: "Invalid invite code" }
-            }
-
-            // Check team size
-            const memberCount = await prisma.participant.count({
-                where: { teamId: team.id }
-            })
-
-            if (memberCount >= hackathon.maxTeamSize) {
-                return { error: `Team is full (max ${hackathon.maxTeamSize} members)` }
-            }
-
-            teamId = team.id
-        } else if (mode === "solo") {
-            // Create a team with participant name
-            const code = crypto.randomBytes(3).toString("hex").toUpperCase()
-            const team = await prisma.team.create({
-                data: {
-                    hackathonId: hackathon.id,
-                    name: `${name}'s Team`,
-                    inviteCode: code,
-                    status: hackathon.requireApproval ? "pending" : "approved"
+                const memberCount = await tx.participant.count({ where: { teamId: team.id } })
+                if (memberCount >= hackathon.maxTeamSize) {
+                    return { error: `Team is full (max ${hackathon.maxTeamSize} members)` } as const
                 }
+
+                await tx.participant.create({
+                    data: {
+                        hackathonId: hackathon.id,
+                        teamId: team.id,
+                        name,
+                        email: normalizedEmail,
+                        phone,
+                        college,
+                        role: "member",
+                        qrToken,
+                        status: "approved"
+                    }
+                })
+                return { success: true } as const
             })
-            teamId = team.id
+
+            if ('error' in result) return result
+            return { success: true, qrToken }
         }
 
-        // Generate QR Token
-        const qrToken = crypto.randomBytes(32).toString("hex")
-
-        await prisma.participant.create({
-            data: {
-                hackathonId: hackathon.id,
-                teamId,
-                name,
-                email: normalizedEmail,
-                phone,
-                college,
-                role: mode === "create" || mode === "solo" ? "leader" : "member",
-                qrToken,
-                status: "approved"
-            }
-        })
-
-        // Prepare redirect URL
-        return { success: true, qrToken: qrToken }
+        return { error: "Invalid registration mode" }
 
     } catch (e) {
         console.error("Registration error:", e)

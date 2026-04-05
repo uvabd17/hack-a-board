@@ -16,6 +16,16 @@ export type WinnerSnapshot = {
     members: string[]
 }
 
+function parseWinners(snapshot: unknown): WinnerSnapshot[] {
+    try {
+        const parsed = JSON.parse(snapshot as string)
+        return Array.isArray(parsed) ? parsed : []
+    } catch {
+        console.error("Failed to parse winnersSnapshot")
+        return []
+    }
+}
+
 export type CeremonyState = {
     isActive: boolean
     currentRound: number // 1-based index (1 = 1st winner revealed)
@@ -164,7 +174,7 @@ export async function revealNext(hackathonId: string) {
 
     if (!activeSession) return { success: false, error: "No active ceremony" }
 
-    const winners = JSON.parse(activeSession.winnersSnapshot as string) as WinnerSnapshot[]
+    const winners = parseWinners(activeSession.winnersSnapshot)
 
     // Determine the *next* index to reveal.
     // Logic: 
@@ -216,7 +226,7 @@ export async function getCeremonyState(slug: string): Promise<CeremonyState> {
 
     if (!activeSession) return { isActive: false, currentRound: 0, totalWinners: 0, currentWinner: null, history: [] }
 
-    const winners = JSON.parse(activeSession.winnersSnapshot as string) as WinnerSnapshot[]
+    const winners = parseWinners(activeSession.winnersSnapshot)
 
     // Current Index = number of winners revealed so far.
     // Reveal Order: Reverse Rank (10 down to 1).
@@ -302,7 +312,7 @@ export async function getCeremonyControllerState(hackathonId: string) {
         }
     }
 
-    const winners = JSON.parse(activeSession.winnersSnapshot as string) as WinnerSnapshot[]
+    const winners = parseWinners(activeSession.winnersSnapshot)
 
     return {
         isActive: true,

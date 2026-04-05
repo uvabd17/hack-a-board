@@ -6,6 +6,7 @@ import { z } from "zod"
 import { emitScoreUpdated, emitJudgingProgress } from "@/lib/socket-emit"
 import { checkSubmissionStatus, createSubmission, canJudgeScore } from "@/actions/judging"
 import { checkRateLimit } from "@/lib/rate-limit"
+import { invalidateLeaderboard } from "@/lib/redis"
 
 const ScoreSubmissionSchema = z.object({
     hackathonId: z.string(),
@@ -59,11 +60,14 @@ export async function submitScore(data: {
         return { error: "Data Mismatch" }
     }
 
-    // Verify all submitted criterion IDs belong to this round (prevent cross-round score injection)
+    // Verify all criterion IDs belong to this round AND all criteria are scored
     const validCriterionIds = new Set(round.criteria.map(c => c.id))
     const submittedIds = Object.keys(data.scores)
     if (submittedIds.some(id => !validCriterionIds.has(id))) {
         return { error: "Invalid criterion IDs" }
+    }
+    if (submittedIds.length !== round.criteria.length) {
+        return { error: `All ${round.criteria.length} criteria must be scored` }
     }
 
     // Check if judge can still score this team (grace period logic)
@@ -110,6 +114,9 @@ export async function submitScore(data: {
             }
         })
 
+        // Invalidate leaderboard cache — scores changed
+        await invalidateLeaderboard(data.hackathonId)
+
         // Check if this completes the submission requirement
         const submissionStatus = await checkSubmissionStatus(data.teamId, data.roundId)
 
@@ -119,7 +126,7 @@ export async function submitScore(data: {
             return { success: true, warning: "Score saved but submission check failed" }
         }
 
-        // If this creates a new submission, create the submission record
+        // If this creates a new submission, create the submission record + emit score update
         if (submissionStatus.newSubmission && submissionStatus.submitted) {
             await createSubmission(
                 data.teamId,
@@ -127,6 +134,8 @@ export async function submitScore(data: {
                 submissionStatus.submittedAt,
                 submissionStatus.timeBonus
             )
+            // Also emit score-updated so all listeners (display, dashboard) get the update
+            await emitScoreUpdated(data.hackathonId, data.teamId)
         } else {
             // Regular score update - emit both score update and judging progress
             await Promise.all([
