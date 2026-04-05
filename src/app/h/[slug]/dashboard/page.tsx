@@ -156,7 +156,7 @@ export default async function DashboardPage({
                                 size="sm"
                             />
                         )}
-                        {rounds.filter((r: any) => new Date(r.checkpointTime).getTime() > Date.now() || r.checkpointPausedAt).map((r: any) => (
+                        {rounds.map((r: any) => (
                             <CountdownTimer
                                 key={r.id}
                                 targetMs={new Date(r.checkpointTime).getTime()}
@@ -165,7 +165,7 @@ export default async function DashboardPage({
                                         ? new Date(r.checkpointTime).getTime() - new Date(r.checkpointPausedAt).getTime()
                                         : null
                                 }
-                                label={`${r.name} closes in`}
+                                label={!r.checkpointPausedAt && new Date(r.checkpointTime).getTime() <= Date.now() ? `${r.name}` : `${r.name} closes in`}
                                 size="sm"
                             />
                         ))}
