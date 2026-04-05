@@ -278,19 +278,27 @@ export function CeremonyController({
                 ) : (
                     <div className="flex flex-col gap-4">
                         <div className="text-center py-6 bg-background/40 border border-border/50">
-                            <div className="text-4xl font-mono font-bold text-yellow-500 mb-1">
-                                STEP_{currentIndex.toString().padStart(2, '0')}
+                            <div className="text-sm uppercase tracking-widest text-muted-foreground mb-2">
+                                {mode === "problem-wise" ? "Track Winners" : "Overall Rankings"}
                             </div>
-                            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Phase: {mode.replace('-', ' ')}</div>
+                            <div className="text-4xl font-mono font-bold text-yellow-500 mb-1">
+                                {currentIndex} / {totalWinners}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                                {currentIndex >= totalWinners
+                                    ? "All winners revealed"
+                                    : `Next: ${mode === "overall" ? `Rank #${totalWinners - currentIndex}` : "Next track winner"}`
+                                }
+                            </div>
                         </div>
 
                         <Button
                             onClick={handleReveal}
-                            disabled={isLoading}
+                            disabled={isLoading || currentIndex >= totalWinners}
                             size="lg"
-                            className="w-full h-20 text-xl font-bold bg-green-600 hover:bg-green-700 text-black shadow-[0_0_20px_rgba(22,163,74,0.3)] animate-pulse transition-all duration-200"
+                            className="w-full h-20 text-xl font-bold bg-green-600 hover:bg-green-700 text-black shadow-[0_0_20px_rgba(22,163,74,0.3)] hover:shadow-[0_0_30px_rgba(22,163,74,0.5)] transition-all duration-200"
                         >
-                            REVEAL NEXT
+                            {currentIndex >= totalWinners ? "ALL REVEALED" : "REVEAL NEXT"}
                         </Button>
 
                         <div className="flex justify-between items-center pt-4 border-t border-border/50">
