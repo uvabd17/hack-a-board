@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition, useMemo, useRef, useCallback } from "react"
+import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -25,13 +25,22 @@ type Team = {
     participants: Participant[]
 }
 
-export function CheckInList({ teams, slug }: { teams: Team[], slug: string }) {
+export function CheckInList({ teams: initialTeams, slug }: { teams: Team[], slug: string }) {
     const [search, setSearch] = useState("")
     const [debouncedSearch, setDebouncedSearch] = useState("")
     const [isPending, startTransition] = useTransition()
     const [loadingId, setLoadingId] = useState<string | null>(null)
     const [filter, setFilter] = useState<"all" | "in" | "out">("all")
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    // Optimistic state — flip UI instantly, server confirms in background
+    const [optimisticOverrides, setOptimisticOverrides] = useState<Record<string, boolean>>({})
+
+    const teams = useMemo(() =>
+        initialTeams.map(t => t.id in optimisticOverrides
+            ? { ...t, isCheckedIn: optimisticOverrides[t.id], checkedInAt: optimisticOverrides[t.id] ? new Date() : null }
+            : t
+        ),
+    [initialTeams, optimisticOverrides])
 
     const handleSearch = useCallback((value: string) => {
         setSearch(value)
@@ -58,12 +67,29 @@ export function CheckInList({ teams, slug }: { teams: Team[], slug: string }) {
     }, [teams, debouncedSearch, filter])
 
     const handleCheckIn = (teamId: string) => {
+        const team = teams.find(t => t.id === teamId)
+        if (!team) return
+        // Optimistic: flip UI immediately
+        setOptimisticOverrides(prev => ({ ...prev, [teamId]: !team.isCheckedIn }))
         setLoadingId(teamId)
         startTransition(async () => {
-            await checkInTeam(teamId, slug)
+            const result = await checkInTeam(teamId, slug)
+            if (result.error) {
+                // Revert on failure
+                setOptimisticOverrides(prev => {
+                    const next = { ...prev }
+                    delete next[teamId]
+                    return next
+                })
+            }
             setLoadingId(null)
         })
     }
+
+    // Clear optimistic overrides when server data arrives (initialTeams changes via revalidation)
+    useEffect(() => {
+        setOptimisticOverrides({})
+    }, [initialTeams])
 
     const checkedIn = teams.filter(t => t.isCheckedIn && t.status === "approved").length
     const approved = teams.filter(t => t.status === "approved").length
