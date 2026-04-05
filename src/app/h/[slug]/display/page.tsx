@@ -42,13 +42,15 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
     const pollControllerRef = useRef<AdaptivePollController | null>(null)
     const problemsRef = useRef<any[]>([])
     const displayModeRef = useRef<string>("global")
+    const activeProblemIdRef = useRef<string | null>(null)
 
     // Sync refs with state
     useEffect(() => { autoTrackIndexRef.current = autoTrackIndex }, [autoTrackIndex])
     useEffect(() => {
         if (data?.problems) problemsRef.current = data.problems
         if (data?.displayConfig?.mode) displayModeRef.current = data.displayConfig.mode
-    }, [data?.problems, data?.displayConfig?.mode])
+        if (data?.displayConfig) activeProblemIdRef.current = data.displayConfig.problemId || null
+    }, [data?.problems, data?.displayConfig?.mode, data?.displayConfig?.problemId])
 
     // Handle pending data with smooth crossfade transition
     useEffect(() => {
@@ -86,7 +88,11 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
             if (pendingData) return
 
             let problemId = null
-            if (displayModeRef.current === "auto") {
+            if (displayModeRef.current === "problem") {
+                // Track-specific: use the problemId from the scene change
+                problemId = activeProblemIdRef.current
+            } else if (displayModeRef.current === "auto") {
+                // Auto-cycle: use whichever track we're currently showing
                 if (autoTrackIndexRef.current >= 0 && problemsRef.current[autoTrackIndexRef.current]) {
                     problemId = problemsRef.current[autoTrackIndexRef.current].id
                 }
@@ -209,8 +215,9 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
         })
         socket.on("display:set-scene", (payload: { mode: string; problemId?: string | null }) => {
             if (payload?.mode) {
-                // Update state AND refs synchronously so fetchData uses the new mode
+                // Update refs synchronously so fetchData uses the correct mode + problemId
                 displayModeRef.current = payload.mode
+                activeProblemIdRef.current = payload.problemId || null
                 setData((prev: any) => prev ? {
                     ...prev,
                     displayConfig: { mode: payload.mode, problemId: payload.problemId || null }
