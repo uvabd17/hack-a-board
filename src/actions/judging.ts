@@ -238,8 +238,8 @@ function calculateTimeBonus(
         // Early submission - positive bonus, floor final result
         timeBonus = Math.floor(diffMinutes * bonusRate)
     } else if (diffMinutes < 0) {
-        // Late submission - negative penalty, ceil to make penalty harsher
-        timeBonus = Math.floor(diffMinutes * penaltyRate) // diffMinutes is already negative
+        // Late submission - negative penalty, ceil rounds toward zero (fair rounding)
+        timeBonus = Math.ceil(diffMinutes * penaltyRate) // diffMinutes is already negative
     }
 
     return { timeBonus, diffMinutes: Math.floor(diffMinutes) }

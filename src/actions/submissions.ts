@@ -155,7 +155,7 @@ export async function submitProject(data: z.infer<typeof SubmissionSchema>, slug
         if (diffMinutes > 0) {
             timeBonus = Math.floor(diffMinutes * round.hackathon.timeBonusRate)
         } else if (diffMinutes < 0) {
-            timeBonus = Math.floor(diffMinutes * round.hackathon.timePenaltyRate)
+            timeBonus = Math.ceil(diffMinutes * round.hackathon.timePenaltyRate)
         }
 
         await prisma.submission.upsert({

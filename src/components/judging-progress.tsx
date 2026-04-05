@@ -45,7 +45,7 @@ export function JudgingProgress({
                 color: "text-primary"
             }
         } else {
-            const penalty = Math.floor(diffMinutes * timePenaltyRate)
+            const penalty = Math.ceil(diffMinutes * timePenaltyRate)
             return {
                 bonus: penalty,
                 label: `If submitted now: ${penalty} penalty`,
