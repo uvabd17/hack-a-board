@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { createRound, deleteRound, createCriterion, deleteCriterion, updateCheckpointTime, extendCheckpoint, pauseCheckpoint, resumeCheckpoint, updateRoundSettings } from "@/actions/rounds"
+import { cascadeTimeShift } from "@/actions/phases"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -139,6 +140,8 @@ function CheckpointControls({ round, hackathonId }: { round: Round, hackathonId:
         round.checkpointTime ? formatDateTimeLocal(round.checkpointTime) : ""
     )
     const [busy, setBusy] = useState(false)
+    const [cascade, setCascade] = useState(false)
+    const [cascadeError, setCascadeError] = useState<string | null>(null)
 
     const isPaused = !!round.checkpointPausedAt
     const nowMs = Date.now()
@@ -167,14 +170,46 @@ function CheckpointControls({ round, hackathonId }: { round: Round, hackathonId:
     async function handleSaveTime() {
         if (!newTime) return
         setBusy(true)
+        setCascadeError(null)
+        const oldCheckpoint = round.checkpointTime
         await updateCheckpointTime(hackathonId, round.id, newTime, new Date().getTimezoneOffset())
+
+        if (cascade) {
+            // Compute delta: new time - old time
+            const [datePart, timePart] = newTime.split("T")
+            const [y, mo, d] = datePart.split("-").map(Number)
+            const [h, mi] = timePart.split(":").map(Number)
+            const newMs = new Date(y, mo - 1, d, h, mi).getTime()
+            const oldMs = new Date(oldCheckpoint).getTime()
+            const deltaMinutes = Math.round((newMs - oldMs) / 60000)
+            if (deltaMinutes !== 0) {
+                const res = await cascadeTimeShift(hackathonId, deltaMinutes, oldCheckpoint)
+                if (res.error) {
+                    setCascadeError(`Checkpoint saved, but cascade failed: ${res.error}`)
+                    setBusy(false)
+                    return
+                }
+            }
+        }
+
         setBusy(false)
         setEditing(false)
+        setCascade(false)
     }
 
     async function handleExtend(minutes: number) {
         setBusy(true)
+        setCascadeError(null)
+        const oldCheckpoint = round.checkpointTime
         await extendCheckpoint(hackathonId, round.id, minutes)
+
+        if (cascade) {
+            const res = await cascadeTimeShift(hackathonId, minutes, oldCheckpoint)
+            if (res.error) {
+                setCascadeError(`Extended, but cascade failed: ${res.error}`)
+            }
+        }
+
         setBusy(false)
     }
 
@@ -258,6 +293,22 @@ function CheckpointControls({ round, hackathonId }: { round: Round, hackathonId:
                     </span>
                 )}
             </div>
+
+            <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                    type="checkbox"
+                    checked={cascade}
+                    onChange={e => setCascade(e.target.checked)}
+                    className="rounded border-border"
+                />
+                <span className="text-[11px] text-muted-foreground">
+                    Also shift all phases & rounds after this
+                </span>
+            </label>
+
+            {cascadeError && (
+                <p className="text-[11px] text-destructive">{cascadeError}</p>
+            )}
         </div>
     )
 }

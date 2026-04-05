@@ -228,3 +228,90 @@ export async function shiftAllPhases(hackathonId: string, shiftMinutes: number) 
         return { error: "Failed to shift phases" }
     }
 }
+
+/**
+ * Cascade shift: move all phases and rounds that start AFTER a given
+ * pivot timestamp by shiftMinutes. Used when editing one phase/round
+ * and wanting to push everything downstream by the same delta.
+ */
+export async function cascadeTimeShift(
+    hackathonId: string,
+    shiftMinutes: number,
+    afterTimestamp: string
+) {
+    const hackathon = await assertOwner(hackathonId)
+    if (!hackathon) return { error: "Unauthorized" }
+
+    if (shiftMinutes === 0) return { success: true, shifted: 0 }
+    if (Math.abs(shiftMinutes) > 1440) return { error: "Shift cannot exceed 24 hours" }
+
+    const pivot = new Date(afterTimestamp)
+    if (isNaN(pivot.getTime())) return { error: "Invalid pivot timestamp" }
+
+    const shiftMs = shiftMinutes * 60 * 1000
+
+    try {
+        const result = await prisma.$transaction(async (tx) => {
+            // Find phases whose start is after the pivot
+            const phases = await tx.phase.findMany({
+                where: { hackathonId, startTime: { gt: pivot } },
+                select: { id: true, startTime: true, endTime: true }
+            })
+
+            // Find rounds whose checkpoint is after the pivot
+            const rounds = await tx.round.findMany({
+                where: { hackathonId, checkpointTime: { gt: pivot } },
+                select: { id: true, checkpointTime: true }
+            })
+
+            // Validate bounds
+            for (const p of phases) {
+                const newEnd = new Date(p.endTime.getTime() + shiftMs)
+                if (newEnd > hackathon.endDate) {
+                    throw new Error("Shift would push a phase past event end time")
+                }
+                const newStart = new Date(p.startTime.getTime() + shiftMs)
+                if (newStart < hackathon.startDate) {
+                    throw new Error("Shift would push a phase before event start time")
+                }
+            }
+            for (const r of rounds) {
+                const newCp = new Date(r.checkpointTime.getTime() + shiftMs)
+                if (newCp > hackathon.endDate || newCp < hackathon.startDate) {
+                    throw new Error("Shift would push a round checkpoint outside event window")
+                }
+            }
+
+            // Apply shifts
+            for (const p of phases) {
+                await tx.phase.update({
+                    where: { id: p.id },
+                    data: {
+                        startTime: new Date(p.startTime.getTime() + shiftMs),
+                        endTime: new Date(p.endTime.getTime() + shiftMs),
+                    }
+                })
+            }
+            for (const r of rounds) {
+                await tx.round.update({
+                    where: { id: r.id },
+                    data: {
+                        checkpointTime: new Date(r.checkpointTime.getTime() + shiftMs),
+                    }
+                })
+            }
+
+            return phases.length + rounds.length
+        })
+
+        revalidatePath(`/h/${hackathon.slug}/manage/phases`)
+        revalidatePath(`/h/${hackathon.slug}/manage/rounds`)
+        revalidatePath(`/h/${hackathon.slug}/manage`)
+        revalidatePath(`/h/${hackathon.slug}`)
+        return { success: true, shifted: result }
+    } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : "Failed to cascade shift"
+        console.error(e)
+        return { error: msg }
+    }
+}

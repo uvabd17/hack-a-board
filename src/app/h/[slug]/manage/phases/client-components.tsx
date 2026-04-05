@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { createPhase, updatePhase, deletePhase, shiftAllPhases } from "@/actions/phases"
+import { createPhase, updatePhase, deletePhase, shiftAllPhases, cascadeTimeShift } from "@/actions/phases"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -178,6 +178,7 @@ export function PhaseItem({
     const [editing, setEditing] = useState(false)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [cascade, setCascade] = useState(false)
 
     const now = new Date()
     const start = new Date(phase.startTime)
@@ -190,8 +191,36 @@ export function PhaseItem({
         setError(null)
         formData.set("clientTimezoneOffsetMinutes", String(new Date().getTimezoneOffset()))
         const res = await updatePhase(hackathonId, phase.id, formData)
-        if (res.error) setError(res.error)
-        else setEditing(false)
+        if (res.error) {
+            setError(res.error)
+            setLoading(false)
+            return
+        }
+
+        // Cascade: compute delta from old end → new end, shift everything after old end
+        if (cascade) {
+            const newEndRaw = formData.get("endTime") as string
+            if (newEndRaw) {
+                const oldEndMs = new Date(phase.endTime).getTime()
+                // Parse the new end in local time (same as the form input)
+                const [datePart, timePart] = newEndRaw.split("T")
+                const [y, mo, d] = datePart.split("-").map(Number)
+                const [h, mi] = timePart.split(":").map(Number)
+                const newEndMs = new Date(y, mo - 1, d, h, mi).getTime()
+                const deltaMinutes = Math.round((newEndMs - oldEndMs) / 60000)
+                if (deltaMinutes !== 0) {
+                    const cascadeRes = await cascadeTimeShift(hackathonId, deltaMinutes, phase.endTime)
+                    if (cascadeRes.error) {
+                        setError(`Phase saved, but cascade failed: ${cascadeRes.error}`)
+                        setLoading(false)
+                        return
+                    }
+                }
+            }
+        }
+
+        setEditing(false)
+        setCascade(false)
         setLoading(false)
     }
 
@@ -226,12 +255,23 @@ export function PhaseItem({
                                 defaultValue={formatDateTimeLocal(phase.endTime)} required />
                         </div>
                     </div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                            type="checkbox"
+                            checked={cascade}
+                            onChange={e => setCascade(e.target.checked)}
+                            className="rounded border-border"
+                        />
+                        <span className="text-xs text-muted-foreground">
+                            Also shift all phases & rounds after this by the same amount
+                        </span>
+                    </label>
                     {error && <p className="text-xs text-destructive">{error}</p>}
                     <div className="flex gap-2">
                         <Button type="submit" size="sm" disabled={loading} className="gap-1 flex-1">
-                            <Check size={12} /> {loading ? "Saving..." : "Save"}
+                            <Check size={12} /> {loading ? "Saving..." : cascade ? "Save & Cascade" : "Save"}
                         </Button>
-                        <Button type="button" variant="outline" size="sm" onClick={() => setEditing(false)} className="gap-1">
+                        <Button type="button" variant="outline" size="sm" onClick={() => { setEditing(false); setCascade(false) }} className="gap-1">
                             <X size={12} /> Cancel
                         </Button>
                     </div>
