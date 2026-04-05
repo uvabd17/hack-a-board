@@ -53,11 +53,24 @@ export default async function PublicHackathonPage({ params }: { params: Promise<
                         {hackathon.tagline}
                     </p>
 
-                    <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
+                    <div className="flex flex-col items-center gap-3 text-sm text-muted-foreground">
                         <p>{formatDate(hackathon.startDate)} - {formatDate(hackathon.endDate)}</p>
-                        <p className="uppercase tracking-widest text-xs border border-border px-2 py-1 rounded">
-                            {hackathon.mode} • {hackathon.venue || hackathon.onlineLink || "TBA"}
-                        </p>
+                        <div className="flex items-center gap-2 uppercase tracking-widest text-xs border border-border px-3 py-1.5 rounded">
+                            <span>{hackathon.mode}</span>
+                            <span className="text-border">•</span>
+                            {hackathon.onlineLink ? (
+                                <a
+                                    href={hackathon.onlineLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-primary hover:underline underline-offset-2 flex items-center gap-1"
+                                >
+                                    {hackathon.venue || (hackathon.mode === "online" ? "Join Online" : "View Location")} ↗
+                                </a>
+                            ) : (
+                                <span>{hackathon.venue || "TBA"}</span>
+                            )}
+                        </div>
                     </div>
 
                     <div className="pt-8">

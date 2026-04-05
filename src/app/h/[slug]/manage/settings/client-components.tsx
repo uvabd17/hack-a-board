@@ -278,6 +278,17 @@ export function HackathonSettingsForm({ hackathon }: { hackathon: HackathonData 
                                 </Field>
                             )}
 
+                            {(form.mode === "in-person" || form.mode === "hybrid") && (
+                                <Field label="Location Link">
+                                    <Input
+                                        value={form.onlineLink}
+                                        onChange={e => update("onlineLink", e.target.value)}
+                                        placeholder="https://maps.google.com/..."
+                                    />
+                                    <p className="text-[10px] text-muted-foreground mt-1">Google Maps or directions link shown on public page</p>
+                                </Field>
+                            )}
+
                             {(form.mode === "online" || form.mode === "hybrid") && (
                                 <Field label="Online Link">
                                     <Input
