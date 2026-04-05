@@ -21,13 +21,12 @@ export async function toggleFreeze(hackathonId: string, isFrozen: boolean, slug:
     const owner = await assertDisplayOwner(hackathonId)
     if (!owner) return { success: false, error: "Unauthorized" }
     try {
-        await prisma.hackathon.update({
-            where: { id: hackathonId },
-            data: { isFrozen },
-        })
-
-        // Emit socket event for real-time update (no need for aggressive revalidation)
-        await emitFreeze(hackathonId, isFrozen)
+        // Socket emit + DB update in parallel — display reacts to socket instantly,
+        // DB is just for persistence. Neither blocks the other.
+        await Promise.all([
+            prisma.hackathon.update({ where: { id: hackathonId }, data: { isFrozen } }),
+            emitFreeze(hackathonId, isFrozen),
+        ])
         return { success: true }
     } catch (error) {
         console.error("Failed to toggle freeze:", error)
@@ -43,16 +42,15 @@ export async function updateDisplayConfig(
     const owner = await assertDisplayOwner(hackathonId)
     if (!owner) return { success: false, error: "Unauthorized" }
     try {
-        await prisma.hackathon.update({
-            where: { id: hackathonId },
-            data: {
-                displayMode: config.mode,
-                displayProblemId: config.problemId || null
-            },
-        })
-
-        // Emit socket event for real-time update
-        await emitDisplayConfig(hackathonId, config.mode, config.problemId)
+        // Socket emit + DB update in parallel — display page uses socket payload
+        // directly (refs updated synchronously), DB is just for persistence.
+        await Promise.all([
+            prisma.hackathon.update({
+                where: { id: hackathonId },
+                data: { displayMode: config.mode, displayProblemId: config.problemId || null },
+            }),
+            emitDisplayConfig(hackathonId, config.mode, config.problemId),
+        ])
         return { success: true }
     } catch (error) {
         console.error("Failed to update display config:", error)

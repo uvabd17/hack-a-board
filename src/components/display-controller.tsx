@@ -1,12 +1,19 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { toggleFreeze, updateDisplayConfig } from "@/actions/display"
-import { Loader2, Lock, Unlock, Monitor, Layers, RefreshCcw } from "lucide-react"
+import { Loader2, Lock, Unlock, Monitor, Layers, RefreshCcw, Check, X } from "lucide-react"
 import { ProblemStatement } from "@prisma/client"
+
+type LogEntry = {
+    id: string
+    action: string
+    status: "sending" | "sent" | "error"
+    time: Date
+}
 
 export function DisplayController({
     hackathonId,
@@ -27,8 +34,21 @@ export function DisplayController({
     const [displayMode, setDisplayMode] = useState<"global" | "problem" | "auto">(initialMode as "global" | "problem" | "auto")
     const [activeProblemId, setActiveProblemId] = useState<string | null>(initialProblemId)
     const [freezeLoading, setFreezeLoading] = useState(false)
-    const [configLoading, setConfigLoading] = useState<string | null>(null) // track which button is loading
-    const [statusMessage, setStatusMessage] = useState<{type: 'success' | 'error', message: string} | null>(null)
+    const [configLoading, setConfigLoading] = useState<string | null>(null)
+    const [log, setLog] = useState<LogEntry[]>([])
+
+    // Abort previous in-flight config request when a new one fires
+    const configAbortRef = useRef<AbortController | null>(null)
+
+    const addLog = useCallback((action: string, status: LogEntry["status"]) => {
+        const id = `${Date.now()}-${Math.random().toString(36).slice(2, 5)}`
+        setLog(prev => [{ id, action, status, time: new Date() }, ...prev].slice(0, 5))
+        return id
+    }, [])
+
+    const updateLog = useCallback((id: string, status: LogEntry["status"]) => {
+        setLog(prev => prev.map(e => e.id === id ? { ...e, status } : e))
+    }, [])
 
     const handleToggleFreeze = async () => {
         const newState = !isFrozen
@@ -36,69 +56,69 @@ export function DisplayController({
 
         setIsFrozen(newState)
         setFreezeLoading(true)
+        const logId = addLog(newState ? "Freeze leaderboard" : "Unfreeze leaderboard", "sending")
 
         try {
             const result = await toggleFreeze(hackathonId, newState, slug)
             if (!result.success) {
                 setIsFrozen(previousState)
-                setStatusMessage({type: 'error', message: result.error || "Failed to update freeze state"})
-                setTimeout(() => setStatusMessage(null), 3000)
+                updateLog(logId, "error")
             } else {
-                setStatusMessage({type: 'success', message: `Leaderboard ${newState ? 'frozen' : 'unfrozen'}`})
-                setTimeout(() => setStatusMessage(null), 2000)
+                updateLog(logId, "sent")
             }
-        } catch (error) {
+        } catch {
             setIsFrozen(previousState)
-            setStatusMessage({type: 'error', message: "An error occurred"})
-            setTimeout(() => setStatusMessage(null), 3000)
+            updateLog(logId, "error")
         } finally {
             setFreezeLoading(false)
         }
     }
 
     const handleConfigChange = async (mode: "global" | "problem" | "auto", problemId: string | null = null) => {
+        // Abort any in-flight config request — only latest click matters
+        if (configAbortRef.current) configAbortRef.current.abort()
+        const abort = new AbortController()
+        configAbortRef.current = abort
+
         const previousMode = displayMode
         const previousProblemId = activeProblemId
         const loadingKey = problemId || mode
 
+        // Label for the log
+        const label = mode === "global"
+            ? "Global leaderboard"
+            : mode === "auto"
+            ? "Auto-cycle tracks"
+            : problemStatements.find(p => p.id === problemId)?.title || "Track view"
+
         setDisplayMode(mode)
         setActiveProblemId(problemId)
         setConfigLoading(loadingKey)
+        const logId = addLog(label, "sending")
 
         try {
             const result = await updateDisplayConfig(hackathonId, { mode, problemId }, slug)
+            // Check if this request was superseded
+            if (abort.signal.aborted) return
             if (!result.success) {
                 setDisplayMode(previousMode)
                 setActiveProblemId(previousProblemId)
-                setStatusMessage({type: 'error', message: result.error || "Failed to update config"})
-                setTimeout(() => setStatusMessage(null), 3000)
+                updateLog(logId, "error")
             } else {
-                setStatusMessage({type: 'success', message: 'Display updated'})
-                setTimeout(() => setStatusMessage(null), 2000)
+                updateLog(logId, "sent")
             }
-        } catch (error) {
+        } catch (e: unknown) {
+            if (abort.signal.aborted) return
             setDisplayMode(previousMode)
             setActiveProblemId(previousProblemId)
-            setStatusMessage({type: 'error', message: "Failed to update config"})
-            setTimeout(() => setStatusMessage(null), 3000)
+            updateLog(logId, "error")
         } finally {
-            setConfigLoading(null)
+            if (!abort.signal.aborted) setConfigLoading(null)
         }
     }
 
     return (
         <div className="space-y-4">
-            {/* Status Message */}
-            {statusMessage && (
-                <div className={`p-3 border transition-all duration-300 ${
-                    statusMessage.type === 'success'
-                        ? 'bg-primary/10 border-primary/50 text-primary'
-                        : 'bg-red-500/10 border-red-500/50 text-red-500'
-                }`}>
-                    <p className="text-sm font-medium">{statusMessage.message}</p>
-                </div>
-            )}
-            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Freeze Control */}
             <Card className="border-border bg-card/50 backdrop-blur-sm">
@@ -106,9 +126,9 @@ export function DisplayController({
                     <CardTitle className="flex items-center justify-between text-sm uppercase tracking-widest">
                         <span>LEADERBOARD LOCK</span>
                         {isFrozen ? (
-                            <Badge variant="destructive" className="text-[10px] transition-all duration-300">FROZEN</Badge>
+                            <Badge variant="destructive" className="text-[10px]">FROZEN</Badge>
                         ) : (
-                            <Badge variant="outline" className="text-[10px] text-primary border-primary/50 transition-all duration-300">LIVE</Badge>
+                            <Badge variant="outline" className="text-[10px] text-primary border-primary/50">LIVE</Badge>
                         )}
                     </CardTitle>
                     <CardDescription className="text-xs">
@@ -120,7 +140,7 @@ export function DisplayController({
                         onClick={handleToggleFreeze}
                         disabled={freezeLoading}
                         variant={isFrozen ? "outline" : "destructive"}
-                        className="w-full font-bold uppercase text-xs transition-all duration-200"
+                        className="w-full font-bold uppercase text-xs"
                     >
                         {freezeLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : isFrozen ? "UNFREEZE" : "FREEZE LEADERBOARD"}
                     </Button>
@@ -184,6 +204,36 @@ export function DisplayController({
                 </CardContent>
             </Card>
             </div>
+
+            {/* Action Log — compact trail of recent changes */}
+            {log.length > 0 && (
+                <div className="border border-border/50 bg-card/30 px-3 py-2 space-y-1">
+                    <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-bold">Recent</p>
+                    {log.map(entry => (
+                        <div key={entry.id} className="flex items-center gap-2 text-[11px] font-mono">
+                            <span className="text-muted-foreground/50 w-14 shrink-0">
+                                {entry.time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                            </span>
+                            <span className="truncate flex-1 text-foreground/80">{entry.action}</span>
+                            {entry.status === "sending" && (
+                                <span className="flex items-center gap-1 text-amber-400 shrink-0">
+                                    <Loader2 className="w-3 h-3 animate-spin" /> syncing
+                                </span>
+                            )}
+                            {entry.status === "sent" && (
+                                <span className="flex items-center gap-1 text-primary shrink-0">
+                                    <Check className="w-3 h-3" /> applied
+                                </span>
+                            )}
+                            {entry.status === "error" && (
+                                <span className="flex items-center gap-1 text-red-400 shrink-0">
+                                    <X className="w-3 h-3" /> failed
+                                </span>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     )
 }
