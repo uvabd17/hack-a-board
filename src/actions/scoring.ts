@@ -3,10 +3,22 @@
 import { prisma } from "@/lib/prisma"
 import { cookies } from "next/headers"
 import { z } from "zod"
-import { emitScoreUpdated, emitJudgingProgress } from "@/lib/socket-emit"
+import { emitScoreUpdated, emitJudgingProgress, emitLeaderboardData } from "@/lib/socket-emit"
 import { checkSubmissionStatus, createSubmission, canJudgeScore } from "@/actions/judging"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { invalidateLeaderboard } from "@/lib/redis"
+import { getLeaderboardData } from "@/actions/leaderboard"
+
+/**
+ * Recompute leaderboard and push to display clients via socket.
+ * Fire-and-forget — never blocks the judge's response.
+ */
+function pushLeaderboardInBackground(hackathonId: string) {
+    prisma.hackathon.findUnique({ where: { id: hackathonId }, select: { slug: true } })
+        .then(h => h ? getLeaderboardData(h.slug) : null)
+        .then(result => result ? emitLeaderboardData(hackathonId, result.leaderboard) : null)
+        .catch(err => console.warn("[leaderboard-push] failed:", err))
+}
 
 const ScoreSubmissionSchema = z.object({
     hackathonId: z.string(),
@@ -123,6 +135,7 @@ export async function submitScore(data: {
         if ('error' in submissionStatus) {
             // Still emit score update even if submission check fails
             await emitScoreUpdated(data.hackathonId, data.teamId)
+            pushLeaderboardInBackground(data.hackathonId)
             return { success: true, warning: "Score saved but submission check failed" }
         }
 
@@ -134,15 +147,16 @@ export async function submitScore(data: {
                 submissionStatus.submittedAt,
                 submissionStatus.timeBonus
             )
-            // Also emit score-updated so all listeners (display, dashboard) get the update
             await emitScoreUpdated(data.hackathonId, data.teamId)
         } else {
-            // Regular score update - emit both score update and judging progress
             await Promise.all([
                 emitScoreUpdated(data.hackathonId, data.teamId),
                 emitJudgingProgress(data.hackathonId, data.teamId, data.roundId)
             ])
         }
+
+        // Push fresh leaderboard to display clients in background (non-blocking)
+        pushLeaderboardInBackground(data.hackathonId)
 
         return {
             success: true,

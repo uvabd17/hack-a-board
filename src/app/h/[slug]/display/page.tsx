@@ -36,21 +36,17 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
         timestamp: number
     }>>([])
 
-    // Refs to prevent useEffect dependency thrashing
-    const autoTrackIndexRef = useRef(-1)
+    // Refs for socket handlers (avoid stale closures)
     const fetchRef = useRef<(() => Promise<void>) | null>(null)
     const pollControllerRef = useRef<AdaptivePollController | null>(null)
-    const problemsRef = useRef<any[]>([])
     const displayModeRef = useRef<string>("global")
     const activeProblemIdRef = useRef<string | null>(null)
 
     // Sync refs with state
-    useEffect(() => { autoTrackIndexRef.current = autoTrackIndex }, [autoTrackIndex])
     useEffect(() => {
-        if (data?.problems) problemsRef.current = data.problems
         if (data?.displayConfig?.mode) displayModeRef.current = data.displayConfig.mode
         if (data?.displayConfig) activeProblemIdRef.current = data.displayConfig.problemId || null
-    }, [data?.problems, data?.displayConfig?.mode, data?.displayConfig?.problemId])
+    }, [data?.displayConfig?.mode, data?.displayConfig?.problemId])
 
     // Handle pending data with smooth crossfade transition
     useEffect(() => {
@@ -74,92 +70,69 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
         return () => clearInterval(interval)
     }, [])
 
-    // Global mode shows 20 teams (2 cols × 10), problem mode shows 12
-    const isGlobalMode = data?.displayConfig?.mode === "global" ||
-        (data?.displayConfig?.mode === "auto" && autoTrackIndex === -1)
+    // ── Derived display state ──────────────────────────────────────
+    // Determine which track to show based on mode + auto-cycle index
+    const activeTrackProblemId = useMemo(() => {
+        if (!data) return null
+        if (data.displayConfig?.mode === "problem") return data.displayConfig.problemId || null
+        if (data.displayConfig?.mode === "auto") {
+            if (autoTrackIndex === -1) return null // global
+            return data.problems?.[autoTrackIndex]?.id || null
+        }
+        return null // global mode
+    }, [data?.displayConfig?.mode, data?.displayConfig?.problemId, autoTrackIndex, data?.problems])
+
+    const isGlobalMode = activeTrackProblemId === null
     const TEAMS_PER_PAGE = isGlobalMode ? 20 : 12
 
-    // ── Data fetching via ETag endpoint (95% less bandwidth) ─────
+    // ── Data fetching — always global, filter client-side ────────
     const etagRef = useRef<string | null>(null)
 
     useEffect(() => {
         const fetchData = async () => {
-            // Only skip during auto-cycle transitions, not scene changes
             if (pendingData) return
 
-            let problemId = null
-            if (displayModeRef.current === "problem") {
-                // Track-specific: use the problemId from the scene change
-                problemId = activeProblemIdRef.current
-            } else if (displayModeRef.current === "auto") {
-                // Auto-cycle: use whichever track we're currently showing
-                if (autoTrackIndexRef.current >= 0 && problemsRef.current[autoTrackIndexRef.current]) {
-                    problemId = problemsRef.current[autoTrackIndexRef.current].id
-                }
-            }
-
-            const url = problemId
-                ? `/api/display/${slug}?problemId=${problemId}`
-                : `/api/display/${slug}`
+            // Always fetch global — client filters by track
+            const url = `/api/display/${slug}`
 
             try {
                 const headers: HeadersInit = {}
                 if (etagRef.current) headers["If-None-Match"] = etagRef.current
 
                 const res = await fetch(url, { headers })
-
-                // 304 Not Modified — data unchanged, skip update
                 if (res.status === 304) return
-
                 if (!res.ok) return
+
                 const result = await res.json()
                 etagRef.current = res.headers.get("etag")
 
-            if (result) {
-                if (!result.hackathon.isFrozen || !data) {
-                    if (data) {
-                        const isAutoTrackChange = displayModeRef.current === "auto" && autoTrackIndex !== lastAutoTrackIndex
-                        if (isAutoTrackChange) {
-                            setPendingData(result)
-                            setLastAutoTrackIndex(autoTrackIndex)
-                        } else {
-                            if (data) setPrevData(data)
-                            setData(result)
-                            setLastUpdated(new Date())
-                        }
-                    } else {
+                if (result) {
+                    if (!result.hackathon.isFrozen || !data) {
+                        if (data) setPrevData(data)
                         setData(result)
                         setLastUpdated(new Date())
+                    } else if (result.hackathon.isFrozen && data && !data.hackathon.isFrozen) {
+                        setData((prev: any) => ({
+                            ...prev,
+                            hackathon: { ...prev.hackathon, isFrozen: true }
+                        }))
                     }
-                } else if (result.hackathon.isFrozen && data && !data.hackathon.isFrozen) {
-                    setData((prev: any) => ({
-                        ...prev,
-                        hackathon: { ...prev.hackathon, isFrozen: true }
-                    }))
                 }
-            }
             } catch {
-                // Network error — keep showing stale data, adaptive polling will retry
+                // Network error — keep stale data, polling will retry
             }
         }
 
         fetchRef.current = fetchData
 
-        // Adaptive polling — backs off on slow WiFi instead of hammering every 5s
+        // Safety-net polling at longer intervals — socket is primary now
         const controller = new AdaptivePollController()
         pollControllerRef.current = controller
         controller.start(fetchData)
         return () => controller.stop()
     }, [slug])
 
-    // Trigger fetch when auto-cycle track changes
-    useEffect(() => {
-        if (displayModeRef.current === "auto" && autoTrackIndex >= -1) {
-            fetchRef.current?.()
-        }
-    }, [autoTrackIndex])
-
-    // ── Socket.IO real-time with debouncing ───────────────────────
+    // ── Socket.IO — primary data channel ─────────────────────────
     useEffect(() => {
         const hackathonId = data?.hackathon?.id
         if (!hackathonId) return
@@ -173,15 +146,31 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
             pollControllerRef.current?.forceNow()
         }
 
+        // Leaderboard push — server sends fresh data directly, no fetch needed
+        socket.on("leaderboard-data", (payload: { leaderboard: any[] }) => {
+            markLiveUpdate()
+            if (payload?.leaderboard && !data?.hackathon?.isFrozen) {
+                setData((prev: any) => {
+                    if (!prev) return prev
+                    setPrevData(prev)
+                    return { ...prev, leaderboard: payload.leaderboard }
+                })
+                setLastUpdated(new Date())
+                // Update ETag so polling doesn't re-fetch same data
+                etagRef.current = null
+            }
+        })
+
+        // Fallback: score-updated without leaderboard payload → fetch
         socket.on("score-updated", triggerFetch)
         socket.on("checkpoint-updated", triggerFetch)
+
         socket.on("team-submitted", (payload: {
             teamId: string
             teamName: string
             roundName: string
             timeBonus: number
         }) => {
-            // Add to ticker bar
             setSubmissionNotifications(prev => [
                 ...prev.slice(-2),
                 {
@@ -192,7 +181,6 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
                     timestamp: Date.now(),
                 }
             ])
-            // Highlight row
             setRecentlySubmittedTeams(prev => new Set(prev).add(payload.teamId))
             setTimeout(() => {
                 setRecentlySubmittedTeams(prev => {
@@ -201,35 +189,38 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
                     return newSet
                 })
             }, 5000)
-            triggerFetch()
+            // Don't triggerFetch — leaderboard-data event handles the data update
+            markLiveUpdate()
         })
+
+        // Display control events — instant, no fetch needed
         socket.on("display:freeze", () => {
+            markLiveUpdate()
             setData((prev: any) => prev ? { ...prev, hackathon: { ...prev.hackathon, isFrozen: true } } : prev)
-            etagRef.current = null
-            triggerFetch()
         })
         socket.on("display:unfreeze", () => {
+            markLiveUpdate()
             setData((prev: any) => prev ? { ...prev, hackathon: { ...prev.hackathon, isFrozen: false } } : prev)
             etagRef.current = null
-            triggerFetch()
+            triggerFetch() // Need fresh unfrozen data
         })
         socket.on("display:set-scene", (payload: { mode: string; problemId?: string | null }) => {
+            markLiveUpdate()
             if (payload?.mode) {
-                // Update refs synchronously so fetchData uses the correct mode + problemId
                 displayModeRef.current = payload.mode
                 activeProblemIdRef.current = payload.problemId || null
                 setData((prev: any) => prev ? {
                     ...prev,
                     displayConfig: { mode: payload.mode, problemId: payload.problemId || null }
                 } : prev)
-                // Clear ETag — new scene = different data, old ETag would cause stale 304
-                etagRef.current = null
+                // No fetch needed — client-side filtering handles the view change instantly
+                setCurrentPage(0)
             }
-            triggerFetch()
         })
         socket.on("problem-statements-released", triggerFetch)
 
         return () => {
+            socket.off("leaderboard-data")
             socket.off("score-updated")
             socket.off("checkpoint-updated")
             socket.off("team-submitted")
@@ -271,10 +262,19 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
         return () => clearInterval(pageInterval)
     }, [data, TEAMS_PER_PAGE])
 
-    // ── Processed leaderboard with trend data ─────────────────────
+    // ── Processed leaderboard with client-side track filtering ─────
     const processedLeaderboard = useMemo(() => {
         if (!data) return []
-        let teams = data.leaderboard.map((team: any) => {
+
+        // Client-side filter: if showing a track, filter by problemStatementId and re-rank
+        let source = data.leaderboard
+        if (activeTrackProblemId) {
+            source = data.leaderboard
+                .filter((t: any) => t.problemStatementId === activeTrackProblemId)
+                .map((t: any, i: number) => ({ ...t, rank: i + 1 }))
+        }
+
+        let teams = source.map((team: any) => {
             const prevTeam = prevData?.leaderboard?.find((pt: any) => pt.teamId === team.teamId)
             let trend: "up" | "down" | "same" = "same"
             let change = 0
@@ -340,7 +340,7 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
         )
     }, [data?.phases])
 
-    const totalPages = data ? Math.ceil(data.leaderboard.length / TEAMS_PER_PAGE) : 1
+    const totalPages = processedLeaderboard.length > 0 ? Math.ceil(processedLeaderboard.length / TEAMS_PER_PAGE) : 1
     const secondsSinceLiveUpdate = lastSocketEventAt
         ? Math.max(0, Math.floor((Date.now() - lastSocketEventAt.getTime()) / 1000))
         : null
@@ -481,7 +481,7 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
                         </div>
                     )}
 
-                    {data.leaderboard.length === 0 && (
+                    {processedLeaderboard.length === 0 && (
                         <div className="h-64 flex items-center justify-center border border-dashed border-zinc-800 text-zinc-600 text-xs tracking-widest uppercase">
                             WAITING FOR SCORES...
                         </div>
@@ -496,7 +496,7 @@ export default function ProjectorDisplayPage({ params }: { params: Promise<{ slu
                     <span className="hidden md:inline">MODE: {data.displayConfig.mode}</span>
                 </div>
                 <div className="flex gap-6">
-                    <span>TEAMS: {data.leaderboard.length}</span>
+                    <span>TEAMS: {processedLeaderboard.length}</span>
                     <span className="text-zinc-500">hack<span className="text-cyan-500/60">&lt;a&gt;</span>board</span>
                 </div>
             </footer>

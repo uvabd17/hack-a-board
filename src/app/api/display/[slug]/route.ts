@@ -1,25 +1,19 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getDisplayState, getTrackStanding } from "@/actions/display"
+import { getDisplayState } from "@/actions/display"
 import crypto from "crypto"
 
 export const dynamic = "force-dynamic"
 
 /**
- * ETag-based display endpoint — reduces bandwidth by 95% during quiet periods.
- * Returns 304 Not Modified when leaderboard data hasn't changed.
- *
- * GET /api/display/[slug]?problemId=xxx
+ * ETag-based display endpoint — always returns global leaderboard.
+ * Client filters by track. Returns 304 Not Modified when data unchanged.
  */
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ slug: string }> }
 ) {
     const { slug } = await params
-    const problemId = request.nextUrl.searchParams.get("problemId")
-
-    const result = problemId
-        ? await getTrackStanding(slug, problemId)
-        : await getDisplayState(slug)
+    const result = await getDisplayState(slug)
 
     if (!result) {
         return NextResponse.json({ error: "Not found" }, { status: 404 })

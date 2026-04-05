@@ -42,15 +42,13 @@ export async function updateDisplayConfig(
     const owner = await assertDisplayOwner(hackathonId)
     if (!owner) return { success: false, error: "Unauthorized" }
     try {
-        // Socket emit + DB update in parallel — display page uses socket payload
-        // directly (refs updated synchronously), DB is just for persistence.
-        await Promise.all([
-            prisma.hackathon.update({
-                where: { id: hackathonId },
-                data: { displayMode: config.mode, displayProblemId: config.problemId || null },
-            }),
-            emitDisplayConfig(hackathonId, config.mode, config.problemId),
-        ])
+        // Socket emit first (display reacts instantly), DB write in background
+        await emitDisplayConfig(hackathonId, config.mode, config.problemId)
+        // Fire-and-forget DB persistence — if it fails, next poll self-corrects
+        prisma.hackathon.update({
+            where: { id: hackathonId },
+            data: { displayMode: config.mode, displayProblemId: config.problemId || null },
+        }).catch(err => console.warn("[display-config] DB write failed:", err))
         return { success: true }
     } catch (error) {
         console.error("Failed to update display config:", error)
@@ -82,10 +80,7 @@ export async function getDisplayState(slug: string) {
                 orderBy: { order: 'asc' },
                 select: { id: true, title: true, description: true, order: true, isReleased: true }
             }),
-            getLeaderboardData(
-                slug,
-                hackathon.displayMode === "problem" ? hackathon.displayProblemId : null
-            ),
+            getLeaderboardData(slug), // Always global — display filters client-side
             prisma.phase.findMany({
                 where: { hackathonId: hackathon.id },
                 orderBy: { order: 'asc' },
@@ -110,47 +105,3 @@ export async function getDisplayState(slug: string) {
     }
 }
 
-export async function getTrackStanding(slug: string, problemId: string) {
-    const hackathon = await prisma.hackathon.findUnique({
-        where: { slug },
-        select: { id: true, isFrozen: true, name: true, displayMode: true, displayProblemId: true, status: true, liveStartedAt: true, endDate: true, startDate: true }
-    })
-
-    if (!hackathon) return null
-
-    try {
-        const rounds = await prisma.round.findMany({
-            where: { hackathonId: hackathon.id },
-            select: { id: true, name: true, order: true, checkpointTime: true, checkpointPausedAt: true },
-            orderBy: { order: "asc" }
-        })
-
-        const [problems, { leaderboard, frozen }, phases] = await Promise.all([
-            prisma.problemStatement.findMany({
-                where: { hackathonId: hackathon.id },
-                select: { id: true, title: true, description: true, order: true, isReleased: true }
-            }),
-            getLeaderboardData(slug, problemId),
-            prisma.phase.findMany({
-                where: { hackathonId: hackathon.id },
-                orderBy: { order: 'asc' },
-                select: { id: true, name: true, startTime: true, endTime: true, order: true }
-            })
-        ])
-
-        return {
-            hackathon: { ...hackathon, isFrozen: frozen },
-            leaderboard,
-            problems,
-            rounds,
-            phases,
-            displayConfig: {
-                mode: hackathon.displayMode,
-                problemId
-            }
-        }
-    } catch (error) {
-        console.error("Failed to get track standing:", error)
-        return null
-    }
-}

@@ -33,6 +33,14 @@ export function emitScoreUpdated(hackathonId: string, teamId: string) {
     return socketEmit(`hackathon:${hackathonId}`, "score-updated", { teamId })
 }
 
+/**
+ * Push full leaderboard data to display clients via socket.
+ * Eliminates the need for the display to fetch after score changes.
+ */
+export function emitLeaderboardData(hackathonId: string, leaderboard: unknown[]) {
+    return socketEmit(`display:${hackathonId}`, "leaderboard-data", { leaderboard })
+}
+
 export async function emitFreeze(hackathonId: string, frozen: boolean) {
     const event = frozen ? "display:freeze" : "display:unfreeze"
     await Promise.all([
