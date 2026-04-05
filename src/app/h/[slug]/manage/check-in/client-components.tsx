@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition, useMemo } from "react"
+import { useState, useTransition, useMemo, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -27,18 +27,27 @@ type Team = {
 
 export function CheckInList({ teams, slug }: { teams: Team[], slug: string }) {
     const [search, setSearch] = useState("")
+    const [debouncedSearch, setDebouncedSearch] = useState("")
     const [isPending, startTransition] = useTransition()
     const [loadingId, setLoadingId] = useState<string | null>(null)
     const [filter, setFilter] = useState<"all" | "in" | "out">("all")
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+    const handleSearch = useCallback((value: string) => {
+        setSearch(value)
+        if (debounceRef.current) clearTimeout(debounceRef.current)
+        debounceRef.current = setTimeout(() => setDebouncedSearch(value), 200)
+    }, [])
 
     const filtered = useMemo(() => {
+        const q = debouncedSearch.toLowerCase()
         return teams.filter(team => {
-            const matchesSearch =
-                team.name.toLowerCase().includes(search.toLowerCase()) ||
-                team.inviteCode.toLowerCase().includes(search.toLowerCase()) ||
+            const matchesSearch = !q ||
+                team.name.toLowerCase().includes(q) ||
+                team.inviteCode.toLowerCase().includes(q) ||
                 team.participants.some(p =>
-                    p.name.toLowerCase().includes(search.toLowerCase()) ||
-                    p.email.toLowerCase().includes(search.toLowerCase())
+                    p.name.toLowerCase().includes(q) ||
+                    p.email.toLowerCase().includes(q)
                 )
             const matchesFilter =
                 filter === "all" ||
@@ -46,7 +55,7 @@ export function CheckInList({ teams, slug }: { teams: Team[], slug: string }) {
                 (filter === "out" && !team.isCheckedIn)
             return matchesSearch && matchesFilter && team.status === "approved"
         })
-    }, [teams, search, filter])
+    }, [teams, debouncedSearch, filter])
 
     const handleCheckIn = (teamId: string) => {
         setLoadingId(teamId)
@@ -87,7 +96,7 @@ export function CheckInList({ teams, slug }: { teams: Team[], slug: string }) {
                     <Input
                         placeholder="Search by team name, invite code, or member name..."
                         value={search}
-                        onChange={e => setSearch(e.target.value)}
+                        onChange={e => handleSearch(e.target.value)}
                         className="pl-9"
                         autoFocus
                     />

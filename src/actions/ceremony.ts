@@ -297,6 +297,14 @@ export async function stopCeremony(hackathonId: string) {
 }
 
 export async function getCeremonyControllerState(hackathonId: string) {
+    const session = await auth()
+    if (!session?.user?.id) return { isActive: false, currentIndex: 0, totalWinners: 0, mode: "overall" as const, revealCount: 3 }
+
+    const hackathon = await prisma.hackathon.findUnique({ where: { id: hackathonId }, select: { userId: true, organizerEmails: true } })
+    if (!hackathon || !canManageHackathon(hackathon, session.user)) {
+        return { isActive: false, currentIndex: 0, totalWinners: 0, mode: "overall" as const, revealCount: 3 }
+    }
+
     const activeSession = await prisma.ceremonySession.findFirst({
         where: { hackathonId, isStarted: true },
         orderBy: { startedAt: 'desc' }

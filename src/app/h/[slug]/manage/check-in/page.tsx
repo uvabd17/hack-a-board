@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { notFound, redirect } from "next/navigation"
 import { CheckInList } from "./client-components"
 import { canManageHackathon } from "@/lib/access-control"
+import { LiveRefresher } from "@/components/live-refresher"
 
 export default async function CheckInPage({ params }: { params: Promise<{ slug: string }> }) {
     const session = await auth()
@@ -31,6 +32,7 @@ export default async function CheckInPage({ params }: { params: Promise<{ slug: 
 
     return (
         <div className="max-w-3xl mx-auto space-y-8">
+            <LiveRefresher hackathonId={hackathon.id} />
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Check-in</h1>

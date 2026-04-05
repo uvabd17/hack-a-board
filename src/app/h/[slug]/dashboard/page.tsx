@@ -40,15 +40,6 @@ const getCachedQRCode = unstable_cache(
     { revalidate: 86400 } // 24 hours - QR codes never change
 )
 
-async function generateQR(text: string) {
-    try {
-        return await QRCode.toDataURL(text)
-    } catch (err) {
-        console.error(err)
-        return ""
-    }
-}
-
 export default async function DashboardPage({
     params
 }: {

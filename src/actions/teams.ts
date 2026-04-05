@@ -63,27 +63,37 @@ export async function checkInTeam(teamId: string, slug: string) {
     const hackathon = await getAccessibleHackathonBySlug(slug, session.user)
     if (!hackathon) return { error: "Not found" }
 
-    const team = await prisma.team.findFirst({ where: { id: teamId, hackathonId: hackathon.id } })
-    if (!team) return { error: "Team not found" }
+    try {
+        // Transaction prevents race condition when two organizers toggle simultaneously
+        const updated = await prisma.$transaction(async (tx) => {
+            const team = await tx.team.findFirst({ where: { id: teamId, hackathonId: hackathon.id } })
+            if (!team) throw new Error("Team not found")
 
-    await prisma.team.update({
-        where: { id: teamId },
-        data: {
-            isCheckedIn: !team.isCheckedIn,
-            checkedInAt: !team.isCheckedIn ? new Date() : null,
-            checkedInBy: !team.isCheckedIn ? session.user.id : null,
+            return tx.team.update({
+                where: { id: teamId },
+                data: {
+                    isCheckedIn: !team.isCheckedIn,
+                    checkedInAt: !team.isCheckedIn ? new Date() : null,
+                    checkedInBy: !team.isCheckedIn ? session.user.id : null,
+                },
+                select: { id: true, name: true, isCheckedIn: true }
+            })
+        })
+
+        if (updated.isCheckedIn) {
+            await emitParticipantCheckedIn(hackathon.id, teamId, updated.name)
         }
-    })
 
-    if (!team.isCheckedIn) {
-        // Team is now checked in — emit event
-        await emitParticipantCheckedIn(hackathon.id, teamId, team.name)
+        revalidatePath(`/h/${slug}/manage/check-in`)
+        revalidatePath(`/h/${slug}/manage/teams`)
+        revalidatePath(`/h/${slug}/manage`)
+        return { success: true }
+    } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to check in team"
+        if (message === "Team not found") return { error: message }
+        console.error("Check-in error:", error)
+        return { error: "Failed to update check-in status" }
     }
-
-    revalidatePath(`/h/${slug}/manage/check-in`)
-    revalidatePath(`/h/${slug}/manage/teams`)
-    revalidatePath(`/h/${slug}/manage`)
-    return { success: true }
 }
 
 export async function exportTeamsCSV(slug: string): Promise<{ csv: string } | { error: string }> {
