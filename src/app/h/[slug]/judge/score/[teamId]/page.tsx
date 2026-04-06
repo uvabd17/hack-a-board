@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
+import Link from "next/link"
 import { ScoringForm } from "./scoring-form"
 import { recordJudgingAttempt } from "@/actions/judging"
 
@@ -61,13 +62,20 @@ export default async function ScoringPage({
 
     return (
         <div className="max-w-2xl mx-auto space-y-6 pb-20">
+            <Link
+                href={`/h/${slug}/judge`}
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest"
+            >
+                &larr; Dashboard
+            </Link>
+
             <div className="space-y-1">
                 <h2 className="text-2xl md:text-3xl font-bold break-words">{team.name}</h2>
-                <div className="flex flex-wrap gap-2 text-sm text-zinc-400 font-mono">
-                    <span className="bg-zinc-800 px-2 py-1 rounded border border-zinc-700">
+                <div className="flex flex-wrap gap-2 text-sm text-muted-foreground font-mono">
+                    <span className="bg-secondary px-2 py-1 rounded border border-border">
                         {team.problemStatement?.slug || "NO_TRACK"}
                     </span>
-                    <span className="bg-zinc-800 px-2 py-1 rounded border border-zinc-700">
+                    <span className="bg-secondary px-2 py-1 rounded border border-border">
                         {team.inviteCode}
                     </span>
                 </div>

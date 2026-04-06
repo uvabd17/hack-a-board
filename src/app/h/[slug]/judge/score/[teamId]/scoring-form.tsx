@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { submitScore } from "@/actions/scoring"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle2, AlertCircle, Trophy, Loader2 } from "lucide-react"
+import { CheckCircle2, AlertCircle, Trophy, Loader2, Check } from "lucide-react"
 import { retryWithBackoff } from "@/lib/retry"
 
 interface Criterion {
@@ -42,6 +42,7 @@ export function ScoringForm({
     initialScores: Record<string, number>
 }) {
     const [scores, setScores] = useState<Record<string, number>>(initialScores)
+    const [activeTab, setActiveTab] = useState(rounds[0]?.id ?? "")
     const [loading, setLoading] = useState(false)
     const [syncing, setSyncing] = useState(false)
     const [status, setStatus] = useState<{
@@ -90,6 +91,15 @@ export function ScoringForm({
         setScores(prev => ({ ...prev, [criterionId]: value }))
     }
 
+    // Track which rounds have all criteria scored
+    const roundComplete = useMemo(() => {
+        const map: Record<string, boolean> = {}
+        for (const round of rounds) {
+            map[round.id] = round.criteria.length > 0 && round.criteria.every(c => scores[c.id] !== undefined)
+        }
+        return map
+    }, [scores, rounds])
+
     const handleSubmit = async (roundId: string) => {
         setLoading(true)
         setStatus(null)
@@ -98,18 +108,9 @@ export function ScoringForm({
         if (!round) return
 
         const roundScores: Record<string, number> = {}
-        let allFilled = true
         round.criteria.forEach(c => {
-            const val = scores[c.id]
-            if (val === undefined) allFilled = false
-            roundScores[c.id] = val || 0
+            roundScores[c.id] = scores[c.id]
         })
-
-        if (!allFilled) {
-            setStatus({ error: "Please score all criteria for this round." })
-            setLoading(false)
-            return
-        }
 
         // Optimistic UI — show success immediately, sync in background
         setStatus({ success: "Scores submitted! Syncing..." })
@@ -162,15 +163,16 @@ export function ScoringForm({
     }
 
     return (
-        <Tabs defaultValue={rounds[0].id} className="w-full">
+        <Tabs value={activeTab} onValueChange={v => { setActiveTab(v); setStatus(null) }} className="w-full">
             <TabsList className="flex w-full overflow-x-auto bg-secondary">
                 {rounds.map(round => (
                     <TabsTrigger
                         key={round.id}
                         value={round.id}
-                        className="flex-1 min-w-0 data-[state=active]:bg-[var(--role-accent)] data-[state=active]:text-[var(--role-accent-foreground)] font-bold truncate"
+                        className="flex-1 min-w-0 gap-1.5 data-[state=active]:bg-[var(--role-accent)] data-[state=active]:text-[var(--role-accent-foreground)] font-bold truncate"
                     >
                         {round.name}
+                        {roundComplete[round.id] && <Check className="w-3.5 h-3.5" />}
                     </TabsTrigger>
                 ))}
             </TabsList>
@@ -258,12 +260,12 @@ export function ScoringForm({
                     {/* Submit button */}
                     <Button
                         onClick={() => handleSubmit(round.id)}
-                        disabled={loading || syncing || round.criteria.length === 0}
+                        disabled={loading || syncing || !roundComplete[round.id]}
                         variant="brutal"
                         size="xl"
                         className="w-full text-xl font-black"
                     >
-                        {loading ? "SAVING..." : syncing ? "SYNCING..." : "SUBMIT SCORES"}
+                        {loading ? "SAVING..." : syncing ? "SYNCING..." : !roundComplete[round.id] ? "SCORE ALL CRITERIA" : "SUBMIT SCORES"}
                     </Button>
                 </TabsContent>
             ))}
