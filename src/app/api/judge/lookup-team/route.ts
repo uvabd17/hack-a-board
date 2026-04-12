@@ -1,18 +1,15 @@
 import { prisma } from "@/lib/prisma"
 import { cookies } from "next/headers"
 import { NextRequest, NextResponse } from "next/server"
+import { checkRateLimit } from "@/lib/rate-limit"
 
 export async function POST(request: NextRequest) {
     const cookieStore = await cookies()
     const judgeToken = cookieStore.get("hackaboard_judge_token")?.value
 
     if (!judgeToken) {
-        // Debug: list all cookies to diagnose path issues
-        const allCookies = cookieStore.getAll().map(c => `${c.name}=${c.value.substring(0, 10)}...`)
-        console.log("[lookup-team] No judge token. All cookies:", allCookies)
         return NextResponse.json({ error: "Not authenticated as judge. Please re-scan your judge QR code." }, { status: 401 })
     }
-    console.log("[lookup-team] Judge token found:", judgeToken.substring(0, 15) + "...")
 
     const judge = await prisma.judge.findUnique({
         where: { token: judgeToken },
@@ -21,6 +18,19 @@ export async function POST(request: NextRequest) {
 
     if (!judge?.isActive) {
         return NextResponse.json({ error: "Judge session expired" }, { status: 401 })
+    }
+
+    const rl = await checkRateLimit({
+        namespace: "judge-lookup",
+        identifier: judgeToken,
+        limit: 60,
+        windowSec: 60,
+    })
+    if (!rl.allowed) {
+        return NextResponse.json(
+            { error: "Too many lookups. Please wait a moment." },
+            { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } }
+        )
     }
 
     const { inviteCode } = await request.json()

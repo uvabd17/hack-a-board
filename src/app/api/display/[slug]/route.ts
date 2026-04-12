@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getDisplayState } from "@/actions/display"
+import { checkRateLimit, getRequestIp } from "@/lib/rate-limit"
 import crypto from "crypto"
 
 export const dynamic = "force-dynamic"
@@ -13,6 +14,21 @@ export async function GET(
     { params }: { params: Promise<{ slug: string }> }
 ) {
     const { slug } = await params
+
+    const ip = await getRequestIp()
+    const rl = await checkRateLimit({
+        namespace: "display-poll",
+        identifier: `${ip}:${slug}`,
+        limit: 120,
+        windowSec: 60,
+    })
+    if (!rl.allowed) {
+        return NextResponse.json(
+            { error: "Rate limit exceeded" },
+            { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } }
+        )
+    }
+
     const result = await getDisplayState(slug)
 
     if (!result) {
