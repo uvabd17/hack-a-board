@@ -1,0 +1,17 @@
+{
+  "name": "pitch",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "slidev --open",
+    "build": "slidev build",
+    "export": "slidev export",
+    "export-pdf": "slidev export --output hackaboard-pitch.pdf",
+    "export-png": "slidev export --format png --output ./out"
+  },
+  "devDependencies": {
+    "@slidev/cli": "^52.15.0",
+    "@slidev/theme-default": "^0.25.0",
+    "playwright-chromium": "^1.59.1"
+  }
+}
