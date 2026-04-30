@@ -59,3 +59,73 @@
   pointer-events: none;
   z-index: 2;
 }
+
+/* === Shared slide primitives (must be global, not scoped per slide) === */
+
+.section-label {
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: rgb(125 128 138);
+}
+
+.actor {
+  height: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  align-items: center;
+  padding: 0 3rem;
+}
+.actor-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.actor h2 {
+  font-size: 2rem;
+  line-height: 1.2;
+  font-weight: 700;
+  color: rgb(232 234 239);
+}
+.actor h2.emphasis {
+  font-style: italic;
+  color: oklch(0.78 0.15 195);
+}
+.actor-points {
+  list-style: none;
+  padding: 0;
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.actor-points li {
+  font-size: 1rem;
+  color: rgb(180 184 195);
+  padding-left: 1.5rem;
+  position: relative;
+}
+.actor-points li::before {
+  content: '→';
+  position: absolute;
+  left: 0;
+  color: oklch(0.78 0.15 195);
+  font-family: 'Geist Mono', monospace;
+}
+.actor-screenshot {
+  width: 100%;
+  border: 2px solid rgb(54 58 68);
+  border-bottom: 6px solid rgb(54 58 68);
+  border-radius: 0.75rem;
+  display: block;
+}
+.judge-screenshot {
+  max-width: 240px;
+  display: block;
+  margin: 0 auto;
+  border: 2px solid rgb(54 58 68);
+  border-bottom: 6px solid rgb(54 58 68);
+  border-radius: 1.5rem;
+}
