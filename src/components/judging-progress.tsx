@@ -28,29 +28,24 @@ export function JudgingProgress({
     submitted,
     timeBonus,
     timeBonusRate = 2,
-    timePenaltyRate = 1,
     judges
 }: JudgingProgressProps) {
-    // Calculate time bonus preview using actual hackathon rates
+    // Show a positive time-bonus preview only while there's a bonus to earn.
+    // Once the deadline passes, hide this line entirely — no penalty anxiety.
     const getTimeBonusPreview = () => {
         const effectiveCheckpoint = checkpointPausedAt || checkpointTime
         const now = new Date()
         const diffMinutes = (effectiveCheckpoint.getTime() - now.getTime()) / 60000
 
-        if (diffMinutes > 0) {
-            const bonus = Math.floor(diffMinutes * timeBonusRate)
-            return {
-                bonus,
-                label: `If submitted now: +${bonus} bonus`,
-                color: "text-primary"
-            }
-        } else {
-            const penalty = Math.ceil(diffMinutes * timePenaltyRate)
-            return {
-                bonus: penalty,
-                label: `If submitted now: ${penalty} penalty`,
-                color: "text-red-500"
-            }
+        if (diffMinutes <= 0) return null
+
+        const bonus = Math.floor(diffMinutes * timeBonusRate)
+        if (bonus <= 0) return null
+
+        return {
+            bonus,
+            label: `If submitted now: +${bonus} bonus`,
+            color: "text-primary"
         }
     }
 
