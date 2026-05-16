@@ -1,8 +1,8 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | hack<a>board",
-  description: "Privacy Policy for hack<a>board.",
+  title: "Privacy Policy | hackaboard",
+  description: "Privacy Policy for hackaboard.",
 }
 
 export default function PrivacyPage() {
@@ -16,7 +16,7 @@ export default function PrivacyPage() {
 
         <section className="space-y-3 text-sm leading-7 text-muted-foreground">
           <p>
-            hack&lt;a&gt;board processes organizer, judge, and participant information to run hackathon operations.
+            hackaboard processes organizer, judge, and participant information to run hackathon operations.
           </p>
           <p>
             Data collected may include names, email addresses, optional phone/college fields, team and scoring

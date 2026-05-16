@@ -7,6 +7,9 @@ export default async function SignInPage() {
     const session = await auth()
     const hasBetaAccess = isPrivateBetaAllowed(session?.user?.email)
     if (session && hasBetaAccess) redirect("/dashboard")
+    // Signed-in but not on the allowlist → dedicated request-access page,
+    // not the bare /signin form which reads as "auth failed" to new users.
+    if (session && isPrivateBetaEnabled() && !hasBetaAccess) redirect("/access")
 
     return (
         <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center selection:bg-primary/30 relative overflow-hidden">
@@ -20,15 +23,15 @@ export default async function SignInPage() {
                     <div className="text-[10px] text-muted-foreground/40 tracking-[0.3em] uppercase mb-6">
                         organizer portal
                     </div>
-                    <h1 className="text-3xl md:text-4xl font-black tracking-tighter mb-3">
-                        <span className="text-transparent bg-clip-text bg-gradient-to-b from-white to-zinc-500">hack</span><span className="text-primary">&lt;a&gt;</span><span className="text-transparent bg-clip-text bg-gradient-to-b from-white to-zinc-500">board</span>
+                    <h1 className="text-3xl md:text-4xl font-black tracking-tighter mb-3 lowercase">
+                        <span className="text-foreground">hack</span><span className="text-primary">a</span><span className="text-foreground">board</span>
                     </h1>
                     <p className="text-muted-foreground text-xs tracking-widest uppercase">
                         sign in to manage your hackathons
                     </p>
-                    {session && !hasBetaAccess && isPrivateBetaEnabled() && (
-                        <p className="text-destructive text-[11px] mt-4 uppercase tracking-wider">
-                            Access is restricted. Ask admin to allow your email.
+                    {isPrivateBetaEnabled() && (
+                        <p className="text-muted-foreground/70 text-[10px] mt-4 tracking-widest uppercase">
+                            organizers join by invite — <Link href="/access" className="text-primary/80 hover:text-primary underline-offset-2 hover:underline">request access</Link>
                         </p>
                     )}
                 </div>

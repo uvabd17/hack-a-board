@@ -1,8 +1,8 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Terms of Service | hack<a>board",
-  description: "Terms of Service for hack<a>board.",
+  title: "Terms of Service | hackaboard",
+  description: "Terms of Service for hackaboard.",
 }
 
 export default function TermsPage() {
@@ -15,7 +15,7 @@ export default function TermsPage() {
         </header>
 
         <section className="space-y-3 text-sm leading-7 text-muted-foreground">
-          <p>By using hack&lt;a&gt;board, you agree to these terms.</p>
+          <p>By using hackaboard, you agree to these terms.</p>
           <p>
             You may use the platform to run hackathons, manage teams, evaluate submissions, and display
             leaderboard data. You must not use the service for unlawful activity, abuse, or unauthorized access.

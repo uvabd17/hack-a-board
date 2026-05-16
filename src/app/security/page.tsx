@@ -1,8 +1,8 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Security | hack<a>board",
-  description: "Security practices and disclosure policy for hack<a>board.",
+  title: "Security | hackaboard",
+  description: "Security practices and disclosure policy for hackaboard.",
 }
 
 export default function SecurityPage() {
