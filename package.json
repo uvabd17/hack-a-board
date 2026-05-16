@@ -1,7 +1,8 @@
 {
-  "name": "temp_init",
+  "name": "hackaboard",
   "version": "0.1.0",
   "private": true,
+  "homepage": "https://hackaboard.app",
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
@@ -21,6 +22,8 @@
     "@prisma/client": "^7.4.0",
     "@upstash/realtime": "^1.0.2",
     "@upstash/redis": "^1.36.2",
+    "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^2.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "html5-qrcode": "^2.3.8",
@@ -50,7 +53,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
-    "shadcn": "^3.8.5",
+    "shadcn": "^4.7.0",
     "tailwindcss": "^4",
     "tailwindcss-animate": "^1.0.7",
     "tsx": "^4.19.2",

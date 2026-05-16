@@ -7,6 +7,10 @@
 </p>
 
 <p align="center">
+  <a href="https://hackaboard.app"><strong>hackaboard.app</strong></a>
+</p>
+
+<p align="center">
   <a href="#features">Features</a> |
   <a href="#tech-stack">Tech Stack</a> |
   <a href="#local-setup">Local Setup</a> |
@@ -76,11 +80,17 @@
 
 ## Production Deployment
 
-1. Configure all required environment variables in Vercel and Render.
+Live at **[hackaboard.app](https://hackaboard.app)** (Vercel apex, no www).
+
+1. Configure all required environment variables in Vercel and Render. At minimum on Vercel:
+   - `NEXT_PUBLIC_BASE_URL=https://hackaboard.app`
+   - `DATABASE_URL`, `SOCKET_SERVER_URL`, `NEXT_PUBLIC_SOCKET_SERVER_URL`, `EMIT_SECRET`
 2. Commit Prisma migrations under `prisma/migrations`.
 3. Run migrations during deploy (`npm run db:migrate:deploy`).
-4. Configure socket server `CLIENT_ORIGIN` and `EMIT_SECRET` to match app settings.
+4. Configure socket server `CLIENT_ORIGIN` to include `https://hackaboard.app` and `EMIT_SECRET` to match the app.
 5. Monitor socket health endpoint at `/health`.
+
+See [`docs/PROD_DEPLOY_AND_VERIFY.md`](docs/PROD_DEPLOY_AND_VERIFY.md) for the full deploy + smoke-test checklist.
 
 ## Security and Reliability
 

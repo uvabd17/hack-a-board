@@ -1,6 +1,12 @@
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 
+/**
+ * Brand wordmark — always lowercase `hackaboard` with the middle `a`
+ * tinted brand cyan. No literal `<a>` angle brackets (those vanish at
+ * small sizes and the mark read as "hackboard"). Single source of
+ * truth used by the footer, signin, /access and other chrome.
+ */
 export function BrandMark({ className, size = "sm" }: { className?: string; size?: "xs" | "sm" | "md" | "lg" }) {
   const sizes = {
     xs: "text-xs",
@@ -9,8 +15,15 @@ export function BrandMark({ className, size = "sm" }: { className?: string; size
     lg: "text-lg",
   }
   return (
-    <Link href="/" className={cn("text-muted-foreground hover:text-foreground transition-colors tracking-wide font-bold", sizes[size], className)}>
-      hack<span className="text-primary">&lt;a&gt;</span>board
+    <Link
+      href="/"
+      className={cn(
+        "text-muted-foreground hover:text-foreground transition-colors tracking-wide font-bold lowercase",
+        sizes[size],
+        className,
+      )}
+    >
+      hack<span className="text-primary">a</span>board
     </Link>
   )
 }
