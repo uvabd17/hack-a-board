@@ -33,7 +33,7 @@ export default async function AccessPage() {
                         private beta
                     </div>
                     <h1 className="text-3xl md:text-4xl font-black tracking-tighter mb-3 lowercase">
-                        <span className="text-foreground">hack</span><span className="text-primary">a</span><span className="text-foreground">board</span>
+                        <span className="text-foreground">hack</span><span className="text-primary">&lt;a&gt;</span><span className="text-foreground">board</span>
                     </h1>
                     <p className="text-muted-foreground text-xs tracking-widest uppercase">
                         we&apos;re onboarding organizers manually
