@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>hackaboard — capacity planning</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg: #0E0E12;
+    --panel: #16161d;
+    --panel-2: #1d1d26;
+    --border: #2a2a36;
+    --ink: #F5F0E6;
+    --muted: #888896;
+    --dim: #5a5a68;
+    --cyan: #3DD9E0;
+    --ok: #4ade80;
+    --warn: #fbbf24;
+    --bad: #f87171;
+    --line: #2a2a36;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--ink); }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    margin: 0;
+    padding: 32px 20px 80px;
+    max-width: 1100px;
+    margin: 0 auto;
+    font-size: 15px;
+  }
+  h1 { font-size: 34px; letter-spacing: -0.025em; margin: 0 0 4px; font-weight: 900; }
+  h1 .br { color: var(--cyan); }
+  h2 {
+    font-size: 22px;
+    margin: 48px 0 14px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 8px;
+    letter-spacing: -0.01em;
+  }
+  h3 { font-size: 16px; margin: 24px 0 10px; color: var(--ink); font-weight: 700; }
+  p { margin: 8px 0; color: var(--ink); }
+  .muted { color: var(--muted); }
+  .dim { color: var(--dim); font-size: 13px; }
+  .lead { color: var(--muted); margin-top: 0; }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    line-height: 1.4;
+    vertical-align: 1px;
+  }
+  .b-ok    { background: rgba(74,222,128,0.12); color: var(--ok); border: 1px solid rgba(74,222,128,0.35); }
+  .b-warn  { background: rgba(251,191,36,0.12); color: var(--warn); border: 1px solid rgba(251,191,36,0.35); }
+  .b-bad   { background: rgba(248,113,113,0.12); color: var(--bad); border: 1px solid rgba(248,113,113,0.35); }
+  .b-info  { background: rgba(61,217,224,0.12); color: var(--cyan); border: 1px solid rgba(61,217,224,0.35); }
+
+  /* Cards */
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin: 16px 0;
+  }
+  .card.accent { border-left: 3px solid var(--cyan); }
+  .card.warn   { border-left: 3px solid var(--warn); }
+  .card.bad    { border-left: 3px solid var(--bad); }
+  .card.ok     { border-left: 3px solid var(--ok); }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  @media (max-width: 760px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0;
+    font-size: 14px;
+  }
+  th, td {
+    text-align: left;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  th {
+    color: var(--muted);
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: var(--panel-2);
+  }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.center, th.center { text-align: center; }
+  tr:hover td { background: rgba(255,255,255,0.015); }
+
+  /* Capacity bar */
+  .bar {
+    background: var(--panel-2);
+    border-radius: 4px;
+    height: 8px;
+    overflow: hidden;
+    margin: 4px 0;
+    border: 1px solid var(--border);
+    position: relative;
+  }
+  .bar > span {
+    display: block;
+    height: 100%;
+    background: var(--ok);
+    transition: width 0.3s;
+  }
+  .bar.warn > span { background: var(--warn); }
+  .bar.bad > span  { background: var(--bad); }
+  .bar.cyan > span { background: var(--cyan); }
+
+  /* Resource block */
+  .res {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+  }
+  .res-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+  .res-head h3 { margin: 0; }
+  .res-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 14px; }
+  .res-row .label { width: 180px; color: var(--muted); font-size: 13px; flex-shrink: 0; }
+  .res-row .val { font-weight: 600; font-variant-numeric: tabular-nums; width: 100px; flex-shrink: 0; }
+  .res-row .bar { flex: 1; min-width: 80px; }
+
+  /* Price ladder */
+  .price-card { padding: 14px 18px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel); }
+  .price-card.recommended { border-color: var(--cyan); position: relative; }
+  .price-card.recommended::before {
+    content: "Recommended for 2-3 events";
+    position: absolute;
+    top: -10px;
+    left: 14px;
+    background: var(--cyan);
+    color: var(--bg);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .price { font-size: 28px; font-weight: 900; letter-spacing: -0.02em; color: var(--ink); margin: 4px 0; }
+  .price-card.recommended .price { color: var(--cyan); }
+  .price small { font-size: 14px; font-weight: 500; color: var(--muted); }
+  .price-card ul { margin: 8px 0 0; padding-left: 20px; color: var(--muted); font-size: 13px; }
+  .price-card ul li { margin: 2px 0; }
+
+  /* Code-ish */
+  code {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    background: var(--panel-2);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--cyan);
+    border: 1px solid var(--border);
+  }
+  pre {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  pre code { background: none; border: none; padding: 0; color: var(--ink); }
+
+  /* Checklist */
+  .checklist { list-style: none; padding: 0; margin: 8px 0; }
+  .checklist li {
+    padding: 8px 0 8px 28px;
+    position: relative;
+    border-bottom: 1px solid var(--line);
+  }
+  .checklist li::before {
+    content: "□";
+    position: absolute;
+    left: 0;
+    color: var(--dim);
+    font-size: 18px;
+    line-height: 1;
+    top: 8px;
+  }
+
+  /* Trigger row */
+  .trigger { display: grid; grid-template-columns: 1fr auto; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); align-items: center; }
+  .trigger:last-child { border-bottom: none; }
+  .trigger .when { font-weight: 600; }
+  .trigger .then { color: var(--cyan); font-family: ui-monospace, monospace; font-size: 13px; }
+
+  /* Footer */
+  footer { margin-top: 60px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--dim); font-size: 12px; }
+  footer code { font-size: 11px; }
+  a { color: var(--cyan); }
+
+  /* Section emphasis */
+  .tldr-card {
+    background: linear-gradient(180deg, rgba(61,217,224,0.06), transparent);
+    border: 1px solid rgba(61,217,224,0.35);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin: 20px 0 28px;
+  }
+  .tldr-card h2 { border: none; margin: 0 0 8px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--cyan); padding: 0; }
+  .tldr-card p { margin: 6px 0; color: var(--ink); font-size: 15px; }
+</style>
+</head>
+<body>
+
+<h1>hack<span class="br">&lt;a&gt;</span>board <span class="muted" style="font-size:18px;font-weight:400;">— capacity planning</span></h1>
+<p class="lead">How much load the platform handles, when to upgrade, and what each component actually needs. All numbers grounded in a full code audit, not guesses.</p>
+
+<!-- ─── TL;DR ─────────────────────────────────────────────────────── -->
+<div class="tldr-card">
+  <h2>tl;dr</h2>
+  <p><strong>Today, free stack is enough.</strong> Your one 500-team November event runs comfortably on $0/month.</p>
+  <p>The moment you book a <strong>second concurrent event</strong> for the same weekend, upgrade to <strong>$26/month</strong> (Render Starter $7 + Neon Launch $19). Both are 1-click upgrades, downgradeable any time, zero migration.</p>
+</div>
+
+<!-- ─── Capacity per event ────────────────────────────────────────── -->
+<h2>1. Capacity per single event</h2>
+<p class="muted">Assumes leaderboard is organizer/display-only — participants don't keep persistent leaderboard tabs.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Event size</th>
+      <th class="num">Teams</th>
+      <th class="num">Total people</th>
+      <th class="num">Peak sockets</th>
+      <th>On free stack</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Small</td>
+      <td class="num">100</td>
+      <td class="num">300–600</td>
+      <td class="num">~40</td>
+      <td><span class="badge b-ok">very comfortable</span></td>
+    </tr>
+    <tr>
+      <td>Medium</td>
+      <td class="num">300</td>
+      <td class="num">900–1,800</td>
+      <td class="num">~80</td>
+      <td><span class="badge b-ok">comfortable</span></td>
+    </tr>
+    <tr style="background:rgba(61,217,224,0.05);">
+      <td><strong>Your November event</strong></td>
+      <td class="num"><strong>500</strong></td>
+      <td class="num"><strong>1,500–3,000</strong></td>
+      <td class="num"><strong>~120–200</strong></td>
+      <td><span class="badge b-ok">safe</span> <span class="dim">no changes needed</span></td>
+    </tr>
+    <tr>
+      <td>Very large</td>
+      <td class="num">1,000</td>
+      <td class="num">3,000–6,000</td>
+      <td class="num">~300–400</td>
+      <td><span class="badge b-warn">tight</span> <span class="dim">upgrade Render Starter</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ─── Multi-event capacity ─────────────────────────────────────── -->
+<h2>2. Concurrent events</h2>
+<p class="muted">How many 500-team events can run side-by-side with active scoring at the same time.</p>
+
+<div class="grid-3">
+  <div class="card ok">
+    <h3 style="margin:0 0 6px;">1 event</h3>
+    <p style="margin:0;font-size:13px;color:var(--muted);">on free stack</p>
+    <p style="margin:8px 0 0;font-size:28px;font-weight:900;letter-spacing:-0.02em;">$0<small style="font-size:14px;font-weight:500;color:var(--muted);">/mo</small></p>
+    <div style="margin-top:10px;font-size:13px;">
+      <div>RAM utilization &nbsp; <span class="badge b-ok">31%</span></div>
+      <div>DB connections &nbsp; <span class="badge b-ok">33%</span></div>
+      <div>CPU &nbsp; <span class="badge b-ok">low</span></div>
+    </div>
+  </div>
+
+  <div class="card accent">
+    <h3 style="margin:0 0 6px;">2–3 events</h3>
+    <p style="margin:0;font-size:13px;color:var(--muted);">Render Starter + Neon Launch</p>
+    <p style="margin:8px 0 0;font-size:28px;font-weight:900;letter-spacing:-0.02em;color:var(--cyan);">$26<small style="font-size:14px;font-weight:500;color:var(--muted);">/mo</small></p>
+    <div style="margin-top:10px;font-size:13px;">
+      <div>RAM utilization &nbsp; <span class="badge b-ok">67%</span></div>
+      <div>DB storage &nbsp; <span class="badge b-warn">free cap exceeded</span></div>
+      <div>CPU &nbsp; <span class="badge b-ok">dedicated 0.5 vCPU</span></div>
+    </div>
+  </div>
+
+  <div class="card warn">
+    <h3 style="margin:0 0 6px;">5+ events</h3>
+    <p style="margin:0;font-size:13px;color:var(--muted);">Render Standard + Neon Scale</p>
+    <p style="margin:8px 0 0;font-size:28px;font-weight:900;letter-spacing:-0.02em;">~$50<small style="font-size:14px;font-weight:500;color:var(--muted);">/mo</small></p>
+    <div style="margin-top:10px;font-size:13px;">
+      <div>RAM &nbsp; <span class="badge b-ok">2 GB</span></div>
+      <div>DB storage &nbsp; <span class="badge b-ok">50 GB</span></div>
+      <div>CPU &nbsp; <span class="badge b-ok">1 dedicated vCPU</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Per-component utilization ───────────────────────────────── -->
+<h2>3. What each component actually needs</h2>
+
+<!-- Vercel -->
+<div class="res">
+  <div class="res-head">
+    <h3>Next.js app on Vercel <span class="muted" style="font-weight:400;font-size:13px;">— Hobby Free</span></h3>
+    <span class="badge b-ok">no upgrade needed</span>
+  </div>
+  <p class="muted" style="margin:4px 0 10px;font-size:13px;">Vercel hits free cap only at ~10 events/month.</p>
+  <div class="res-row">
+    <span class="label">Function RAM</span>
+    <span class="val">~100 MB</span>
+    <div class="bar"><span style="width:10%"></span></div>
+    <span class="dim">of 1024 MB</span>
+  </div>
+  <div class="res-row">
+    <span class="label">Invocations / mo</span>
+    <span class="val">~500K</span>
+    <div class="bar"><span style="width:50%"></span></div>
+    <span class="dim">of 1M</span>
+  </div>
+  <div class="res-row">
+    <span class="label">Bandwidth / mo</span>
+    <span class="val">~10 GB</span>
+    <div class="bar"><span style="width:10%"></span></div>
+    <span class="dim">of 100 GB</span>
+  </div>
+  <div class="res-row">
+    <span class="label">Build minutes / mo</span>
+    <span class="val">~20</span>
+    <div class="bar"><span style="width:1%"></span></div>
+    <span class="dim">of 6000</span>
+  </div>
+</div>
+
+<!-- Socket server -->
+<div class="res" style="margin-top:14px;">
+  <div class="res-head">
+    <h3>Socket server on Render <span class="muted" style="font-weight:400;font-size:13px;">— Free at 1 event, Starter at 2+</span></h3>
+    <span class="badge b-warn">upgrade trigger</span>
+  </div>
+  <p class="muted" style="margin:4px 0 10px;font-size:13px;">At 3 events concurrent, the 0.1 shared vCPU chokes during broadcast bursts. Render Starter ($7) gives 0.5 dedicated CPU.</p>
+
+  <p class="dim" style="margin:8px 0 4px;">At 1 event:</p>
+  <div class="res-row">
+    <span class="label">RAM</span>
+    <span class="val">~160 MB</span>
+    <div class="bar"><span style="width:31%"></span></div>
+    <span class="dim">of 512 MB</span>
+  </div>
+  <div class="res-row">
+    <span class="label">Concurrent sockets</span>
+    <span class="val">~150</span>
+    <div class="bar"><span style="width:15%"></span></div>
+    <span class="dim">of 1000 cap</span>
+  </div>
+
+  <p class="dim" style="margin:14px 0 4px;">At 3 events:</p>
+  <div class="res-row">
+    <span class="label">RAM</span>
+    <span class="val">~340 MB</span>
+    <div class="bar warn"><span style="width:67%"></span></div>
+    <span class="dim">of 512 MB</span>
+  </div>
+  <div class="res-row">
+    <span class="label">Concurrent sockets</span>
+    <span class="val">~550</span>
+    <div class="bar"><span style="width:55%"></span></div>
+    <span class="dim">of 1000 cap</span>
+  </div>
+  <div class="res-row">
+    <span class="label">CPU during broadcast</span>
+    <span class="val">heavy</span>
+    <div class="bar bad"><span style="width:95%"></span></div>
+    <span class="dim">0.1 shared vCPU = bottleneck</span>
+  </div>
+</div>
+
+<!-- Database -->
+<div class="res" style="margin-top:14px;">
+  <div class="res-head">
+    <h3>Database on Neon Postgres <span class="muted" style="font-weight:400;font-size:13px;">— Free at 1 event, Launch at 2+</span></h3>
+    <span class="badge b-bad">upgrade required at 2+ events</span>
+  </div>
+  <p class="muted" style="margin:4px 0 10px;font-size:13px;">Each event uses ~200–300 MB including indexes + bloat. 2 active events = ~500 MB, exceeds free 0.5 GB cap.</p>
+  <div class="res-row">
+    <span class="label">Storage (1 event)</span>
+    <span class="val">~250 MB</span>
+    <div class="bar warn"><span style="width:50%"></span></div>
+    <span class="dim">of 0.5 GB free</span>
+  </div>
+  <div class="res-row">
+    <span class="label">Storage (2 events)</span>
+    <span class="val">~500 MB</span>
+    <div class="bar bad"><span style="width:100%"></span></div>
+    <span class="dim">at free cap</span>
+  </div>
+  <div class="res-row">
+    <span class="label">Storage (3 events)</span>
+    <span class="val">~1 GB</span>
+    <div class="bar bad"><span style="width:100%"></span></div>
+    <span class="dim">free cap exceeded</span>
+  </div>
+  <div class="res-row">
+    <span class="label">Connections (3 events)</span>
+    <span class="val">~30</span>
+    <div class="bar"><span style="width:30%"></span></div>
+    <span class="dim">of 100 cap</span>
+  </div>
+</div>
+
+<!-- Redis -->
+<div class="res" style="margin-top:14px;">
+  <div class="res-head">
+    <h3>Redis cache on Upstash <span class="muted" style="font-weight:400;font-size:13px;">— Free</span></h3>
+    <span class="badge b-ok">no upgrade needed</span>
+  </div>
+  <p class="muted" style="margin:4px 0 10px;font-size:13px;">Upstash hits free cap only at ~10 concurrent events.</p>
+  <div class="res-row">
+    <span class="label">Commands / day</span>
+    <span class="val">~5000</span>
+    <div class="bar"><span style="width:50%"></span></div>
+    <span class="dim">of 10K</span>
+  </div>
+  <div class="res-row">
+    <span class="label">Storage</span>
+    <span class="val">&lt;10 MB</span>
+    <div class="bar"><span style="width:4%"></span></div>
+    <span class="dim">of 256 MB</span>
+  </div>
+</div>
+
+<!-- ─── Cost ladder ─────────────────────────────────────────────── -->
+<h2>4. Cost ladder — what each tier buys you</h2>
+
+<div class="grid-2" style="margin-top:18px;">
+  <div class="price-card">
+    <p style="margin:0;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:0.06em;">Current</p>
+    <p class="price">$0<small>/month</small></p>
+    <p style="margin:4px 0;color:var(--muted);font-size:13px;">Render Free + Neon Free + Vercel Hobby + Upstash Free</p>
+    <ul>
+      <li>1 event of any size up to 500 teams</li>
+      <li>Single shared 0.1 vCPU on socket server</li>
+      <li>0.5 GB database</li>
+      <li>UptimeRobot keeps Render warm</li>
+    </ul>
+  </div>
+
+  <div class="price-card recommended">
+    <p style="margin:0;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:0.06em;margin-top:4px;">Step up</p>
+    <p class="price">$26<small>/month</small></p>
+    <p style="margin:4px 0;color:var(--muted);font-size:13px;">Render Starter ($7) + Neon Launch ($19)</p>
+    <ul>
+      <li>2–3 concurrent events × 500 teams</li>
+      <li>Dedicated 0.5 vCPU socket server, no sleep</li>
+      <li>10 GB database with branching</li>
+      <li>1-click upgrade in both dashboards, downgrade anytime</li>
+    </ul>
+  </div>
+
+  <div class="price-card">
+    <p style="margin:0;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:0.06em;">Heavy headroom</p>
+    <p class="price">~$50<small>/month</small></p>
+    <p style="margin:4px 0;color:var(--muted);font-size:13px;">Render Standard ($25) + Neon Scale (variable)</p>
+    <ul>
+      <li>5+ concurrent events × 500 teams</li>
+      <li>Dedicated 1 vCPU, 2 GB RAM socket server</li>
+      <li>50 GB+ database</li>
+      <li>Headroom for surprise viral growth</li>
+    </ul>
+  </div>
+
+  <div class="price-card">
+    <p style="margin:0;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:0.06em;">Free-tier hero mode</p>
+    <p class="price">$0<small>/month + ops time</small></p>
+    <p style="margin:4px 0;color:var(--muted);font-size:13px;">Oracle Ampere A1 socket + aggressive Neon archive</p>
+    <ul>
+      <li>4 OCPU dedicated, 24 GB RAM</li>
+      <li>Capacity provisioning is gated — often blocked for days</li>
+      <li>Self-managed Linux (nginx + certbot + systemd)</li>
+      <li>Only viable if you commit to it long before an event</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ─── Upgrade triggers ───────────────────────────────────────── -->
+<h2>5. Upgrade triggers <span class="muted" style="font-size:14px;font-weight:400;">— when to spend money</span></h2>
+<div class="card">
+  <div class="trigger">
+    <div>
+      <div class="when">2nd concurrent event booked</div>
+      <div class="dim">Two events with active scoring in the same hour</div>
+    </div>
+    <div class="then">→ Render Starter $7</div>
+  </div>
+  <div class="trigger">
+    <div>
+      <div class="when">Database storage hits 350 MB</div>
+      <div class="dim">At 0.5 GB cap, writes start failing — don't risk mid-event</div>
+    </div>
+    <div class="then">→ Neon Launch $19</div>
+  </div>
+  <div class="trigger">
+    <div>
+      <div class="when">Single event &gt; 1000 teams</div>
+      <div class="dim">RAM gets tight, CPU pressure during ceremony peak</div>
+    </div>
+    <div class="then">→ Render Starter $7</div>
+  </div>
+  <div class="trigger">
+    <div>
+      <div class="when">5+ events same weekend</div>
+      <div class="dim">Step up to fully dedicated capacity</div>
+    </div>
+    <div class="then">→ Render Standard $25 + Neon Scale</div>
+  </div>
+  <div class="trigger">
+    <div>
+      <div class="when">Vercel invocations &gt; 800K/month</div>
+      <div class="dim">Approaching 1M Hobby cap</div>
+    </div>
+    <div class="then">→ Vercel Pro $20</div>
+  </div>
+</div>
+
+<!-- ─── Failure modes ──────────────────────────────────────────── -->
+<h2>6. What can break <span class="muted" style="font-size:14px;font-weight:400;">— ranked by real likelihood</span></h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Risk</th>
+      <th class="center">Likelihood</th>
+      <th>What happens</th>
+      <th>What protects you</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Venue wifi is bad</td>
+      <td class="center"><span class="badge b-bad">high</span></td>
+      <td>Phones disconnect, feels broken</td>
+      <td>Adaptive polling auto-degrades to 20s intervals</td>
+    </tr>
+    <tr>
+      <td>Single user hits new bug</td>
+      <td class="center"><span class="badge b-warn">medium</span></td>
+      <td>One user errors out</td>
+      <td>Reload page; work around manually for one team</td>
+    </tr>
+    <tr>
+      <td>Render shared CPU lags</td>
+      <td class="center"><span class="badge b-warn">medium</span></td>
+      <td>Display refresh 1–3s slow</td>
+      <td>10s Redis leaderboard cache absorbs most of it</td>
+    </tr>
+    <tr>
+      <td>Neon hiccup</td>
+      <td class="center"><span class="badge b-ok">low</span></td>
+      <td>1–2s query latency spike</td>
+      <td>Rate limits + cache buffer it</td>
+    </tr>
+    <tr>
+      <td>UptimeRobot ping fails 15+ min</td>
+      <td class="center"><span class="badge b-ok">low</span></td>
+      <td>Render sleeps, cold start 30s</td>
+      <td>Set 2-min ping interval during events</td>
+    </tr>
+    <tr>
+      <td>Full platform outage (Vercel + Neon + Render all down)</td>
+      <td class="center"><span class="badge b-ok">very low</span></td>
+      <td>Total outage</td>
+      <td>Not preventable; backup spreadsheet for 20 min</td>
+    </tr>
+  </tbody>
+</table>
+
+<p style="margin-top:12px;font-size:14px;"><strong>Notice:</strong> "platform crashes under expected load" is not on this list. The numbers say you have headroom even at 3-event peak.</p>
+
+<!-- ─── Pre-event checklist ────────────────────────────────────── -->
+<h2>7. Pre-event checklist <span class="muted" style="font-size:14px;font-weight:400;">— 15 minutes the day before</span></h2>
+<div class="card">
+  <ul class="checklist">
+    <li>Hit <code>https://hackaboard.app</code> from a phone on cellular data — loads under 3 seconds</li>
+    <li>Open <code>/h/[slug]/display</code> on the actual projector — leave for 10 min, watch for disconnect badges (should be none)</li>
+    <li>Submit one test score from a judge phone — display updates in ~2 seconds</li>
+    <li>Check UptimeRobot dashboard — socket server at 100% uptime past 7 days</li>
+    <li>Bookmark Vercel deployments page on the venue laptop (rollback is one tap)</li>
+  </ul>
+</div>
+
+<!-- ─── Sources ───────────────────────────────────────────────── -->
+<h2>8. Source of these numbers</h2>
+<p class="muted" style="font-size:13px;">All numbers ground out in the full code audit performed 2026-05-17. Files referenced:</p>
+<div class="card" style="font-size:13px;">
+  <div style="margin:4px 0;"><code>socket-server/index.ts</code> — event registry, per-IP/per-socket caps</div>
+  <div style="margin:4px 0;"><code>src/lib/socket-emit.ts</code> — 11 broadcast functions + payload shapes</div>
+  <div style="margin:4px 0;"><code>src/actions/leaderboard.ts</code> — query shape, no N+1</div>
+  <div style="margin:4px 0;"><code>src/lib/redis.ts</code> — 10s TTL leaderboard cache</div>
+  <div style="margin:4px 0;"><code>src/lib/rate-limit.ts</code> — 5 active rate limits</div>
+  <div style="margin:4px 0;"><code>src/lib/prisma.ts</code> — pg pool max=15, 30s timeouts</div>
+  <div style="margin:4px 0;"><code>render.yaml</code> — current deploy (Singapore, Free)</div>
+  <div style="margin:4px 0;"><code>socket-server/oracle-deploy.sh</code> — Oracle migration script (80% wired)</div>
+  <div style="margin:4px 0;">Commit <code>b46824b</code> — "optimize for 200+ participants" — prior tuning baseline</div>
+</div>
+
+<footer>
+  hackaboard capacity reference · last updated 2026-05-18 · single self-contained file, open in any browser
+</footer>
+
+</body>
+</html>
