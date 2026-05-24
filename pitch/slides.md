@@ -104,6 +104,7 @@ layout: default
 <div class="reality">
   <div class="section-label">The reality today</div>
   <ul class="reality-list">
+    <li><span class="bullet">↓</span> Teams already registered on Devfolio or Unstop have to register again on your tool</li>
     <li><span class="bullet">↓</span> Registrations live in Google Forms, then someone copies them into a sheet</li>
     <li><span class="bullet">↓</span> Judges score on paper, on clipboards, on shared docs</li>
     <li><span class="bullet">↓</span> Results come out two to four hours after the deadline</li>
@@ -170,13 +171,15 @@ layout: center
   <Wordmark size="large" />
   <div class="built-tag">One platform. End-to-end.</div>
   <div class="journey">
-    <div class="step">Register</div>
+    <div class="step">Import</div>
     <div class="arrow">→</div>
     <div class="step">Check-in</div>
     <div class="arrow">→</div>
     <div class="step">Judge</div>
     <div class="arrow">→</div>
-    <div class="step active">Leaderboard</div>
+    <div class="step active">Reveal</div>
+    <div class="arrow">→</div>
+    <div class="step">Wrapped</div>
     <div class="arrow">→</div>
     <div class="step">Ceremony</div>
   </div>
@@ -246,6 +249,7 @@ layout: default
     <h2>Create the event. Press start.</h2>
     <h2 class="emphasis">Watch it run itself.</h2>
     <ul class="actor-points">
+      <li>Import your teams from Devfolio or Unstop — one click, no re-registration</li>
       <li>Set up rounds, criteria, and judges in minutes</li>
       <li>Manage check-ins with a scan</li>
       <li>Open the display screen — that's it</li>
@@ -330,7 +334,7 @@ layout: default
     <h2>Sign up. Form a team.</h2>
     <h2 class="emphasis">Watch your rank climb.</h2>
     <ul class="actor-points">
-      <li>Register from a phone — solo or with a team</li>
+      <li>Register from a phone, or get added via your organizer's magic link</li>
       <li>See judging progress in real time</li>
       <li>Watch the board the moment scores come in</li>
     </ul>
@@ -421,6 +425,7 @@ layout: default
   <div class="board-label">The <Wordmark size="inline" /></div>
   <img src="/screenshots/display.png" class="board-screenshot" alt="HackaBoard live leaderboard" />
   <div class="board-caption">This is the room watching.</div>
+  <div class="board-sub">Live during judging — or hidden until reveal. Your call.</div>
 </div>
 
 <style>
@@ -453,6 +458,12 @@ layout: default
   font-style: italic;
   font-weight: 500;
   color: rgb(232 234 239);
+}
+.board-sub {
+  font-family: 'Geist', sans-serif;
+  font-size: 1rem;
+  color: rgb(180 184 195);
+  margin-top: -0.5rem;
 }
 </style>
 
@@ -577,6 +588,315 @@ layout: default
 </style>
 
 ---
+layout: default
+---
+
+<div class="pricing-slide">
+  <div class="section-label">What we charge</div>
+  <div class="pricing-grid">
+    <div class="tier">
+      <div class="tier-name">Free</div>
+      <div class="tier-price">₹0</div>
+      <div class="tier-meta">per event</div>
+      <ul class="tier-list">
+        <li>Up to 300 teams</li>
+        <li>Live leaderboard + hidden/reveal modes</li>
+        <li>CSV import from Devfolio / Unstop</li>
+        <li>Wrapped for participants</li>
+        <li>QR check-in, magic-link judging</li>
+        <li>Results CSV export</li>
+      </ul>
+    </div>
+    <div class="tier pro">
+      <div class="tier-name">Pro</div>
+      <div class="tier-price">₹3,999</div>
+      <div class="tier-meta">per event</div>
+      <ul class="tier-list">
+        <li>Everything in Free, plus:</li>
+        <li>Up to 1000 teams</li>
+        <li>Custom event branding</li>
+        <li>Sponsor branding + sponsor tracks</li>
+        <li>Audit log + score override</li>
+        <li>Bulk email + priority support</li>
+        <li>No "powered by" footer</li>
+      </ul>
+    </div>
+  </div>
+  <div class="pricing-tag">Two options. Per event — because hackathons aren't subscriptions.</div>
+</div>
+
+<style>
+.pricing-slide {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 3rem;
+  gap: 1.25rem;
+}
+.pricing-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-top: 0.5rem;
+}
+.tier {
+  padding: 1.5rem 1.75rem;
+  border: 2px solid rgb(54 58 68);
+  border-bottom: 4px solid rgb(54 58 68);
+  border-radius: 0.5rem;
+  background: oklch(0.13 0.012 260);
+}
+.tier.pro {
+  border-color: oklch(0.78 0.15 195);
+  border-bottom-color: oklch(0.78 0.15 195);
+}
+.tier-name {
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: rgb(125 128 138);
+}
+.tier.pro .tier-name { color: oklch(0.78 0.15 195); }
+.tier-price {
+  font-family: 'Geist', sans-serif;
+  font-size: 3rem;
+  font-weight: 900;
+  color: rgb(232 234 239);
+  line-height: 1;
+  margin: 0.4rem 0 0.2rem;
+  letter-spacing: -0.02em;
+}
+.tier.pro .tier-price { color: oklch(0.78 0.15 195); }
+.tier-meta {
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.7rem;
+  color: rgb(125 128 138);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+.tier-list {
+  list-style: none;
+  padding: 0;
+  margin-top: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.tier-list li {
+  font-size: 0.95rem;
+  color: rgb(180 184 195);
+  padding-left: 1.25rem;
+  position: relative;
+}
+.tier-list li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: oklch(0.78 0.15 195);
+  font-weight: 700;
+}
+.pricing-tag {
+  font-style: italic;
+  color: rgb(232 234 239);
+  font-size: 1.125rem;
+  font-weight: 500;
+  text-align: center;
+  margin-top: 0.5rem;
+}
+</style>
+
+---
+layout: default
+---
+
+<div class="offer-slide">
+  <div class="section-label">For this hackathon</div>
+  <div class="offer-headline">You get the safety + scale tools.</div>
+  <div class="offer-headline emphasis">Free.</div>
+  <div class="offer-grid">
+    <div class="offer-col unlocked">
+      <div class="col-label">Unlocked for you</div>
+      <ul>
+        <li>Up to 500 teams</li>
+        <li>Audit log + score override</li>
+        <li>Score variance alerts</li>
+        <li>Priority support</li>
+      </ul>
+    </div>
+    <div class="offer-col gated">
+      <div class="col-label">Still paid, if you want it</div>
+      <ul>
+        <li>Custom event branding</li>
+        <li>Sponsor branding + sponsor tracks</li>
+        <li>"Powered by" footer removal</li>
+        <li>Bulk email distribution</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<style>
+.offer-slide {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 3rem;
+  gap: 0.75rem;
+}
+.offer-headline {
+  font-size: 2rem;
+  font-weight: 700;
+  color: rgb(232 234 239);
+  line-height: 1.15;
+}
+.offer-headline.emphasis {
+  font-style: italic;
+  color: oklch(0.78 0.15 195);
+  font-size: 2.75rem;
+}
+.offer-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-top: 1.25rem;
+}
+.offer-col {
+  padding: 1.25rem 1.5rem;
+  border: 2px solid rgb(54 58 68);
+  border-radius: 0.5rem;
+  background: oklch(0.13 0.012 260);
+}
+.offer-col.unlocked {
+  border-color: oklch(0.78 0.15 195);
+  border-bottom: 4px solid oklch(0.78 0.15 195);
+}
+.col-label {
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgb(125 128 138);
+  margin-bottom: 0.75rem;
+}
+.offer-col.unlocked .col-label { color: oklch(0.78 0.15 195); }
+.offer-col ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.offer-col li {
+  font-size: 1rem;
+  color: rgb(232 234 239);
+  padding-left: 1.5rem;
+  position: relative;
+}
+.offer-col.unlocked li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: oklch(0.78 0.15 195);
+  font-weight: 700;
+}
+.offer-col.gated li::before {
+  content: '○';
+  position: absolute;
+  left: 0;
+  color: rgb(125 128 138);
+}
+.offer-col.gated li {
+  color: rgb(180 184 195);
+}
+</style>
+
+---
+layout: default
+---
+
+<div class="exchange-slide">
+  <div class="section-label">In exchange</div>
+  <div class="exchange-headline">Your <em>story</em>.</div>
+  <div class="exchange-list">
+    <div class="exch-row">
+      <div class="exch-count">1 video</div>
+      <div class="exch-detail">your organizing team · 3–5 min · within 14 days</div>
+    </div>
+    <div class="exch-row">
+      <div class="exch-count">5 videos</div>
+      <div class="exch-detail">your top 5 teams · 30–60s each · within 14 days</div>
+    </div>
+    <div class="exch-row">
+      <div class="exch-count">License</div>
+      <div class="exch-detail">we use them on our site, social, future pitches</div>
+    </div>
+  </div>
+  <div class="exchange-tag">We don't share your data. We share what you say about us.</div>
+</div>
+
+<style>
+.exchange-slide {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 3rem;
+  gap: 1rem;
+}
+.exchange-headline {
+  font-size: 2.75rem;
+  font-weight: 700;
+  color: rgb(232 234 239);
+  line-height: 1.1;
+}
+.exchange-headline em {
+  font-style: italic;
+  color: oklch(0.78 0.15 195);
+  font-weight: 900;
+}
+.exchange-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+.exch-row {
+  display: flex;
+  align-items: baseline;
+  gap: 1.5rem;
+  padding: 0.9rem 1.25rem;
+  border: 2px solid rgb(54 58 68);
+  border-bottom: 4px solid rgb(54 58 68);
+  border-radius: 0.5rem;
+  background: oklch(0.13 0.012 260);
+}
+.exch-count {
+  font-family: 'Geist', sans-serif;
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: oklch(0.78 0.15 195);
+  min-width: 7rem;
+  letter-spacing: -0.01em;
+}
+.exch-detail {
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.95rem;
+  color: rgb(180 184 195);
+}
+.exchange-tag {
+  font-style: italic;
+  font-size: 1rem;
+  color: rgb(125 128 138);
+  margin-top: 0.75rem;
+  font-weight: 500;
+}
+</style>
+
+---
 layout: center
 ---
 
@@ -585,7 +905,7 @@ layout: center
   <div class="close-headline">
     Want <Wordmark size="inline" /> set up for<br/>your <em>next hackathon</em>?
   </div>
-  <div class="close-sub">You don't have to pay anything.</div>
+  <div class="close-sub">You don't pay. You contribute a story.</div>
   <div class="close-cta">Just DM.</div>
   <div class="close-contact">
     <span class="cc-label">Contact</span>
