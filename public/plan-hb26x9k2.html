@@ -715,7 +715,193 @@ hr { border: none; border-top: 1px dashed var(--border); margin: 44px 0; }
 
 <hr>
 
-<h2><span class="num">ref 05</span>Roadmap</h2>
+<h2><span class="num">ref 05</span>Setup ease — how organizers actually use it</h2>
+<p>The toggles are clean for engineers and murder for a first-time organizer. The fix is layered UX: templates do the work for 80% of cases, smart defaults handle the next 15%, and the toggles only appear when someone drills in. Organizers never see schema words like <code>scoreCarry</code>.</p>
+
+<h3>Templates as the front door</h3>
+<p>Creating a hackathon starts with picking a shape, not configuring fields.</p>
+
+<div class="screen">
+  <div class="bar"><span class="dot"></span><span class="url">manage/new-hackathon</span></div>
+  <div class="body">
+    <div style="font-family:var(--mono); font-size:10px; color:var(--text-mute); letter-spacing:0.2em; text-transform:uppercase;">create hackathon · pick a shape</div>
+    <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
+      <div style="padding:11px 14px; border:1px solid var(--cyan-dim); background:rgba(61,217,224,0.05); border-radius:8px;">
+        <div style="font-weight:700; color:var(--cyan);">&#9673; Quick &mdash; single judging round</div>
+        <div style="font-size:12px; color:var(--text-dim);">1 phase. Rubric. Live board. The 24-hour hackathon default.</div>
+      </div>
+      <div style="padding:11px 14px; border:1px solid var(--border); border-radius:8px;">
+        <div style="font-weight:700;">&#9675; Build + judge</div>
+        <div style="font-size:12px; color:var(--text-dim);">2 phases. Build day + final judging. No cuts.</div>
+      </div>
+      <div style="padding:11px 14px; border:1px solid var(--border); border-radius:8px;">
+        <div style="font-weight:700;">&#9675; Online shortlist + offline finale</div>
+        <div style="font-size:12px; color:var(--text-dim);">Online deck screening &rarr; offline rubric. The Innovate Bharat shape.</div>
+      </div>
+      <div style="padding:11px 14px; border:1px solid var(--border); border-radius:8px;">
+        <div style="font-weight:700;">&#9675; Classic multi-round</div>
+        <div style="font-size:12px; color:var(--text-dim);">Shortlist &rarr; finale R1 &rarr; grand-finale panel. SIH-style.</div>
+      </div>
+      <div style="padding:11px 14px; border:1px solid var(--border); border-radius:8px;">
+        <div style="font-weight:700;">&#9675; Custom &mdash; start blank</div>
+        <div style="font-size:12px; color:var(--text-dim);">For organizers who know exactly what they want, or copying last year's event.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<table class="behavior-tbl">
+  <thead><tr><th>Shape</th><th>Phases</th><th>When organizers pick it</th></tr></thead>
+  <tbody>
+    <tr><td>Quick &mdash; single round</td><td>1 judging</td><td>24-hour hackathons, small internal events, anything with one final judging session.</td></tr>
+    <tr><td>Build + judge</td><td>1 non-judging + 1 judging</td><td>Most weekend hackathons. No shortlist, no cuts &mdash; rank everyone at the end.</td></tr>
+    <tr><td>Shortlist + finale</td><td>2&ndash;3 judging</td><td>Multi-day college hackathons. Online screening followed by offline finale.</td></tr>
+    <tr><td>Custom</td><td>whatever</td><td>Returning organizers, weird structures, copy-from-last-year.</td></tr>
+  </tbody>
+</table>
+
+<h3>Plain-language phase config — no schema words</h3>
+<p>What's in the database is <code>judgingStyle: rubric | shortlist | panel</code>. What the organizer sees:</p>
+
+<div class="screen">
+  <div class="bar"><span class="dot"></span><span class="url">phase config · Finale Round 1</span></div>
+  <div class="body">
+    <div style="font-family:var(--mono); font-size:10px; color:var(--text-mute); letter-spacing:0.2em; text-transform:uppercase;">phase &middot; finale round 1</div>
+    <div style="margin-top:14px;">
+      <div style="font-weight:700; margin-bottom:6px;">How will judges decide?</div>
+      <div style="display:flex; flex-direction:column; gap:6px; font-size:13px;">
+        <div style="padding:9px 12px; border:1px solid var(--cyan-dim); background:rgba(61,217,224,0.05); border-radius:6px;">&#9673; <b>Score teams on criteria</b> &mdash; judges rate each team 1&ndash;5 on weighted criteria</div>
+        <div style="padding:9px 12px; border:1px solid var(--border); border-radius:6px;">&#9675; <b>Triage: yes / maybe / no</b> &mdash; fast cuts for large pools, no per-criterion scoring</div>
+        <div style="padding:9px 12px; border:1px solid var(--border); border-radius:6px;">&#9675; <b>Judges discuss and announce</b> &mdash; no scorecards; one captain records the result</div>
+      </div>
+    </div>
+    <div style="margin-top:16px;">
+      <div style="font-weight:700; margin-bottom:6px;">When can judges score?</div>
+      <div style="font-family:var(--mono); font-size:12px; color:var(--text-dim);">May 17 &middot; 14:00 &rarr; 17:00</div>
+    </div>
+    <div style="margin-top:14px; padding-top:12px; border-top:1px dashed var(--border);">
+      <div style="font-family:var(--mono); font-size:11px; color:var(--cyan); cursor:pointer;">&rsaquo; Show advanced settings (4)</div>
+    </div>
+  </div>
+</div>
+
+<p>Only two fields are visible by default: style + window. Everything else — scoreCarry, advancement rule, leaderboard visibility, judge assignment — is collapsed behind <b>Show advanced settings</b>. Most organizers never expand it.</p>
+
+<h3>Pre-flight validation before going live</h3>
+<p>"Publish hackathon" runs a checklist. Red errors block; yellow warnings inform but let them proceed.</p>
+
+<div class="screen">
+  <div class="bar"><span class="dot"></span><span class="url">manage/publish</span></div>
+  <div class="body" style="font-family:var(--mono); font-size:12px; line-height:2;">
+    <div><span style="color:var(--ok);">&#10003;</span> &nbsp;Timeline has 3 phases (1 judging required &mdash; met)</div>
+    <div><span style="color:var(--ok);">&#10003;</span> &nbsp;Round 1 has 8 judges assigned</div>
+    <div><span style="color:var(--warn);">&#9888;</span> &nbsp;Finale R1 requires 3 judges per team, only 2 are active &nbsp;<span style="color:var(--cyan);">[add 1 more] [lower requirement]</span></div>
+    <div><span style="color:var(--warn);">&#9888;</span> &nbsp;Grand Finale has scoreCarry=cumulative but it's a fresh-judged finale &nbsp;<span style="color:var(--cyan);">[switch to fresh]</span></div>
+    <div><span style="color:var(--ok);">&#10003;</span> &nbsp;All criteria weights sum to 100%</div>
+    <div><span style="color:var(--ok);">&#10003;</span> &nbsp;200 teams imported, all have QR tokens</div>
+    <div style="margin-top:14px;">
+      <button style="padding:12px 24px; background:var(--cyan); color:#0a0a0e; border:none; border-radius:8px; font-weight:800; font-size:13px;">Publish anyway (2 warnings)</button>
+    </div>
+  </div>
+</div>
+
+<div class="callout">
+  <div class="head">net effect</div>
+  <p>A first-time organizer creates a working hackathon in under 3 minutes — pick a template, fill name + dates, add judges, hit publish. An organizer who needs custom behaviour drills in. Power and approachability without trading one for the other.</p>
+</div>
+
+<hr>
+
+<h2><span class="num">ref 06</span>Edge cases — what to watch</h2>
+<p>Things that look fine in the happy path but bite in production. Listed so they're conscious design decisions, not surprises during a real event.</p>
+
+<table class="behavior-tbl">
+  <thead><tr><th>Category</th><th>Case</th><th>Handling</th></tr></thead>
+  <tbody>
+    <tr><td rowspan="3">Structure</td><td>Single-phase hackathon (no rounds, just one judging)</td><td>Hide scoreCarry + advancement from the UI entirely &mdash; meaningless for a single phase. Auto-set both to safe defaults.</td></tr>
+    <tr><td>Solo participant (team of 1)</td><td>Supported &mdash; "team" of one. UI swaps "team" copy for "you" / "solo" where appropriate.</td></tr>
+    <tr><td>Organizer adds a phase after the hackathon has started</td><td>Allowed, but the new phase enters <code>draft</code>; explicit "Activate phase" confirmation required.</td></tr>
+    <tr><td rowspan="3">Scoring &amp; ranking</td><td>Tied scores at the advancement cutoff (top-10 + 11th &amp; 12th tie)</td><td>Default: advance all tied. Organizer can override. Tie-break note on the leaderboard ("tied on score").</td></tr>
+    <tr><td>Score = 0 vs not yet scored</td><td>DB-distinguishable (null vs 0). UI shows "&mdash;" for not scored, "0" for scored zero. Never conflate them.</td></tr>
+    <tr><td>Required judges = 3 but team only has 2 scores at close</td><td>Pre-flight warning during the phase. At close, organizer can: extend window, lower requirement, or accept and rank with available scores.</td></tr>
+    <tr><td rowspan="3">Runtime</td><td>Judge's internet drops mid-scoring</td><td>Existing local-storage recovery in the scoring form. Scores re-submit on reconnect.</td></tr>
+    <tr><td>Two judges submit the same team simultaneously</td><td>Per-judge unique constraint already in schema (judge,team,round,criterion). No race; separate rows.</td></tr>
+    <tr><td>Reveal triggered by mistake</td><td>Confirmation modal ("results will be visible to all teams") with a 10-sec undo countdown after click.</td></tr>
+    <tr><td rowspan="2">People</td><td>Judge drops out mid-phase</td><td>Organizer reassigns from manage view. Their submitted scores stay; the replacement starts fresh.</td></tr>
+    <tr><td>Team withdraws mid-event</td><td>Mark withdrawn &rarr; excluded from leaderboard, prior scores archived (not deleted).</td></tr>
+    <tr><td rowspan="2">Time</td><td>Judges in different timezones for an online round</td><td>Window stored in event TZ, displayed in viewer's local TZ with the event TZ noted.</td></tr>
+    <tr><td>DST shift mid-event</td><td>Phases use stored absolute UTC; visible local time may shift by an hour. Show a banner.</td></tr>
+    <tr><td rowspan="2">Fairness</td><td>Same team accidentally added twice (manual + CSV)</td><td>Existing <code>(hackathonId, email)</code> uniqueness catches it. Skip with reason during import.</td></tr>
+    <tr><td>Magic judge link shared / screenshotted</td><td>v1: anyone with the link <em>is</em> the judge &mdash; same trust model as participant QRs. Token rotation deferred.</td></tr>
+    <tr><td rowspan="2">Organizer mistakes</td><td>Phase config changed AFTER scores exist (e.g., switch style mid-phase)</td><td>Destructive; lock with a confirmation that explicitly says "this will discard N scores."</td></tr>
+    <tr><td>Captain submits the wrong panel order</td><td>10-sec edit window before reveal animation starts. After reveal: organizer-only override with audit log.</td></tr>
+  </tbody>
+</table>
+
+<div class="callout warn">
+  <div class="head">explicit deferrals</div>
+  <p>Token rotation on shared magic links, judge dropout with auto-rebalance, mid-event timezone changes, dispute / re-judging workflows &mdash; all real, none in v1. Tracked in the plan-file notes so the next pass doesn't forget them.</p>
+</div>
+
+<hr>
+
+<h2><span class="num">ref 07</span>Build path — leveraging what exists</h2>
+<p>The codebase already has most of the data model and most of the runtime. The build is mostly rename / extend / refactor — not rewrite.</p>
+
+<h3>What we reuse</h3>
+<div class="compare">
+  <div class="col">
+    <h5>Data model</h5>
+    <p style="margin:0; font-size:13px;"><code>Round</code> (becomes <code>Phase</code>), <code>Criterion</code>, <code>Score</code>, <code>Judge</code>, <code>JudgingAttempt</code>, <code>Submission</code>, <code>Team</code>, <code>Participant</code>, <code>Hackathon</code>. All survive. New optional fields added.</p>
+  </div>
+  <div class="col">
+    <h5>Runtime</h5>
+    <p style="margin:0; font-size:13px;">Leaderboard Redis cache, socket emit pipeline, QR auth route (generalizes to magic-link auth), rate-limit infra, access-control gates, dashboard / manage shell.</p>
+  </div>
+  <div class="col">
+    <h5>Scoring formula</h5>
+    <p style="margin:0; font-size:13px;">The current formula (judge avg &times; round weight) becomes the <b>RubricScorer</b> strategy &mdash; extracted into its own module, unchanged math. Zero behaviour change on existing hackathons.</p>
+  </div>
+  <div class="col">
+    <h5>UI primitives</h5>
+    <p style="margin:0; font-size:13px;">BrandMark / BrandFooter, the brutalist card pattern, dark-theme tokens, scoring form, judge dashboard shell, dev test-organizer login.</p>
+  </div>
+</div>
+
+<h3>What we add</h3>
+<table class="behavior-tbl">
+  <thead><tr><th>Layer</th><th>New</th></tr></thead>
+  <tbody>
+    <tr><td>Schema</td><td>On <code>Phase</code>: <code>judgingStyle</code>, <code>timingMode</code>, <code>scoreCarry</code>, <code>advancement</code>, <code>leaderboardVisibility</code>, <code>assignmentMode</code>, <code>phaseType</code> (judging / non-judging). New tables: <code>ShortlistVote</code>, <code>PanelDecision</code>. All additions nullable / defaulted &mdash; existing rows valid as-is.</td></tr>
+    <tr><td>Scorer registry</td><td><code>RubricScorer</code> (extracted), <code>ShortlistScorer</code> (new), <code>PanelScorer</code> (new). Common <code>RoundScorer</code> interface.</td></tr>
+    <tr><td>UI</td><td>Template picker, phase setup wizard, plain-language config form, advanced-settings disclosure, pre-flight checklist, hidden/reveal display states, judge review queue (shortlist), captain drag-order (panel), organizer progress monitor.</td></tr>
+    <tr><td>Routes</td><td><code>/h/[slug]/judge/[token]</code> magic-link entry, <code>/manage/phases</code>, <code>/manage/phases/[id]/config</code>, <code>/manage/publish</code> (pre-flight).</td></tr>
+  </tbody>
+</table>
+
+<h3>What we deliberately retire</h3>
+<p><code>Hackathon.timeBonusRate</code>, <code>timePenaltyRate</code>, <code>Submission.timeBonus</code> &mdash; kept on existing hackathons for history, never used by new ones. Time scoring is gone.</p>
+
+<h3>The build sequence</h3>
+<div class="roadmap">
+  <div class="rm-row"><span class="phase">step 1</span><span class="when">~3 days</span><span class="what"><b>Schema migration</b>. Add nullable fields with safe defaults. Rename <code>Round</code>&rarr;<code>Phase</code> at the API surface (DB column can stay). Existing hackathons run unchanged.</span><span class="ship">zero-impact</span></div>
+  <div class="rm-row"><span class="phase">step 2</span><span class="when">~3 days</span><span class="what"><b>RubricScorer refactor</b>. Extract the current formula into a strategy module. Wire the leaderboard data path through the registry. Pure refactor &mdash; behaviour identical.</span><span class="ship">verify with old hackathons</span></div>
+  <div class="rm-row"><span class="phase">step 3</span><span class="when">~5 days</span><span class="what"><b>Setup wizard + templates</b>. Template picker, plain-language phase config, progressive disclosure, pre-flight checklist. Additive UI, no judging-behaviour change.</span><span class="ship">organizer-facing</span></div>
+  <div class="rm-row"><span class="phase">step 4</span><span class="when">~4 days</span><span class="what"><b>Hidden / reveal leaderboard states</b>. Display gains a state machine. Smart defaults per phase (online=hidden, offline=live). Reveal trigger + animation.</span><span class="ship">low risk</span></div>
+  <div class="rm-row"><span class="phase">step 5</span><span class="when">~7 days</span><span class="what"><b>Shortlist style</b>. <code>ShortlistVote</code> + <code>ShortlistScorer</code> + judge review queue UI + magic-link generic auth (generalize from QR route) + organizer progress monitor.</span><span class="ship">first new format</span></div>
+  <div class="rm-row"><span class="phase">step 6</span><span class="when">~5 days</span><span class="what"><b>Panel deliberation</b>. <code>PanelDecision</code> + <code>PanelScorer</code> + captain drag-order UI + reveal animation. Finals support.</span><span class="ship">unblocks finals</span></div>
+  <div class="rm-row"><span class="phase">step 7</span><span class="when">~5 days</span><span class="what"><b>Fairness + ops features</b>. Coverage enforcement, variance alert, blind judging, results export, score override + audit log. Orthogonal &mdash; applies to every style.</span><span class="ship">polish</span></div>
+</div>
+<p class="note">Total: ~30 working days (~6 weeks). Each step ships independently &mdash; we can stop after step 4 with a working "rubric only with hidden/reveal" product, or after step 5 with rubric + shortlist. Nothing requires step 7 to be functional.</p>
+
+<div class="callout">
+  <div class="head">migration philosophy</div>
+  <p>Every existing hackathon must keep working with zero data migration on day 1. New behaviour rides on new optional fields; old hackathons see no UI change until they're explicitly opted in. We don't rewrite the runtime &mdash; we extend it.</p>
+</div>
+
+<hr>
+
+<h2><span class="num">ref 08</span>Roadmap</h2>
 <p>CSV import ships first — it's decoupled from judging and unblocks real organizer onboarding now. The judging redesign follows, informed by real imported data.</p>
 <div class="roadmap">
   <div class="rm-row"><span class="phase">P1</span><span class="when">weeks 1&ndash;2</span><span class="what"><b>CSV import v1</b> — Devfolio/Unstop upload, column mapper, printable QR sheet</span><span class="ship">ships first</span></div>
@@ -730,7 +916,7 @@ hr { border: none; border-top: 1px dashed var(--border); margin: 44px 0; }
 
 <hr>
 
-<h2><span class="num">ref 06</span>tl;dr</h2>
+<h2><span class="num">ref 09</span>tl;dr</h2>
 <div class="callout">
   <p style="margin:0;">A hackathon is an ordered list of <b>phases</b>. Each judging phase carries its own toggles — <code>judgingStyle</code>, <code>timingMode</code>, <code>scoreCarry</code>, <code>advancement</code>, leaderboard visibility — and the leaderboard, judge UI, and hall display all derive from them. Round 1 is an online shortlist (remote review queue, hidden board, reveal at close). The finale is in-hall rubric scoring (hidden during judging, organizer-triggered reveal, gentle grey for teams that don't advance) and ends in a panel-deliberated grand finale. CSV import ships first to onboard organizers; the judging redesign follows. No time scoring, no audience, no spectators.</p>
 </div>

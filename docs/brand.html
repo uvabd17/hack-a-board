@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>hackaboard — brand guide</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root {
+  --bg: #0E0E12;
+  --bg-elev: #15151B;
+  --bg-elev-2: #1c1c24;
+  --border: #2a2a35;
+  --border-bright: #3a3a48;
+  --cyan: #3DD9E0;
+  --cyan-dim: #2a9da3;
+  --text: #F5F5F7;
+  --text-dim: #b5b5c0;
+  --text-mute: #6e6e7a;
+  --ok: #4ade80;
+  --warn: #fbbf24;
+  --bad: #f87171;
+  --purple: #c084fc;
+  --orange: #fb923c;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1080px; margin: 0 auto; padding: 64px 24px 96px; }
+header.hero { padding: 24px 0 48px; border-bottom: 1px solid var(--border); margin-bottom: 32px; }
+.kicker { font-family: var(--mono); font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--text-mute); margin-bottom: 12px; }
+.brand { font-weight: 900; font-size: 28px; letter-spacing: -0.02em; }
+.br { color: var(--cyan); }
+h1 { font-size: 40px; line-height: 1.08; margin: 12px 0 16px; letter-spacing: -0.02em; font-weight: 800; }
+h2 { font-size: 24px; margin: 56px 0 8px; letter-spacing: -0.01em; font-weight: 800; }
+h2 .num { color: var(--cyan); font-family: var(--mono); font-size: 12px; letter-spacing: 0.2em; display: block; margin-bottom: 6px; font-weight: 600; }
+h3 { font-size: 16px; margin: 24px 0 8px; font-weight: 700; }
+p { margin: 12px 0; color: var(--text-dim); }
+.lede { font-size: 17px; color: var(--text); }
+code { font-family: var(--mono); font-size: 13px; background: var(--bg-elev); padding: 1px 6px; border-radius: 4px; color: var(--cyan); }
+hr { border: none; border-top: 1px dashed var(--border); margin: 48px 0; }
+.note { color: var(--text-mute); font-size: 12px; font-style: italic; margin-top: 8px; }
+
+/* Logo blocks */
+.logo-block { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 10px; padding: 32px; text-align: center; margin: 16px 0; }
+.logo-block .wordmark { font-weight: 900; letter-spacing: -0.02em; line-height: 1; }
+.logo-block .label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--text-mute); margin-top: 18px; }
+.logo-on-light { background: #f5f5f7; color: #0E0E12; }
+.logo-on-light .label { color: #6e6e7a; }
+.logo-on-light .br { color: var(--cyan-dim); }
+.size-stack { display: flex; flex-direction: column; gap: 16px; align-items: flex-start; padding: 24px; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 10px; }
+.size-stack .row { display: flex; align-items: baseline; gap: 16px; }
+.size-stack .row .lbl { font-family: var(--mono); font-size: 11px; color: var(--text-mute); width: 80px; }
+.size-stack .row .lg { font-weight: 900; letter-spacing: -0.02em; }
+
+/* Color swatches */
+.swatches { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0; }
+@media (max-width: 800px) { .swatches { grid-template-columns: 1fr 1fr; } }
+.sw { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.sw .chip { height: 80px; }
+.sw .meta { padding: 12px 14px; }
+.sw .name { font-weight: 700; font-size: 14px; }
+.sw .hex { font-family: var(--mono); font-size: 11px; color: var(--text-mute); margin-top: 2px; }
+.sw .use { font-size: 12px; color: var(--text-dim); margin-top: 6px; }
+
+/* Type stack */
+.type-stack { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 10px; padding: 24px; margin: 16px 0; }
+.type-stack .row { display: flex; align-items: baseline; gap: 16px; padding: 10px 0; border-bottom: 1px dashed var(--border); }
+.type-stack .row:last-child { border-bottom: none; }
+.type-stack .row .meta { font-family: var(--mono); font-size: 10px; color: var(--text-mute); width: 160px; flex-shrink: 0; letter-spacing: 0.08em; }
+
+/* Pattern showcase */
+.btn-brutal { display: inline-block; padding: 12px 22px; background: var(--bg-elev); border: 2px solid var(--border-bright); border-bottom: 4px solid var(--border-bright); border-radius: 8px; font-weight: 800; font-size: 13px; font-family: -apple-system, sans-serif; color: var(--text); cursor: pointer; transition: all 0.1s; }
+.btn-brutal.primary { background: var(--cyan); color: #0a0a0e; border-color: var(--cyan); border-bottom-color: var(--cyan-dim); }
+.screen { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 10px; margin: 16px 0; overflow: hidden; }
+.screen .bar { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-bottom: 1px solid var(--border); background: var(--bg-elev-2); font-family: var(--mono); font-size: 11px; color: var(--text-mute); }
+.screen .bar .dot { width: 8px; height: 8px; border-radius: 50%; background: #3a3a48; }
+.screen .body { padding: 22px; }
+
+.callout { border-left: 3px solid var(--cyan); background: rgba(61,217,224,0.04); padding: 14px 16px; border-radius: 0 6px 6px 0; margin: 20px 0; }
+.callout.bad { border-color: var(--bad); background: rgba(248,113,113,0.04); }
+.callout.warn { border-color: var(--warn); background: rgba(251,191,36,0.04); }
+.callout.ok { border-color: var(--ok); background: rgba(74,222,128,0.04); }
+.callout .head { font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--cyan); }
+.callout.bad .head { color: var(--bad); }
+.callout.warn .head { color: var(--warn); }
+.callout.ok .head { color: var(--ok); }
+.callout p { margin: 6px 0 0; color: var(--text); }
+
+.dorow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 12px 0; }
+@media (max-width: 800px) { .dorow { grid-template-columns: 1fr; } }
+.do-card { padding: 14px 16px; border-radius: 8px; border: 1px solid var(--border); }
+.do-card.do { border-color: #2a6a40; background: rgba(74,222,128,0.04); }
+.do-card.dont { border-color: #6a3030; background: rgba(248,113,113,0.04); }
+.do-card .head { font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 6px; }
+.do-card.do .head { color: var(--ok); }
+.do-card.dont .head { color: var(--bad); }
+.do-card .body { font-size: 13px; color: var(--text); }
+.do-card .demo { font-family: var(--mono); font-size: 13px; color: var(--text-dim); margin-top: 6px; }
+.do-card.dont .demo { text-decoration: line-through; }
+
+table.spec { width: 100%; border-collapse: collapse; font-size: 13px; margin: 16px 0; }
+table.spec th, table.spec td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+table.spec thead th { background: var(--bg-elev-2); font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-mute); font-weight: 500; }
+table.spec td:first-child { font-family: var(--mono); color: var(--cyan); font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="kicker">internal · brand guide · v0.1</div>
+  <div class="brand">hack<span class="br">&lt;a&gt;</span>board</div>
+  <h1>Brand guide.<br>How hackaboard looks, sounds, and treats people.</h1>
+  <p class="lede">A short, opinionated brand book. Covers the wordmark, colour, type, component patterns, voice, and the rules we don't break — like never colouring a losing team in red.</p>
+  <p class="note">Tokens below are the same CSS custom properties the app uses, so this doc is also the source of truth.</p>
+</header>
+
+<!-- ============================ -->
+<h2><span class="num">01</span>Wordmark — the two forms</h2>
+<p>The brand has two forms. They are not interchangeable.</p>
+
+<div class="logo-block">
+  <div class="wordmark" style="font-size: 56px;">hack<span class="br">&lt;a&gt;</span>board</div>
+  <div class="label">visual logo · wordmark</div>
+</div>
+
+<p><b>Visual logo:</b> the wordmark <code>hack&lt;a&gt;board</code> — literal angle brackets around a cyan-tinted <code>a</code>. The brackets are part of the brand identity, not decoration. Use this anywhere a logo is rendered: headers, hero, footer "powered by," wrapped slides, login pages, anywhere the mark is meant to act as a logo. Even if at small sizes the mark visually reads as "hackboard," the brackets stay.</p>
+
+<div class="logo-block">
+  <div class="wordmark" style="font-size: 36px;">hackaboard</div>
+  <div class="label">prose form · spoken / written</div>
+</div>
+
+<p><b>Prose form:</b> plain <code>hackaboard</code>, no brackets, no styling, all lowercase. Use this in body copy, page titles, meta descriptions, email subjects, legal copy, commit messages, marketing — anywhere the word appears as text rather than as a logo.</p>
+
+<table class="spec">
+  <thead><tr><th>Form</th><th>Where</th></tr></thead>
+  <tbody>
+    <tr><td>hack&lt;a&gt;board (logo)</td><td>BrandMark component, login hero, access page hero, wrapped cover, footer "powered by"</td></tr>
+    <tr><td>hackaboard (prose)</td><td>page titles, meta tags, footer text, README, docs, commit messages, marketing copy</td></tr>
+  </tbody>
+</table>
+
+<h3>Sizing</h3>
+<div class="size-stack">
+  <div class="row"><span class="lbl">xs · 12px</span><span class="lg" style="font-size: 12px;">hack<span class="br">&lt;a&gt;</span>board</span></div>
+  <div class="row"><span class="lbl">sm · 14px</span><span class="lg" style="font-size: 14px;">hack<span class="br">&lt;a&gt;</span>board</span></div>
+  <div class="row"><span class="lbl">md · 16px</span><span class="lg" style="font-size: 16px;">hack<span class="br">&lt;a&gt;</span>board</span></div>
+  <div class="row"><span class="lbl">lg · 24px</span><span class="lg" style="font-size: 24px;">hack<span class="br">&lt;a&gt;</span>board</span></div>
+  <div class="row"><span class="lbl">hero · 56px</span><span class="lg" style="font-size: 56px;">hack<span class="br">&lt;a&gt;</span>board</span></div>
+</div>
+
+<h3>On a light background</h3>
+<div class="logo-block logo-on-light">
+  <div class="wordmark" style="font-size: 48px;">hack<span class="br">&lt;a&gt;</span>board</div>
+  <div class="label">light-mode rendering</div>
+</div>
+<p>On light surfaces, the brackets shift to the darker cyan (<code>--cyan-dim</code>) so contrast holds. The black-text portion stays pure <code>#0E0E12</code>.</p>
+
+<div class="callout bad">
+  <div class="head">never</div>
+  <p><b>HackaBoard</b>, <b>Hackaboard</b>, <b>hackaBoard</b>, <b>hack-a-board</b>, or any other casing. The brand is always lowercase, one word, no hyphen. Don't render the wordmark without the brackets, and don't render prose text with them.</p>
+</div>
+
+<hr>
+
+<!-- ============================ -->
+<h2><span class="num">02</span>Colour palette</h2>
+<p>Six tokens. Every UI surface uses these — no off-token shades.</p>
+
+<div class="swatches">
+  <div class="sw"><div class="chip" style="background: var(--bg);"></div><div class="meta"><div class="name">bg</div><div class="hex">#0E0E12</div><div class="use">Page background. Always dark.</div></div></div>
+  <div class="sw"><div class="chip" style="background: var(--bg-elev);"></div><div class="meta"><div class="name">bg-elev</div><div class="hex">#15151B</div><div class="use">Cards, screens, elevated surfaces.</div></div></div>
+  <div class="sw"><div class="chip" style="background: var(--bg-elev-2);"></div><div class="meta"><div class="name">bg-elev-2</div><div class="hex">#1c1c24</div><div class="use">Chrome bars, inset blocks.</div></div></div>
+  <div class="sw"><div class="chip" style="background: var(--cyan);"></div><div class="meta"><div class="name">cyan (brand)</div><div class="hex">#3DD9E0</div><div class="use">Brand accent, active state, primary buttons, the <code>&lt;a&gt;</code> in the wordmark.</div></div></div>
+  <div class="sw"><div class="chip" style="background: var(--ok);"></div><div class="meta"><div class="name">ok</div><div class="hex">#4ade80</div><div class="use">Success, advancing, judged, safe.</div></div></div>
+  <div class="sw"><div class="chip" style="background: var(--warn);"></div><div class="meta"><div class="name">warn</div><div class="hex">#fbbf24</div><div class="use">Caution, maybe, borderline, pre-flight warnings.</div></div></div>
+  <div class="sw"><div class="chip" style="background: var(--bad);"></div><div class="meta"><div class="name">bad</div><div class="hex">#f87171</div><div class="use"><b>Errors only.</b> System failures, blocking validation. <b>Never for losing teams.</b></div></div></div>
+  <div class="sw"><div class="chip" style="background: var(--purple);"></div><div class="meta"><div class="name">purple</div><div class="hex">#c084fc</div><div class="use">Secondary accent. Online phases, extra-data pills, sponsor accents.</div></div></div>
+  <div class="sw"><div class="chip" style="background: var(--text);"></div><div class="meta"><div class="name">text</div><div class="hex">#F5F5F7</div><div class="use">Primary text. Off-white, never pure white.</div></div></div>
+</div>
+
+<h3>Text shades</h3>
+<table class="spec">
+  <thead><tr><th>token</th><th>hex</th><th>use</th></tr></thead>
+  <tbody>
+    <tr><td>text</td><td>#F5F5F7</td><td>Primary text, headlines, key copy.</td></tr>
+    <tr><td>text-dim</td><td>#b5b5c0</td><td>Body paragraphs, secondary copy.</td></tr>
+    <tr><td>text-mute</td><td>#6e6e7a</td><td>Mono labels, captions, kickers, "powered by" — anything quiet.</td></tr>
+    <tr><td>border</td><td>#2a2a35</td><td>Default card / divider stroke.</td></tr>
+    <tr><td>border-bright</td><td>#3a3a48</td><td>Active / focused / brutalist-button stroke.</td></tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <div class="head">the kindness rule</div>
+  <p>Red (<code>--bad</code>) is for errors and system failures only. <b>It is never used for teams that didn't advance.</b> Eliminated / cut teams are rendered in <code>--text-mute</code> with reduced opacity and gentle wording like "did not advance." Losing a hackathon stings on its own; the UI never piles on.</p>
+</div>
+
+<hr>
+
+<!-- ============================ -->
+<h2><span class="num">03</span>Typography</h2>
+
+<div class="type-stack">
+  <div class="row"><span class="meta">h1 · 40 / 800</span><span style="font-size: 40px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.05;">One hackathon, end to end</span></div>
+  <div class="row"><span class="meta">h2 · 24 / 800</span><span style="font-size: 24px; font-weight: 800;">How organizers use it</span></div>
+  <div class="row"><span class="meta">h3 · 16 / 700</span><span style="font-size: 16px; font-weight: 700;">Plain-language phase config</span></div>
+  <div class="row"><span class="meta">body · 15 / 400</span><span style="font-size: 15px;">A hackathon is an ordered list of phases. Each judging phase carries its own settings.</span></div>
+  <div class="row"><span class="meta">small · 13 / 400</span><span style="font-size: 13px; color: var(--text-dim);">200 teams, 740 participants, 8 judges.</span></div>
+  <div class="row"><span class="meta">mono · 12 / 500</span><span style="font-family: var(--mono); font-size: 12px; color: var(--cyan);">judgingStyle: rubric | shortlist | panel</span></div>
+  <div class="row"><span class="meta">kicker · 10 / 600</span><span style="font-family: var(--mono); font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--text-mute);">INTERNAL · PRODUCT WALKTHROUGH</span></div>
+</div>
+
+<table class="spec">
+  <thead><tr><th>family</th><th>where</th></tr></thead>
+  <tbody>
+    <tr><td>system sans</td><td>All body, headlines, UI copy. <code>-apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif</code>.</td></tr>
+    <tr><td>JetBrains Mono</td><td>Code, schema names, labels, kickers, timestamps, URLs in chrome bars, table headers. <code>"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace</code>.</td></tr>
+  </tbody>
+</table>
+
+<p>Letter-spacing tightens on headlines (-0.02em on h1, -0.01em on h2) and widens on kickers (+0.3em). Mono labels are <b>always</b> uppercase with letter-spacing 0.15–0.3em.</p>
+
+<hr>
+
+<!-- ============================ -->
+<h2><span class="num">04</span>Component patterns</h2>
+
+<h3>The brutalist button</h3>
+<p>Border-2 on top + sides, border-4 on bottom — a hard offset shadow drawn in the border itself. Pressed state shrinks the bottom border to 2 and shifts the button down by 2px (active state, simulates physical click).</p>
+<div style="display:flex; gap:12px; flex-wrap:wrap; margin:14px 0;">
+  <button class="btn-brutal primary">Primary action</button>
+  <button class="btn-brutal">Secondary action</button>
+</div>
+
+<h3>The screen chrome (mockups)</h3>
+<p>Three muted dots + a mono URL on a <code>--bg-elev-2</code> bar above a <code>--bg-elev</code> body. Used in all product mockups so the reader knows they're looking at a screen, not a diagram.</p>
+<div class="screen">
+  <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span style="margin-left: 8px;">hackaboard.app/h/innovate-bharat-2026/manage</span></div>
+  <div class="body">Body content goes here.</div>
+</div>
+
+<h3>Callouts — four flavours</h3>
+<p>Left border-stroke + 4% tint of the same colour. <code>head</code> is a mono kicker.</p>
+<div class="callout"><div class="head">design call</div><p>Used for opinionated decisions and explanations.</p></div>
+<div class="callout ok"><div class="head">confirmed</div><p>Used for safe / validated states.</p></div>
+<div class="callout warn"><div class="head">caveat</div><p>Used for non-blocking warnings.</p></div>
+<div class="callout bad"><div class="head">gone for good</div><p>Used for explicit non-goals or things we deliberately removed.</p></div>
+
+<h3>Spacing</h3>
+<p>8 px base grid. Card padding 14–22 px. Section gaps 40–80 px. Generous whitespace. <code>max-width: 1080px</code> on doc/long-form containers; <code>max-width: 360px</code> on phone mockups.</p>
+
+<hr>
+
+<!-- ============================ -->
+<h2><span class="num">05</span>Voice &amp; tone</h2>
+<p>How hackaboard sounds. Tight, declarative, no-fluff. Like a senior engineer who knows what they're talking about and respects your time.</p>
+
+<table class="spec">
+  <thead><tr><th>principle</th><th>what it means</th></tr></thead>
+  <tbody>
+    <tr><td>terse</td><td>Short sentences. Active voice. Cut every word that doesn't earn its place. "Pick a shape," not "Please select your preferred event shape."</td></tr>
+    <tr><td>declarative</td><td>State what is. Avoid hedging modals ("could," "might," "may want to") unless the uncertainty is real.</td></tr>
+    <tr><td>respectful</td><td>Treat organizers and participants as capable adults. No tutorialese, no "Don't worry!" reassurance.</td></tr>
+    <tr><td>specific</td><td>Numbers over adjectives. "200 teams" beats "many teams." "Closes 17:00" beats "closing soon."</td></tr>
+    <tr><td>kind on losses</td><td>"Did not advance," not "ELIMINATED." Grey, not red. The system never piles on.</td></tr>
+    <tr><td>lowercase brand</td><td>"hackaboard," never "HackaBoard."</td></tr>
+  </tbody>
+</table>
+
+<div class="dorow">
+  <div class="do-card do"><div class="head">do</div><div class="body">Pick a shape</div><div class="demo">Pick a shape to start.</div></div>
+  <div class="do-card dont"><div class="head">don't</div><div class="body">Welcome! Let's get your awesome hackathon set up 🚀</div></div>
+</div>
+<div class="dorow">
+  <div class="do-card do"><div class="head">do</div><div class="body">Round 1 closed · 40 of 200 advance</div><div class="demo">Round 1 closed. 40 of 200 advance.</div></div>
+  <div class="do-card dont"><div class="head">don't</div><div class="body">Round 1 is OVER! 40 incredible teams have made it through to the next stage!!!</div></div>
+</div>
+<div class="dorow">
+  <div class="do-card do"><div class="head">do</div><div class="body">Your team did not advance</div><div class="demo">Your team did not advance. Thank you for participating.</div></div>
+  <div class="do-card dont"><div class="head">don't</div><div class="body">😢 ELIMINATED — better luck next time!</div></div>
+</div>
+
+<hr>
+
+<!-- ============================ -->
+<h2><span class="num">06</span>The hard rules — never do</h2>
+
+<table class="spec">
+  <thead><tr><th>rule</th><th>why</th></tr></thead>
+  <tbody>
+    <tr><td>Never "HackaBoard" / "Hackaboard"</td><td>The brand is lowercase, one word, no exceptions. Logo form keeps the brackets; prose form drops them.</td></tr>
+    <tr><td>Never colour a losing team red</td><td>Red = errors only. Eliminated teams are <code>--text-mute</code> + reduced opacity + "did not advance." Empathy is a brand value.</td></tr>
+    <tr><td>Never emojis in product UI copy</td><td>Adds noise, dates the product, breaks the terse tone. Mockup illustrations may use icons (search, link); shipped UI strings don't.</td></tr>
+    <tr><td>Never exclamation marks</td><td>The system is calm and competent. Excitement is performative.</td></tr>
+    <tr><td>Never invent liveness</td><td>If nothing's happening on the board, show that nothing's happening. Don't fake motion to look engaging. Operational ticker (real info) is fine; fake metrics are not.</td></tr>
+    <tr><td>Never address an audience</td><td>There isn't one. Build for the room — participants, judges, organizers. No livestream optics, no "Hello everyone watching!"</td></tr>
+    <tr><td>Never marketing words</td><td>"Awesome," "amazing," "world-class," "powerful," "robust" — banned. State what the thing does, not how great it is.</td></tr>
+    <tr><td>Never hedge what you know</td><td>"You may want to consider..." → "Add a judge." If the action is clear, say it.</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<!-- ============================ -->
+<h2><span class="num">07</span>Quick reference</h2>
+
+<table class="spec">
+  <thead><tr><th>thing</th><th>value</th></tr></thead>
+  <tbody>
+    <tr><td>logo form</td><td>hack&lt;a&gt;board (with cyan brackets)</td></tr>
+    <tr><td>prose form</td><td>hackaboard (lowercase, no brackets)</td></tr>
+    <tr><td>domain</td><td>hackaboard.app</td></tr>
+    <tr><td>brand colour</td><td>cyan #3DD9E0 (dark variant #2a9da3)</td></tr>
+    <tr><td>background</td><td>#0E0E12</td></tr>
+    <tr><td>error colour</td><td>red #f87171 — system errors only</td></tr>
+    <tr><td>"did not advance"</td><td>grey + dim, never red</td></tr>
+    <tr><td>sans font</td><td>system / Inter</td></tr>
+    <tr><td>mono font</td><td>JetBrains Mono</td></tr>
+    <tr><td>mono labels</td><td>UPPERCASE, letter-spacing 0.15–0.3em</td></tr>
+    <tr><td>tone</td><td>terse, declarative, kind on losses, lowercase always</td></tr>
+  </tbody>
+</table>
+
+<div style="margin-top:64px; padding-top:24px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; font-family:var(--mono); font-size:11px; color:var(--text-mute);">
+  <div>archived by hackaboard ops · v0.1 · 2026-05-20</div>
+  <div>HB-BRAND-2026-001</div>
+</div>
+
+</div>
+</body>
+</html>
